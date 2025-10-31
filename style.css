@@ -1,0 +1,269 @@
+/* ===== style.css contents ===== */
+@import url('https://unpkg.com/normalize.css') layer(normalize);
+@import url('https://fonts.googleapis.com/css2?family=Gloria+Hallelujah&display=swap');
+
+@layer normalize, base, demo;
+
+@layer demo {
+    :root {
+        --content-width: 62rem;
+        scrollbar-color: canvasText #0000;
+    }
+
+    section p {
+        line-height: 1.5;
+    } 
+
+    .filter {
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        position: absolute;
+        inset: 0;
+    } 
+
+    :is(header, main) {
+        width: var(--content-width);
+        max-width: calc(100vw - 2rem);
+        max-width: calc(min(100vw - 2rem, var(--content-width)));
+        margin: 0 auto;
+    } 
+
+    main {
+        flex: 1; 
+    }  
+
+    .effect {
+        opacity: 0;
+        transition: opacity 0.26s ease-out;
+        height: calc(var(--height) * 1px);
+        width: calc(var(--width) * 1px);
+        border-radius: calc(var(--radius) * 1px);
+        position: fixed;
+        z-index: 999999;
+        background: light-dark(hsl(0 0% 100% / var(--frost, 0)),
+                hsl(0 0% 0% / var(--frost, 0)));
+        backdrop-filter: url(#filter) saturate(var(--saturation, 1)); 
+
+        * {
+            pointer-events: none;
+        }
+    }
+
+    /* .placeholder {
+        width: 336px;
+        height: 96px;
+        max-width: 100%;
+        position: relative;
+        margin-bottom: 200px;
+    }
+
+    .dock-placeholder {
+        width: 336px;
+        height: 96px;
+        border-radius: 16px;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        translate: -50% -50%;
+    } */
+
+    [data-debug='true'] .displacement-debug {
+        translate: 0 calc(100% + 1rem);
+        scale: 1;
+        opacity: 1;
+    }
+
+    .displacement-debug {
+        pointer-events: none;
+        height: 100%;
+        width: 100%;
+        position: absolute;
+        inset: 0;
+        translate: 0 calc(200% + 1rem);
+        scale: 0.8;
+        opacity: 0;
+        transition-property: translate, opacity, scale;
+        transition-duration: 0.26s;
+        transition-timing-function: ease-out;
+        z-index: -1;
+
+        .label {
+            position: absolute;
+            left: 50%;
+            top: calc(100% + 0.2lh);
+
+            span {
+                display: inline-block;
+                font-size: 0.875rem;
+                font-family: 'Gloria Hallelujah', cursive;
+                padding: 0.5rem 0.75rem;
+                background: color-mix(in oklch, canvas, #0000 25%);
+                backdrop-filter: blur(4px);
+                border-radius: 6px;
+                white-space: nowrap;
+            }
+
+            svg {
+                position: absolute;
+                filter: drop-shadow(0 2px 10px canvas);
+                right: 100%;
+                rotate: 40deg;
+                translate: 25% 60%;
+                scale: -1 1;
+                width: 40px;
+            }
+        }
+
+        .displacement-image {
+            height: 100%;
+            width: 100%;
+            pointer-events: none;
+            border-radius: calc(var(--radius) * 1px);
+        }
+    } 
+}
+
+@layer base {  
+    :root {
+      --wrap: 62rem;
+     --r-12: 12px;
+     --r-16: 16px;
+     --r-18: 18px;
+     --r-24: 24px;
+      --fg: light-dark(#0a0a0a, #f5f5f5);
+      --bg: light-dark(#ffffff, #000000);
+      --muted: color-mix(in oklch, var(--fg), transparent 40%);
+      --chip: color-mix(in oklch, var(--fg), transparent 92%);
+      --ring: color-mix(in oklch, #3b82f6, #60a5fa 40%);
+      --grid: #1f2937; 
+      --space: 16px;
+    }
+
+  :where(.abs-fill){ position:absolute; inset:0; }
+  :where(.object-cover){ width:100%; height:100%; object-fit:cover; display:block; }
+  :where(.surface){
+    padding: 16px;
+    border: 1px solid color-mix(in oklch, var(--fg), transparent 85%);
+    border-radius: var(--r-12);
+    background: transparent;
+  }
+  :where(button,input,select).focus-ring:focus-visible{
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+    html {
+        color-scheme: light dark;
+    }
+
+    [data-theme='light'] {
+        color-scheme: light only;
+    }
+
+    [data-theme='dark'] {
+        color-scheme: dark only;
+    }
+
+    *,
+    *:after,
+    *:before {
+        box-sizing: border-box;
+    }
+
+    section {
+        margin-block: 4rem;
+        border-top: 1px solid color-mix(in oklch, var(--fg), transparent 90%)
+    } 
+ 
+    header { 
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20px 0
+    }
+    .title {
+        margin: 0;
+        font-weight: 700;
+        letter-spacing: .2px;
+        font-size: clamp(22px, 3vw, 28px)
+    } 
+    .actions {
+        display: flex;
+        gap: 8px
+    } 
+    .btn {
+        padding: .55rem .9rem;
+        border-radius: 999px;
+        border: 1px solid color-mix(in oklch, var(--fg), transparent 82%);
+        background: transparent;
+        color: inherit;
+        cursor: pointer; 
+        text-decoration: none;
+    } 
+    .btn:focus-visible {
+        outline: 2px solid var(--ring);
+        outline-offset: 2px
+    }
+
+    body {
+        background: light-dark(#fff, #000);
+        overflow-x: hidden;
+        min-height: 100vh;
+        font-family: 'SF Pro Text', 'SF Pro Icons', 'AOS Icons', 'Helvetica Neue',
+            Helvetica, Arial, sans-serif, system-ui;
+    }
+
+    body::before {
+        --size: 45px;
+        --line: color-mix(in hsl, canvasText, transparent 80%);
+        content: '';
+        height: 100vh;
+        width: 100vw;
+        position: fixed;
+        background: linear-gradient(90deg,
+                var(--line) 1px,
+                transparent 1px var(--size)) calc(var(--size) * 0.36) 50% / var(--size) var(--size),
+            linear-gradient(var(--line) 1px, transparent 1px var(--size)) 0% calc(var(--size) * 0.32) / var(--size) var(--size);
+        mask: linear-gradient(-20deg, transparent 50%, white);
+        top: 0;
+        transform-style: flat;
+        pointer-events: none;
+        z-index: -1;
+    } 
+ 
+/* Photo visibility */ 
+
+
+
+ 
+    /* .text { @apply surface;} */
+
+    .text h3 {
+      margin: 6px 0 8px
+    }
+
+    .band {
+      height: 110px;
+      border-radius: 12px;
+      background: linear-gradient(90deg, #111 0, #eee 100%);
+      margin-top: 12px
+    }
+
+    .diag {
+      height: 110px;
+      border-radius: 12px;
+      margin-top: 12px;
+      background: repeating-linear-gradient(45deg, #eee 0 1px, #111 1px 10px)
+    }   
+     
+} 
+
+div.tp-dfwv {
+    position: fixed;
+    width: 280px;
+    bottom: 8px;
+    top: unset;
+    view-transition-name: pane;
+} 

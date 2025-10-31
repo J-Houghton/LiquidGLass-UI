@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>"liquid glass" — scroll, drag, configure [Chromium]</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=0, maximum-scale=1.0"> 
+    
+      <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/nano.min.css">
+      <script type="module" src="/src/main.ts"></script>
+</head>
+
+<body>
+<header>
+    <h1 id="title" class="title">Liquid Glass</h1>
+      <div class="actions">
+        <a class="btn" href="#readable">Readable text</a>
+        <a class="btn" href="#showcase">Presets</a>
+      </div>
+</header>
+<div class="effect">
+    <svg class="filter" xmlns="http://www.w3.org/2000/svg">
+        <defs> 
+            <filter id="filter" filterUnits="objectBoundingBox" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB"> 
+                <!-- displacement field -->
+                <feImage x="0" y="0" width="100%" height="100%" result="map"></feImage>
+                <feImage x="0" y="0" width="100%" height="100%" id="bezelMask" result="bezelMask"/>
+                <!-- refraction -->
+                <feDisplacementMap in="SourceGraphic" in2="map" id="disp" xChannelSelector="R" yChannelSelector="G" scale="0" result="refr" />
+                                
+                <feColorMatrix in="refr" type="matrix"
+                    values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0"
+                    result="refrR"/>
+                <feColorMatrix in="refr" type="matrix"
+                    values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0"
+                    result="refrG"/>
+                <feColorMatrix in="refr" type="matrix"
+                    values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0"
+                    result="refrB"/>
+
+                <!-- uses the SAME displacement field `#disp` already wired -->
+                <feOffset in="refrR" dx="0" dy="0" result="refrR_off" id="offR"/>
+                <feOffset in="refrG" dx="0" dy="0" result="refrG_off" id="offG"/>
+                <feOffset in="refrB" dx="0" dy="0" result="refrB_off" id="offB"/>
+ 
+                <feComposite in="refrR_off" in2="bezelMask" operator="in" result="refrR_bezel"/>
+                <feComposite in="refrG_off" in2="bezelMask" operator="in" result="refrG_bezel"/>
+                <feComposite in="refrB_off" in2="bezelMask" operator="in" result="refrB_bezel"/>
+
+                <feBlend in="refrR_bezel" in2="refrG_bezel" mode="screen" result="refrRG"/>    
+                <feBlend in="refrRG"       in2="refrB_bezel" mode="screen" result="dispersionRGB"/>
+                <feComposite in="dispersionRGB" in2="refr" operator="over" result="refrWithDisp"/> 
+                                
+                <feColorMatrix in="refrWithDisp" type="saturate" values="1" result="refrSat" id="satBoost"/>
+
+                <!-- specular highlight image -->
+                <feImage x="0" y="0" width="100%" height="100%" id="specImage" result="specSrc"></feImage>
+                <!-- gain on specular alpha (optional, left at 1 by JS) -->
+                <feComponentTransfer in="specSrc" result="specAdj">
+                    <feFuncA type="linear" slope="1" id="specGain"/>
+                </feComponentTransfer> 
+
+                <feComposite in="refrSat" in2="bezelMask" operator="in" result="satOnBezel"/>
+                <feComposite in="satOnBezel" in2="refrWithDisp" operator="over" result="refrWithSat"/>
+                <feBlend in="refrWithSat" in2="specAdj" mode="screen" result="out"/>
+                <feGaussianBlur in="out" stdDeviation="0.7" /> 
+            </filter>
+        </defs>
+    </svg>
+    <div class="displacement-debug"></div>
+</div>
+
+<main>
+    <!-- dock placeholder and instruction -->
+    <section class="placeholder">
+        <div class="dock-placeholder"></div>
+    </section>
+    
+    <glass-hero mode="static" grid="#1f2937" grada="#2b2bff" gradb="#00d4ff" gradc="#00ffa3" photo="https://images.unsplash.com/photo-1500964757637-c85e8a162699"></glass-hero>
+
+    <div class="section" id="readable">
+        <div class="surface text">
+            <h3>Readable, mixed-weight text</h3>
+            <p>
+                Real-time refraction and frost. Configurable surfaces. Drag anywhere.
+                <a href="#">Sample link</a> and <strong>bold text</strong> to test contrast. Use this row to pass beneath your
+                glass and verify displacement along edges and glyph stems.
+            </p>
+            <div class="band" aria-hidden="true"></div>
+            <div class="diag" aria-hidden="true"></div>
+        </div>
+    </div>
+
+    <div class="section" id="showcase" aria-label="Presets placeholder">
+      <h3 style="margin:0 0 10px">Presets</h3>
+      <p class="note">Placeholder. Minimal markup on purpose. Styles to be added later.</p>
+    </div>
+</main>  
+</body>
+
+</html>
