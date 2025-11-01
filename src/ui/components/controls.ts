@@ -4,51 +4,52 @@ export type HeroMode = "static" | "moving";
 type ColorSet = { grid?: string; a?: string; b?: string; c?: string };
 
 export class LGControls extends HTMLElement {
-  private root: ShadowRoot;
+	private root: ShadowRoot;
 
-  private state = {
-    mode: "static" as HeroMode,
-    photos: [] as string[],
-    grid: "#1f2937",
-    a: "#2b2bff",
-    b: "#00d4ff",
-    c: "#00ffa3",
-    showIcons: false,
-  };
+	private state = {
+		mode: "static" as HeroMode,
+		photos: [] as string[],
+		grid: "#1f2937",
+		a: "#2b2bff",
+		b: "#00d4ff",
+		c: "#00ffa3",
+		showIcons: false,
+		speed: 1.0,
+	};
 
-private prGrid?: any; private prA?: any; private prB?: any; private prC?: any;
-private toggle = (p?: any) => { if (!p) return; p.isOpen() ? p.hide() : p.show(); }; 
+	private prGrid?: any; private prA?: any; private prB?: any; private prC?: any;
+	private toggle = (p?: any) => { if (!p) return; p.isOpen() ? p.hide() : p.show(); };
 
-  constructor() {
-    super();
-    this.root = this.attachShadow({ mode: "open" });   // back to shadow
-  }
+	constructor() {
+		super();
+		this.root = this.attachShadow({ mode: "open" });   // back to shadow
+	}
 
-  connectedCallback() {
-    this.render();
-    this.bind();
-    this.renderThumbs();
-    this.initPickers();
-  }
+	connectedCallback() {
+		this.render();
+		this.bind();
+		this.renderThumbs();
+		this.initPickers();
+	}
 
-  set mode(m: HeroMode) { this.state.mode = m; this.syncMode(); }
-  get mode(): HeroMode { return this.state.mode; }
-  set photos(list: string[]) { this.state.photos = list; this.renderThumbs(); }
-  set colors(v: ColorSet) {
-    if (v.grid) this.state.grid = v.grid;
-    if (v.a) this.state.a = v.a;
-    if (v.b) this.state.b = v.b;
-    if (v.c) this.state.c = v.c;
-    this.emitColors();
-  }
-  set showIcons(v: boolean) {
-    this.state.showIcons = v;
-    const cb = this.root.getElementById("toggleIcons") as HTMLInputElement | null;
-    if (cb) cb.checked = v;
-  }
+	set mode(m: HeroMode) { this.state.mode = m; this.syncMode(); }
+	get mode(): HeroMode { return this.state.mode; }
+	set photos(list: string[]) { this.state.photos = list; this.renderThumbs(); }
+	set colors(v: ColorSet) {
+		if (v.grid) this.state.grid = v.grid;
+		if (v.a) this.state.a = v.a;
+		if (v.b) this.state.b = v.b;
+		if (v.c) this.state.c = v.c;
+		this.emitColors();
+	}
+	set showIcons(v: boolean) {
+		this.state.showIcons = v;
+		const cb = this.root.getElementById("toggleIcons") as HTMLInputElement | null;
+		if (cb) cb.checked = v;
+	}
 
-  private html() {
-    return /*html*/`
+	private html() {
+		return /*html*/`
       <!-- Theme must exist inside the shadow so the swatch renders -->
       <link rel="stylesheet"
         href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/nano.min.css">
@@ -97,113 +98,131 @@ private toggle = (p?: any) => { if (!p) return; p.isOpen() ? p.hide() : p.show()
           <div class="color">A <span id="pickr-a"></span></div>
           <div class="color">B <span id="pickr-b"></span></div>
           <div class="color">C <span id="pickr-c"></span></div>
-        </div>
+          <label class="color" style="gap:10px">
+            <span>Grid speed</span>
+            <input id="speed" type="range" min="0.00" max="3.00" step="0.01" value="${this.state.speed.toFixed(2)}" />
+            <output id="speedOut" style="min-width:3ch; text-align:right">${(this.state.speed * 100).toFixed(0)}%</output>
+          </label>
       </div>`;
-  }
+	}
 
-  private render() { this.root.innerHTML = this.html(); }
+	private render() { this.root.innerHTML = this.html(); }
 
-  private bind() {
-    const modeGroup = this.root.getElementById("modeGroup")!;
-    modeGroup.addEventListener("change", (e: Event) => {
-      const value = (e as CustomEvent).detail?.value as HeroMode;
-      this.state.mode = value;
-      this.syncMode();
-      this.dispatchEvent(new CustomEvent("modechange", { detail: { mode: value } }));
-    });
+	private bind() {
+		const modeGroup = this.root.getElementById("modeGroup")!;
+		modeGroup.addEventListener("change", (e: Event) => {
+			const value = (e as CustomEvent).detail?.value as HeroMode;
+			this.state.mode = value;
+			this.syncMode();
+			this.dispatchEvent(new CustomEvent("modechange", { detail: { mode: value } }));
+		});
 
-    this.root.getElementById("toggleIcons")!
-      .addEventListener("change", (e: Event) => {
-        const show = (e.target as HTMLInputElement).checked;
-        this.state.showIcons = show;
-        this.dispatchEvent(new CustomEvent("iconstoggle", { detail: { show } }));
-      });
+		this.root.getElementById("toggleIcons")!
+			.addEventListener("change", (e: Event) => {
+				const show = (e.target as HTMLInputElement).checked;
+				this.state.showIcons = show;
+				this.dispatchEvent(new CustomEvent("iconstoggle", { detail: { show } }));
+			});
 
-    this.root.getElementById("thumbs")!
-      .addEventListener("click", (e: Event) => {
-        const btn = (e.target as HTMLElement).closest("button");
-        if (!btn) return;
-        this.root.querySelectorAll("#thumbs button[aria-pressed]")
-          .forEach(b => b.setAttribute("aria-pressed", "false"));
-        (btn as HTMLButtonElement).setAttribute("aria-pressed", "true");
-        this.dispatchEvent(new CustomEvent("photochange", { detail: { url: (btn as HTMLButtonElement).dataset.photo! } }));
-      });
+		this.root.getElementById("thumbs")!
+			.addEventListener("click", (e: Event) => {
+				const btn = (e.target as HTMLElement).closest("button");
+				if (!btn) return;
+				this.root.querySelectorAll("#thumbs button[aria-pressed]")
+					.forEach(b => b.setAttribute("aria-pressed", "false"));
+				(btn as HTMLButtonElement).setAttribute("aria-pressed", "true");
+				this.dispatchEvent(new CustomEvent("photochange", { detail: { url: (btn as HTMLButtonElement).dataset.photo! } }));
+			});
 
-    // OPEN/CLOSE pickers on swatch click – NEW
-    this.root.getElementById("pickr-grid")?.addEventListener("click", () => this.toggle(this.prGrid));
-    this.root.getElementById("pickr-a")?.addEventListener("click", () => this.toggle(this.prA));
-    this.root.getElementById("pickr-b")?.addEventListener("click", () => this.toggle(this.prB));
-    this.root.getElementById("pickr-c")?.addEventListener("click", () => this.toggle(this.prC));
-  }
+		// OPEN/CLOSE pickers on swatch click – NEW
+		this.root.getElementById("pickr-grid")?.addEventListener("click", () => this.toggle(this.prGrid));
+		this.root.getElementById("pickr-a")?.addEventListener("click", () => this.toggle(this.prA));
+		this.root.getElementById("pickr-b")?.addEventListener("click", () => this.toggle(this.prB));
+		this.root.getElementById("pickr-c")?.addEventListener("click", () => this.toggle(this.prC));
 
-  private renderThumbs() {
-    const t = this.root.getElementById("thumbs")!;
-    t.innerHTML = this.state.photos.map((url, i) =>
-      `<button aria-pressed="${i===0}" data-photo="${url}"><img src="${url}" alt="Scenery ${i+1}"></button>`
-    ).join("");
-  }
+		const speedEl = this.root.getElementById("speed") as HTMLInputElement | null;
+		const outEl = this.root.getElementById("speedOut") as HTMLOutputElement | null;
+		if (speedEl) {
+			const emit = () => {
+				this.state.speed = parseFloat(speedEl.value);
+				if (outEl) outEl.value = `${(this.state.speed * 100).toFixed(0)}%`;
+				this.dispatchEvent(new CustomEvent("speedchange", { detail: { speed: this.state.speed } }));
+			};
+			speedEl.addEventListener("input", emit);
+			speedEl.addEventListener("change", emit);
+		}
+	}
 
-  private syncMode() {
-    const moving = this.state.mode === "moving";
-    this.root.getElementById("staticControls")!.toggleAttribute("hidden", moving);
-    this.root.getElementById("movingControls")!.toggleAttribute("hidden", !moving);
-    const group = this.root.getElementById("modeGroup") as any;
-    if (group) group.value = this.state.mode;
-    if (!moving) {
-      [this.prGrid, this.prA, this.prB, this.prC].forEach(p => p?.hide?.());
-    }
-  }
+	private renderThumbs() {
+		const t = this.root.getElementById("thumbs")!;
+		t.innerHTML = this.state.photos.map((url, i) =>
+			`<button aria-pressed="${i === 0}" data-photo="${url}"><img src="${url}" alt="Scenery ${i + 1}"></button>`
+		).join("");
+	}
 
-  private hex(p: any, fallback: string) {
-    const c = p?.getSelectedColor?.() || p?.getColor?.();
-    return c ? c.toHEXA().toString() : fallback;
-  }
+	private syncMode() {
+		const moving = this.state.mode === "moving";
+		this.root.getElementById("staticControls")!.toggleAttribute("hidden", moving);
+		this.root.getElementById("movingControls")!.toggleAttribute("hidden", !moving);
+		const group = this.root.getElementById("modeGroup") as any;
+		if (group) group.value = this.state.mode;
+		if (!moving) {
+			[this.prGrid, this.prA, this.prB, this.prC].forEach(p => p?.hide?.());
+		}
+		if (moving) {
+			this.dispatchEvent(new CustomEvent("speedchange", { detail: { speed: this.state.speed } }));
+		}
+	}
+	private hex(p: any, fallback: string) {
+		const c = p?.getSelectedColor?.() || p?.getColor?.();
+		return c ? c.toHEXA().toString() : fallback;
+	}
 
-  private emitColors = () => {
-    this.dispatchEvent(new CustomEvent("colorchange", {
-      detail: {
-        grid: this.hex(this.prGrid, this.state.grid),
-        a: this.hex(this.prA, this.state.a),
-        b: this.hex(this.prB, this.state.b),
-        c: this.hex(this.prC, this.state.c),
-      }
-    }));
-  };
+	private emitColors = () => {
+		this.dispatchEvent(new CustomEvent("colorchange", {
+			detail: {
+				grid: this.hex(this.prGrid, this.state.grid),
+				a: this.hex(this.prA, this.state.a),
+				b: this.hex(this.prB, this.state.b),
+				c: this.hex(this.prC, this.state.c),
+			}
+		}));
+	};
 
-  private initPickers() { 
+	private initPickers() {
 
-    const mk = (elId: string, def: string) => {
-      const el = this.root.getElementById(elId) as HTMLElement | null;
-      if (!el) return null;
+		const mk = (elId: string, def: string) => {
+			const el = this.root.getElementById(elId) as HTMLElement | null;
+			if (!el) return null;
 
-      return Pickr.create({
-          el,                  
-  theme: "nano",
-  default: def,  
-  components: {
-    preview: true, opacity: true, hue: true,
-    interaction: { input: true, save: true, clear: false }
-        }
-      });
-    };
+			return Pickr.create({
+				el,
+				theme: "nano",
+				default: def,
+				components: {
+					preview: true, opacity: true, hue: true,
+					interaction: { input: true, save: true, clear: false }
+				}
+			});
+		};
 
-    this.prGrid = mk("pickr-grid", this.state.grid);
-    this.prA    = mk("pickr-a",    this.state.a);
-    this.prB    = mk("pickr-b",    this.state.b);
-    this.prC    = mk("pickr-c",    this.state.c);
+		this.prGrid = mk("pickr-grid", this.state.grid);
+		this.prA = mk("pickr-a", this.state.a);
+		this.prB = mk("pickr-b", this.state.b);
+		this.prC = mk("pickr-c", this.state.c);
 
-    [this.prGrid, this.prA, this.prB, this.prC]
-      .filter(Boolean)
-      .forEach((p: any) => p.on("init", this.emitColors)
-                            .on("save", this.emitColors)
-                            .on("change", this.emitColors));
-                  
-  }
-  
-disconnectedCallback() {
-  [this.prGrid, this.prA, this.prB, this.prC].forEach(p => p?.destroyAndRemove?.());
-}
+		[this.prGrid, this.prA, this.prB, this.prC]
+			.filter(Boolean)
+			.forEach((p: any) => p.on("init", this.emitColors)
+				.on("save", this.emitColors)
+				.on("change", this.emitColors));
+
+	}
+
+	disconnectedCallback() {
+		[this.prGrid, this.prA, this.prB, this.prC].forEach(p => p?.destroyAndRemove?.());
+	}
 }
 if (!customElements.get("lg-controls")) {
-  customElements.define("lg-controls", LGControls);
+	customElements.define("lg-controls", LGControls);
 }
