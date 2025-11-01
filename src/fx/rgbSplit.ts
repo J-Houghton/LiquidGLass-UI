@@ -29,3 +29,16 @@ export function driveRgbOffsets(state: { dispersion: number; r: number; g: numbe
     set('offG', G, 0); 
     set('offB', B, 0); // defined in chromatic.ts 
 }
+
+export function setRgbOffsets(dx: number, dy: number, scale = 6) {
+    const clamp = (v: number) => Math.max(-8, Math.min(8, v))
+    const rx = clamp(dx * scale), ry = clamp(dy * scale)
+    const gx = clamp(-dx * scale * 0.6), gy = clamp(-dy * scale * 0.6)
+    const bx = clamp(dx * scale * 0.3), by = clamp(dy * scale * 0.3)
+    const r = document.getElementById('offR') as SVGFEOffsetElement | null
+    const g = document.getElementById('offG') as SVGFEOffsetElement | null
+    const b = document.getElementById('offB') as SVGFEOffsetElement | null
+    if (r) { r.setAttribute('dx', rx.toFixed(2)); r.setAttribute('dy', ry.toFixed(2)) }
+    if (g) { g.setAttribute('dx', gx.toFixed(2)); g.setAttribute('dy', gy.toFixed(2)) }
+    if (b) { b.setAttribute('dx', bx.toFixed(2)); b.setAttribute('dy', by.toFixed(2)) }
+}

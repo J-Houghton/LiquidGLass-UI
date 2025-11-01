@@ -10,7 +10,7 @@ import { SURFACE_FNS, type SurfaceKind } from './optics/surfaces'
 import { calculateDisplacementMap } from './optics/disp1d'
 import { calculateDisplacementMap2 } from './optics/disp2d'
 import { buildSpecularImage } from './optics/specularLight'
-import { driveRgbOffsets } from './fx/rgbSplit'
+import { driveRgbOffsets, setRgbOffsets } from './fx/rgbSplit'
 import { validate } from './validation/geometry'
 import { cache, imageDataToBlobURL } from './fx/filterCache'
 import './ui/components/glass-hero'
@@ -97,7 +97,17 @@ let raf = 0;
 function requestUpdate() { cancelAnimationFrame(raf); raf = requestAnimationFrame(update); }
 
 buildPane(state, requestUpdate);
-enableDrag('.effect');
+enableDrag('.effect', ({ vx, vy, speed }) => {
+	// 1) Chromatic dispersion by speed (subtle)
+	const dispersion = Math.min(2.5, speed * 90) // tune multiplier
+	driveRgbOffsets({ dispersion, r: 1, g: 1, b: 1 })
+	setRgbOffsets(vx, vy, 4) // direction tint
+
+	// 2) Specular intensity by speed
+	const gain = Math.min(1.2, 0.25 + speed * 12)
+	const spec = document.getElementById('specGain')
+	if (spec) spec.setAttribute('slope', gain.toFixed(2))
+})
 
 placeEffect();
 update();
