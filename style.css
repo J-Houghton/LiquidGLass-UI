@@ -171,12 +171,83 @@
         box-sizing: border-box;
     }
 
-    section {
-        margin-block: 4rem; 
+section {
+        margin-block: 4rem;
         margin-bottom: 1rem;
-    } 
- 
-    header { 
+    }
+
+    .section-header {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+        max-width: 48rem;
+    }
+
+    .section-header h3 {
+        margin: 0;
+        font-size: clamp(1.35rem, 1.6vw, 1.75rem);
+    }
+
+    .section-header p {
+        margin: 0;
+        color: color-mix(in oklch, var(--fg), transparent 40%);
+        font-size: 0.95rem;
+        line-height: 1.6;
+    }
+
+    .glass-grid {
+        display: grid;
+        gap: 1.5rem;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
+    glass-card.glass-card {
+        border-radius: 22px;
+        padding: 1.5rem;
+        min-height: 220px;
+        background: linear-gradient(160deg, color-mix(in oklch, var(--fg), transparent 85%), transparent 96%);
+        color: inherit;
+    }
+
+    .glass-card .card-content {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        position: relative;
+        z-index: 2;
+    }
+
+    .glass-card h4 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+    }
+
+    .glass-card p {
+        margin: 0;
+        line-height: 1.5;
+        color: color-mix(in oklch, var(--fg), transparent 25%);
+    }
+
+    .btn-secondary {
+        align-self: flex-start;
+        border: 1px solid color-mix(in oklch, var(--fg), transparent 70%);
+        background: color-mix(in oklch, var(--fg), transparent 92%);
+        border-radius: 999px;
+        padding: 0.5rem 1.15rem;
+        font-size: 0.9rem;
+        color: inherit;
+        transition: border-color 0.2s ease, background-color 0.2s ease;
+    }
+
+    .btn-secondary:hover {
+        border-color: color-mix(in oklch, var(--fg), transparent 45%);
+        background: color-mix(in oklch, var(--fg), transparent 86%);
+    }
+
+    header {
         display: flex;
         gap: 12px;
         align-items: center;

@@ -57,4 +57,32 @@ This implementation **extends and modifies** that concept:
 ```bash
 npm install
 npm run dev
-``` 
+```
+
+## Glass component plugin
+
+The build now emits a second bundle with reusable glass web components. After running `npm run build`, you will find
+`dist/assets/glass-components.[hash].js` alongside the application entry.
+
+You can load the plugin in any page and drop the predefined effects into markup:
+
+```html
+<!-- replace [hash] with the file emitted by the build step -->
+<script type="module" src="/dist/assets/glass-components.[hash].js"></script>
+
+<glass-card effect="frosted" style="width: 280px; padding: 1.5rem;">
+  <h2>Frosted glass</h2>
+  <p>Drop any markup inside the slot — the SVG filter pipeline runs inside the component.</p>
+</glass-card>
+```
+
+Alternatively, import the factory to register custom effects:
+
+```ts
+import { registerGlassComponent } from './src/plugins/glass-components';
+
+registerGlassComponent({
+  effect: 'custom',
+  defaults: { blur: 0.6, frost: 10, dispersion: 1.5, noise: 'low', specular: 0.3, channels: { r: 1, g: 0.3, b: -0.8 } },
+});
+```
