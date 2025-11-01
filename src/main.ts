@@ -11,11 +11,11 @@ import { calculateDisplacementMap } from './optics/disp1d'
 import { calculateDisplacementMap2 } from './optics/disp2d'
 import { buildSpecularImage } from './optics/specularLight'
 import { driveRgbOffsets, setRgbOffsets } from './fx/rgbSplit'
+import { blobPath } from './geom/blob'
 import { validate } from './validation/geometry'
-import { cache, imageDataToBlobURL } from './fx/filterCache'
+import { cache, imageDataToBlobURL } from './fx/filterCache' 
 import './ui/components/glass-hero'
 import '../style.css'
-
 
 /* ===== Config ===== */
 type State = {
@@ -25,13 +25,14 @@ type State = {
     dispersion: number; r: number; g: number; b: number; blurStdDev: number;
     blurKind: 'gauss' | 'noise1' | 'noise2';
     surface: SurfaceKind; saturation: number; frost: number; debug: boolean;
+	fx: number; fy: number;
 };
 const state: State = {
     width: 400, height: 300, radius: 110,                 // layout
     refractiveIndex: 1.5, glassThickness: 50,              // material
     bezelWidth: 60, scale_px: 180, dispersion: 0.0,        // optics
     surface: 'convex_circle',                               // surface
-    frost: 0.05, saturation: 1, debug: false,  // top: false, preset: 'dock',
+    frost: 0.05, saturation: 1, debug: false,  
     blurStdDev: 0.7,
     blurKind: 'gauss',
     showSpecular: true,
@@ -39,6 +40,7 @@ const state: State = {
     specularStrength: 0.9,  // [0..1]
     specularSaturation: 0,  // [0..50]
     r: 1.0, g: 0.25, b: -1.0,
+	fx: 0, fy: 0,
 }
 
 /* ===== Debug helpers (optional overlays) ===== */
@@ -95,20 +97,45 @@ const debugRoot = document.querySelector('.displacement-debug') as HTMLElement |
 // single RAF gate
 let raf = 0;
 function requestUpdate() { cancelAnimationFrame(raf); raf = requestAnimationFrame(update); }
+const shape = document.getElementById('blobShape') as SVGPathElement | null
+const disp = document.getElementById('disp') as SVGFEDisplacementMapElement | null
+// Base rectangle you want to look like glass 
+if (shape) shape.setAttribute('d', blobPath(
+    0, 0,state.width, state.height, state.radius, state.radius, 0, 0))
+// State and smoothing 
+const apply = () => {
+  if (!shape) return
+  shape.setAttribute('d', blobPath(0, 0, state.width, state.height, state.radius, state.radius, state.fx, state.fy))
+  // optional: a little extra refraction when “squished”
+  if (disp) {
+    const s = Math.min(20, 6 + 40 * Math.hypot(state.fx, state.fy))
+    disp.setAttribute('scale', s.toFixed(2))
+  }
+}
 
-buildPane(state, requestUpdate);
-enableDrag('.effect', ({ vx, vy, speed }) => {
-	// 1) Chromatic dispersion by speed (subtle)
-	const dispersion = Math.min(2.5, speed * 90) // tune multiplier
-	driveRgbOffsets({ dispersion, r: 1, g: 1, b: 1 })
-	setRgbOffsets(vx, vy, 4) // direction tint
-
-	// 2) Specular intensity by speed
-	const gain = Math.min(1.2, 0.25 + speed * 12)
-	const spec = document.getElementById('specGain')
-	if (spec) spec.setAttribute('slope', gain.toFixed(2))
+// Smoothly chase new targets for a liquid feel
+const target = { fx: 0, fy: 0 }
+gsap.ticker.add(() => {
+  state.fx += (target.fx - state.fx) * 0.25
+  state.fy += (target.fy - state.fy) * 0.25
+  apply()
 })
 
+// Map velocity -> deformation; release -> bouncy return
+enableDrag('.effect', ({ vx, vy }) => {
+  // pixels/ms -> normalized factor. Tune 35 if needed.
+  target.fx = Math.max(-1, Math.min(1, vx * 35))
+  target.fy = Math.max(-1, Math.min(1, vy * 35))
+})
+
+document.addEventListener('pointerup', () => {
+  target.fx = 0; target.fy = 0
+  // small overshoot on release
+  gsap.to(state, {
+    fx: 0, fy: 0, duration: 0.45, ease: 'back.out(2)', onUpdate: apply
+  })
+})
+buildPane(state, requestUpdate); 
 placeEffect();
 update();
 

@@ -22,7 +22,7 @@
 <div class="effect">
     <svg class="filter" xmlns="http://www.w3.org/2000/svg">
         <defs> 
-            <filter id="filter" filterUnits="objectBoundingBox" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB"> 
+            <filter id="filter" filterUnits="objectBoundingBox" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB">  
   <!-- displacement field -->
   <feImage x="0" y="0" width="100%" height="100%" result="map"></feImage> 
   <!-- refraction -->
@@ -33,6 +33,9 @@
    
             </filter>
         </defs>
+        <g filter="url(#filter)">
+          <path id="blobShape"/>
+        </g>
     </svg>
     <div class="displacement-debug"></div>
 </div>

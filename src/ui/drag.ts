@@ -4,7 +4,7 @@ gsap.registerPlugin(Draggable)
 
 export function enableDrag(
     selector = '.effect',
-        onUpdate?: (s: { x: number; y: number; vx: number; vy: number; speed: number }) => void
+    onUpdate?: (s: { x: number; y: number; vx: number; vy: number; speed: number }) => void
 ) {
     let lastT = 0, lastX = 0, lastY = 0
     Draggable.create(selector, {
