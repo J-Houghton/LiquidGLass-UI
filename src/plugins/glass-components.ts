@@ -1,9 +1,18 @@
+import { LitElement, css, html, type PropertyValues } from 'lit';
+import { property, query } from 'lit/decorators.js';
 import { build, clearDynamic, type Stage } from '../filters/core';
 import { blur } from '../filters/blur';
 import { chromatic } from '../filters/chromatic';
 import { noiseBlur } from '../filters/noiseBlur';
 import { specular } from '../filters/specularFilter';
 import { driveRgbOffsets } from '../fx/rgbSplit';
+import { imageDataToBlobURL } from '../fx/filterCache';
+import type { State } from '../glass/effectState';
+import { calculateDisplacementMap } from '../optics/disp1d';
+import { calculateDisplacementMap2 } from '../optics/disp2d';
+import { buildSpecularImage } from '../optics/specularLight';
+import { SURFACE_FNS, type SurfaceKind } from '../optics/surfaces';
+import { validate } from '../validation/geometry';
 
 export type GlassNoiseKind = 'none' | 'low' | 'high';
 
@@ -20,8 +29,14 @@ export interface GlassEffectOptions {
 export interface GlassComponentInit {
         effect?: string;
         options?: Partial<GlassEffectOptions>;
+        /** Optional geometry + lighting state used to drive the displacement/specular textures. */
+        state?: State;
 }
-
+export interface CreateGlassElementOptions extends GlassComponentInit {
+        tagName?: string;
+        classes?: string | string[];
+        attributes?: Record<string, string>;
+}
 interface FilterFrame {
         x?: string;
         y?: string;
@@ -86,7 +101,7 @@ const effectRegistry = new Map<string, InternalEffect>();
 let defaultEffectName: string | null = null;
 let instanceCounter = 0;
 const definedTags = new Set<string>();
-const liveInstances = new Set<GlassComponent>();
+const liveInstances = new Set<GlassComponentElement>();
 
 function ensureTagDefined(tagName: string) {
         if (typeof window === 'undefined' || !window.customElements) return;
@@ -110,7 +125,96 @@ function mergeOptions(base: GlassEffectOptions, overrides?: Partial<GlassEffectO
         if (overrides.specSrc !== undefined) base.specSrc = overrides.specSrc;
 }
 
-function parseAttributeOptions(el: GlassComponent): Partial<GlassEffectOptions> {
+type GeometrySnapshot = {
+        width: number;
+        height: number;
+        radius: number;
+        bezelWidth: number;
+        thickness: number;
+        surface: SurfaceKind;
+        refractiveIndex: number;
+        scale: number;
+        showSpecular: boolean;
+        specularAngleDeg: number;
+        specularStrength: number;
+};
+
+function toGeometrySnapshot(state: State): GeometrySnapshot {
+        const validated = validate({
+                width: state.width,
+                height: state.height,
+                radius: state.radius,
+                bezelWidth: state.bezelWidth,
+                glassThickness: state.glassThickness,
+                surface: state.surface,
+        });
+        return {
+                width: validated.width,
+                height: validated.height,
+                radius: validated.radius,
+                bezelWidth: validated.bezelWidth,
+                thickness: validated.glassThickness_eff,
+                surface: validated.surface,
+                refractiveIndex: state.refractiveIndex,
+                scale: state.scale_px,
+                showSpecular: !!state.showSpecular && state.specularStrength > 0,
+                specularAngleDeg: state.specularAngleDeg,
+                specularStrength: Math.max(0, state.specularStrength),
+        };
+}
+
+function geometrySignature(snapshot: GeometrySnapshot) {
+        const round = (value: number, digits: number) => (Number.isFinite(value) ? Number(value.toFixed(digits)) : 0);
+        return JSON.stringify({
+                w: round(snapshot.width, 2),
+                h: round(snapshot.height, 2),
+                r: round(snapshot.radius, 2),
+                b: round(snapshot.bezelWidth, 2),
+                t: round(snapshot.thickness, 3),
+                surf: snapshot.surface,
+                ior: round(snapshot.refractiveIndex, 4),
+                spec: snapshot.showSpecular
+                        ? { a: round(snapshot.specularAngleDeg, 2), s: round(snapshot.specularStrength, 3) }
+                        : null,
+        });
+}
+
+async function renderGeometryTextures(snapshot: GeometrySnapshot) {
+        const surface = SURFACE_FNS[snapshot.surface] ?? SURFACE_FNS.convex_circle;
+        const disp1D = calculateDisplacementMap(
+                snapshot.thickness,
+                snapshot.bezelWidth,
+                surface.fn,
+                snapshot.refractiveIndex,
+                512,
+        );
+        const maxAbs = disp1D.reduce((m, value) => Math.max(m, Math.abs(value)), 0);
+        const norm = Math.max(1, maxAbs);
+        const disp2D = calculateDisplacementMap2(
+                snapshot.width,
+                snapshot.height,
+                snapshot.radius,
+                snapshot.bezelWidth,
+                norm,
+                disp1D,
+        );
+        const mapUrl = await imageDataToBlobURL(disp2D);
+        let specUrl: string | null = null;
+        if (snapshot.showSpecular) {
+                const specImg = buildSpecularImage(
+                        snapshot.width,
+                        snapshot.height,
+                        snapshot.radius,
+                        snapshot.bezelWidth,
+                        snapshot.specularAngleDeg,
+                        snapshot.specularStrength,
+                );
+                specUrl = await imageDataToBlobURL(specImg);
+        }
+        return { mapUrl, specUrl };
+}
+
+function parseAttributeOptions(el: GlassComponentElement): Partial<GlassEffectOptions> {
         const opts: Partial<GlassEffectOptions> = {};
         const readNumber = (attr: string) => {
                 const raw = el.getAttribute(attr);
@@ -176,132 +280,338 @@ export function registerGlassComponent(config: GlassComponentConfig) {
         });
         return internal;
 }
+export function createGlassElement(init: CreateGlassElementOptions = {}) {
+        const tagName = init.tagName ?? 'glass-card';
+        ensureTagDefined(tagName);
+        const element = document.createElement(tagName) as GlassComponent;
+        if (init.effect) element.effect = init.effect;
+        if (init.options) element.options = init.options;
+        if (init.classes) {
+                const classes = Array.isArray(init.classes)
+                        ? init.classes
+                        : String(init.classes)
+                                .split(/\s+/)
+                                .filter(Boolean);
+                if (classes.length) element.classList.add(...classes);
+        }
+        if (init.attributes) {
+                Object.entries(init.attributes).forEach(([key, value]) => {
+                        element.setAttribute(key, value);
+                });
+        }
+        if (init.state) element.state = init.state;
+        return element;
+}
+export class GlassComponentElement extends LitElement {
+        static override styles = css`
+                :host {
+                        --glass-width: 320px;
+                        --glass-height: 240px;
+                        --glass-radius: 24px;
+                        --glass-border-width: 0px;
+                        display: block;
+                        position: relative;
+                        width: var(--glass-width);
+                        height: var(--glass-height);
+                        border-radius: var(--glass-radius);
+                        contain: layout style;
+                }
 
-export class GlassComponent extends HTMLElement {
-        static get observedAttributes() {
-                return ['effect', 'blur', 'frost', 'dispersion', 'noise-kind', 'specular', 'spec-src', 'dispersion-r', 'dispersion-g', 'dispersion-b'];
+                .wrapper {
+                        position: relative;
+                        display: block;
+                        width: var(--glass-width);
+                        height: var(--glass-height);
+                        border-radius: var(--glass-radius);
+                        isolation: isolate;
+                }
+
+                svg {
+                        position: absolute;
+                        width: 0;
+                        height: 0;
+                        pointer-events: none;
+                        user-select: none;
+                }
+
+                .surface {
+                        position: relative;
+                        width: 100%;
+                        height: 100%;
+                        border-radius: var(--glass-radius);
+                        border-style: solid;
+                        border-width: var(--glass-border-width);
+                        border-color: transparent;
+                        overflow: hidden;
+                        filter: none;
+                        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0);
+                }
+
+                .optics {
+                        position: absolute;
+                        inset: 0;
+                        border-radius: var(--glass-radius);
+                        filter: none;
+                        background: inherit;
+                        pointer-events: none;
+                        z-index: 0;
+                }
+
+                .backdrop {
+                        position: absolute;
+                        inset: 0;
+                        border-radius: var(--glass-radius);
+                        pointer-events: none;
+                        background: inherit;
+                        opacity: 0.95;
+                        z-index: 0;
+                }
+
+                slot {
+                        position: relative;
+                        display: block;
+                        z-index: 1;
+                }
+
+                ::slotted(*) {
+                        position: relative;
+                        z-index: 1;
+                }
+        `;
+
+        static override get observedAttributes(): string[] {
+                const base = super.observedAttributes ?? [];
+                const extras = [
+                        'effect',
+                        'blur',
+                        'frost',
+                        'dispersion',
+                        'noise-kind',
+                        'specular',
+                        'spec-src',
+                        'dispersion-r',
+                        'dispersion-g',
+                        'dispersion-b',
+                ];
+                return Array.from(new Set([...base, ...extras]));
         }
 
-        private filterEl: SVGFilterElement | null = null;
-        private surfaceEl: HTMLElement | null = null;
-        private backdropEl: HTMLElement | null = null;
-        private specImageEl: SVGImageElement | null = null;
-        private filterId: string;
-        private initialEffect?: string;
+        @property({ type: String, reflect: true })
+        get effect(): string {
+                return this._effect;
+        }
+        set effect(value: string) {
+                const old = this._effect;
+                const normalized = value ?? '';
+                if (old === normalized) return;
+                this._effect = normalized;
+                this.refreshPending = true;
+                this.geometryUpdatePending = true;
+                this.requestUpdate('effect', old);
+        }
+
+        @property({ attribute: false })
+        get options(): Partial<GlassEffectOptions> | undefined {
+                return this.cloneOverrides(this.optionOverrides);
+        }
+        set options(value: Partial<GlassEffectOptions> | undefined) {
+                const old = this.optionOverrides;
+                this.optionOverrides = this.cloneOverrides(value);
+                this.refreshPending = true;
+                this.geometryUpdatePending = true;
+                this.requestUpdate('options', old);
+        }
+
+        @property({ attribute: false })
+        get state(): State | null {
+                return this.geometryState ? { ...this.geometryState } : null;
+        }
+        set state(value: State | null) {
+                const old = this.geometryState ? { ...this.geometryState } : null;
+                if (value) {
+                        this.geometryState = { ...value };
+                } else {
+                        this.geometryState = null;
+                        this.geometryKey = null;
+                        this.releaseMapUrl();
+                        this.releaseSpecUrl();
+                        this.resetSnapshotDimensions();
+                        if (this.dispEl) this.dispEl.setAttribute('scale', '0');
+                }
+                this.refreshPending = true;
+                this.geometryUpdatePending = true;
+                this.requestUpdate('state', old);
+        }
+
+        @query('filter')
+        private filterEl?: SVGFilterElement;
+
+        @query('.optics')
+        private opticsEl?: HTMLElement;
+
+        @query('.backdrop')
+        private backdropEl?: HTMLElement;
+
+        @query('feImage[result="map"]')
+        private mapImageEl?: SVGImageElement;
+
+        @query('#disp')
+        private dispEl?: SVGFEDisplacementMapElement;
+
+        @query('#specImage')
+        private specImageEl?: SVGImageElement;
+
+        private readonly filterId: string;
+        private readonly initialEffect?: string;
+        private _effect = '';
         private optionOverrides: Partial<GlassEffectOptions> | undefined;
+        private geometryState: State | null = null;
+        private geometryKey: string | null = null;
+        private mapUrl: string | null = null;
+        private specUrl: string | null = null;
+        private resolvedSpecSrc: string | null = null;
+        private geometryTaskId = 0;
+        private refreshPending = true;
+        private geometryUpdatePending = true;
+        private filterApplied = false;
 
         constructor(init?: GlassComponentInit) {
                 super();
                 this.filterId = `glass-filter-${++instanceCounter}`;
                 this.initialEffect = init?.effect;
-                this.optionOverrides = init?.options;
-                const shadow = this.attachShadow({ mode: 'open' });
-                shadow.innerHTML = `
-<style>
-:host {
-        display: block;
-        position: relative;
-        border-radius: inherit;
-        contain: layout style;
-}
-.wrapper {
-        position: relative;
-        display: block;
-        border-radius: inherit;
-        isolation: isolate;
-}
-svg {
-        position: absolute;
-        width: 0;
-        height: 0;
-        pointer-events: none;
-        user-select: none;
-}
-.surface {
-        position: relative;
-        border-radius: inherit;
-        overflow: hidden;
-        filter: none;
-        background: rgba(255, 255, 255, 0.14);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
-}
-.backdrop {
-        position: absolute;
-        inset: 0;
-        border-radius: inherit;
-        pointer-events: none;
-        background: inherit;
-        opacity: 0.95;
-        z-index: 0;
-}
-slot {
-        position: relative;
-        display: block;
-        z-index: 1;
-}
-::slotted(*) {
-        position: relative;
-        z-index: 1;
-}
-</style>
-<div class="wrapper">
-        <svg aria-hidden="true" focusable="false">
-                <defs>
-                        <filter id="${this.filterId}" filterUnits="objectBoundingBox" x="${DEFAULT_FILTER_FRAME.x}" y="${DEFAULT_FILTER_FRAME.y}" width="${DEFAULT_FILTER_FRAME.width}" height="${DEFAULT_FILTER_FRAME.height}" color-interpolation-filters="sRGB">
-                                <feImage x="0" y="0" width="100%" height="100%" result="map"></feImage>
-                                <feDisplacementMap in="SourceGraphic" in2="map" id="disp" xChannelSelector="R" yChannelSelector="G" scale="0" result="refr"></feDisplacementMap>
-                                <feImage x="0" y="0" width="100%" height="100%" id="specImage" result="specSrc"></feImage>
-                        </filter>
-                </defs>
-        </svg>
-        <div class="surface" part="surface">
-                <div class="backdrop" part="backdrop"></div>
-                <slot></slot>
-        </div>
-</div>`;
-                this.filterEl = shadow.querySelector('filter');
-                this.surfaceEl = shadow.querySelector('.surface');
-                this.backdropEl = shadow.querySelector('.backdrop');
-                this.specImageEl = shadow.querySelector('#specImage');
-                if (this.surfaceEl) this.surfaceEl.style.filter = `url(#${this.filterId})`;
+                if (init?.effect) {
+                        this._effect = init.effect;
+                }
+                if (init?.options) {
+                        this.optionOverrides = this.cloneOverrides(init.options);
+                }
+                if (init?.state) {
+                        this.geometryState = { ...init.state };
+                }
         }
 
-        connectedCallback() {
+        override connectedCallback() {
+                super.connectedCallback();
                 liveInstances.add(this);
-                this.refresh();
+                this.refreshPending = true;
+                this.geometryUpdatePending = true;
         }
 
-        disconnectedCallback() {
+        override disconnectedCallback() {
                 liveInstances.delete(this);
+                this.releaseMapUrl();
+                this.releaseSpecUrl();
+                super.disconnectedCallback();
         }
 
-        attributeChangedCallback() {
-                this.refresh();
-        }
-
-        set options(opts: Partial<GlassEffectOptions>) {
-                this.optionOverrides = { ...opts };
-                this.refresh();
-        }
-
-        get options() {
-                return { ...this.optionOverrides };
-        }
-
-        set effect(value: string) {
-                if (value) this.setAttribute('effect', value);
-                else this.removeAttribute('effect');
-        }
-
-        get effect() {
-                return this.getAttribute('effect') ?? this.initialEffect ?? defaultEffectName ?? '';
+        override attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null) {
+                if (oldValue === newValue) return;
+                super.attributeChangedCallback(name, oldValue, newValue);
+                this.refreshPending = true;
+                this.geometryUpdatePending = true;
+                this.requestUpdate();
         }
 
         refresh() {
-                if (!this.isConnected || !this.filterEl || !this.surfaceEl || !this.backdropEl) return;
-                const effectName = this.effect;
+                this.refreshPending = true;
+                this.geometryUpdatePending = true;
+                this.requestUpdate();
+        }
+
+        protected override updated(changedProperties: PropertyValues<this>) {
+                super.updated(changedProperties);
+                if (this.opticsEl && !this.filterApplied) {
+                        this.opticsEl.style.filter = `url(#${this.filterId})`;
+                        this.filterApplied = true;
+                }
+                if (!this.isConnected) return;
+                const geometryWasPending = this.geometryUpdatePending;
+                if (this.refreshPending) {
+                        this.refreshPending = false;
+                        const applied = this.applyEffect();
+                        if (applied) {
+                                this.geometryUpdatePending = true;
+                        } else {
+                                this.geometryUpdatePending = geometryWasPending;
+                        }
+                }
+                if (this.geometryUpdatePending) {
+                        this.geometryUpdatePending = false;
+                        void this.updateGeometryTextures();
+                }
+        }
+
+        protected override render() {
+                return html`
+                        <div class="wrapper">
+                                <svg aria-hidden="true" focusable="false">
+                                        <defs>
+                                                <filter
+                                                        id=${this.filterId}
+                                                        filterUnits="objectBoundingBox"
+                                                        x=${DEFAULT_FILTER_FRAME.x ?? ''}
+                                                        y=${DEFAULT_FILTER_FRAME.y ?? ''}
+                                                        width=${DEFAULT_FILTER_FRAME.width ?? ''}
+                                                        height=${DEFAULT_FILTER_FRAME.height ?? ''}
+                                                        color-interpolation-filters="sRGB"
+                                                >
+                                                        <feImage
+                                                                x="0"
+                                                                y="0"
+                                                                width="100%"
+                                                                height="100%"
+                                                                preserveAspectRatio="none"
+                                                                result="map"
+                                                        ></feImage>
+                                                        <feDisplacementMap
+                                                                in="SourceGraphic"
+                                                                in2="map"
+                                                                id="disp"
+                                                                xChannelSelector="R"
+                                                                yChannelSelector="G"
+                                                                scale="0"
+                                                                result="refr"
+                                                        ></feDisplacementMap>
+                                                        <feImage
+                                                                x="0"
+                                                                y="0"
+                                                                width="100%"
+                                                                height="100%"
+                                                                preserveAspectRatio="none"
+                                                                id="specImage"
+                                                                result="specSrc"
+                                                        ></feImage>
+                                                </filter>
+                                        </defs>
+                                </svg>
+                                <div class="surface" part="surface">
+                                        <div class="optics">
+                                                <div class="backdrop" part="backdrop"></div>
+                                        </div>
+                                        <slot></slot>
+                                </div>
+                        </div>
+                `;
+        }
+
+        private get resolvedEffectName() {
+                return this._effect || this.initialEffect || defaultEffectName || '';
+        }
+
+        private cloneOverrides(overrides?: Partial<GlassEffectOptions>) {
+                if (!overrides) return undefined;
+                const clone: Partial<GlassEffectOptions> = { ...overrides };
+                if (overrides.channels) {
+                        clone.channels = { ...overrides.channels };
+                }
+                return clone;
+        }
+
+        private applyEffect() {
+                if (!this.filterEl || !this.opticsEl || !this.backdropEl) return false;
+                const effectName = this.resolvedEffectName;
                 const internal = effectRegistry.get(effectName) ?? (defaultEffectName ? effectRegistry.get(defaultEffectName) : undefined);
-                if (!internal) return;
+                if (!internal) return false;
                 const { defaults, config, createStages } = internal;
                 const resolved: GlassEffectOptions = {
                         ...defaults,
@@ -325,11 +635,12 @@ slot {
                 const backdropValue = config.backdrop ? config.backdrop(resolved) : `blur(${Math.max(0, resolved.frost).toFixed(2)}px)`;
                 this.backdropEl.style.backdropFilter = backdropValue;
                 this.backdropEl.style.setProperty('-webkit-backdrop-filter', backdropValue);
+                this.resolvedSpecSrc = resolved.specSrc ?? DEFAULT_SPEC_SRC;
                 if (this.specImageEl) {
-                        const href = resolved.specSrc ?? DEFAULT_SPEC_SRC;
-                        this.specImageEl.setAttribute('href', href);
+                        this.specImageEl.setAttribute('href', this.resolvedSpecSrc);
                 }
                 this.applyDispersion(resolved);
+                return true;
         }
 
         private applyDispersion(opts: GlassEffectOptions) {
@@ -352,7 +663,113 @@ slot {
                         doc.getElementById = original;
                 }
         }
+
+        private updateMapUrl(url: string | null) {
+                if (this.mapUrl && this.mapUrl !== url) URL.revokeObjectURL(this.mapUrl);
+                this.mapUrl = url;
+                if (this.mapImageEl) {
+                        if (url) this.mapImageEl.setAttribute('href', url);
+                        else this.mapImageEl.removeAttribute('href');
+                }
+        }
+
+        private releaseMapUrl() {
+                this.updateMapUrl(null);
+        }
+
+        private updateSpecUrl(url: string | null) {
+                if (this.specUrl && this.specUrl !== url) URL.revokeObjectURL(this.specUrl);
+                this.specUrl = url;
+                if (!this.specImageEl) return;
+                if (url) {
+                        this.specImageEl.setAttribute('href', url);
+                } else if (this.resolvedSpecSrc) {
+                        this.specImageEl.setAttribute('href', this.resolvedSpecSrc);
+                } else {
+                        this.specImageEl.removeAttribute('href');
+                }
+        }
+
+        private releaseSpecUrl() {
+                this.updateSpecUrl(null);
+        }
+
+        private applySnapshot(snapshot: GeometrySnapshot) {
+                const width = Number.isFinite(snapshot.width) ? `${snapshot.width}px` : null;
+                const height = Number.isFinite(snapshot.height) ? `${snapshot.height}px` : null;
+                const radius = Number.isFinite(snapshot.radius) ? `${snapshot.radius}px` : null;
+                const borderWidth = Number.isFinite(snapshot.bezelWidth) ? `${snapshot.bezelWidth}px` : null;
+                if (width) this.style.setProperty('--glass-width', width);
+                if (height) this.style.setProperty('--glass-height', height);
+                if (radius) this.style.setProperty('--glass-radius', radius);
+                if (borderWidth) this.style.setProperty('--glass-border-width', borderWidth);
+                if (this.dispEl) {
+                        this.dispEl.setAttribute('xChannelSelector', 'R');
+                        this.dispEl.setAttribute('yChannelSelector', 'G');
+                        const scale = Number.isFinite(snapshot.scale) ? snapshot.scale : 0;
+                        this.dispEl.setAttribute('scale', scale.toFixed(2));
+                }
+                if (this.mapImageEl) {
+                        if (this.mapUrl) this.mapImageEl.setAttribute('href', this.mapUrl);
+                        else this.mapImageEl.removeAttribute('href');
+                }
+                if (this.specImageEl) {
+                        if (this.specUrl) this.specImageEl.setAttribute('href', this.specUrl);
+                        else if (this.resolvedSpecSrc) this.specImageEl.setAttribute('href', this.resolvedSpecSrc);
+                }
+        }
+
+        private async updateGeometryTextures() {
+                if (!this.isConnected) return;
+                if (!this.filterEl) return;
+                if (!this.geometryState) {
+                        this.releaseMapUrl();
+                        this.releaseSpecUrl();
+                        this.resetSnapshotDimensions();
+                        this.geometryKey = null;
+                        if (this.dispEl) this.dispEl.setAttribute('scale', '0');
+                        return;
+                }
+                const snapshot = toGeometrySnapshot(this.geometryState);
+                const signature = geometrySignature(snapshot);
+                if (signature === this.geometryKey) {
+                        this.applySnapshot(snapshot);
+                        return;
+                }
+                const taskId = ++this.geometryTaskId;
+                const { mapUrl, specUrl } = await renderGeometryTextures(snapshot);
+                if (!this.isConnected) {
+                        URL.revokeObjectURL(mapUrl);
+                        if (specUrl) URL.revokeObjectURL(specUrl);
+                        return;
+                }
+                if (!this.geometryState) {
+                        URL.revokeObjectURL(mapUrl);
+                        if (specUrl) URL.revokeObjectURL(specUrl);
+                        return;
+                }
+                const latestSnapshot = toGeometrySnapshot(this.geometryState);
+                const latestSignature = geometrySignature(latestSnapshot);
+                if (taskId !== this.geometryTaskId || latestSignature !== signature) {
+                        URL.revokeObjectURL(mapUrl);
+                        if (specUrl) URL.revokeObjectURL(specUrl);
+                        return;
+                }
+                this.updateMapUrl(mapUrl);
+                this.updateSpecUrl(specUrl ?? null);
+                this.geometryKey = signature;
+                this.applySnapshot(latestSnapshot);
+        }
+
+        private resetSnapshotDimensions() {
+                this.style.removeProperty('--glass-width');
+                this.style.removeProperty('--glass-height');
+                this.style.removeProperty('--glass-radius');
+                this.style.removeProperty('--glass-border-width');
+        }
 }
+
+export class GlassComponent extends GlassComponentElement {}
 
 export function registerDefaultGlassEffects(tagName = 'glass-card') {
         const results = [
@@ -360,12 +777,12 @@ export function registerDefaultGlassEffects(tagName = 'glass-card') {
                         effect: 'frosted',
                         tagName,
                         defaults: {
-                                blur: 0.7,
-                                frost: 18,
-                                dispersion: 1.8,
+                                blur: 0,
+                                frost: 0,
+                                dispersion: 0,
                                 channels: { r: 1.0, g: 0.25, b: -0.9 },
                                 noise: 'low',
-                                specular: 0.35,
+                                specular: 1,
                                 specSrc: DEFAULT_SPEC_SRC,
                         },
                         createStages: (opts) => {
@@ -382,7 +799,7 @@ export function registerDefaultGlassEffects(tagName = 'glass-card') {
                         effect: 'prismatic',
                         tagName,
                         defaults: {
-                                blur: 0.5,
+                                blur: 0,
                                 frost: 10,
                                 dispersion: 2.6,
                                 channels: { r: 1.2, g: 0.6, b: -1.1 },
@@ -403,7 +820,7 @@ export function registerDefaultGlassEffects(tagName = 'glass-card') {
                         effect: 'polished',
                         tagName,
                         defaults: {
-                                blur: 0.35,
+                                blur: 0,
                                 frost: 6,
                                 dispersion: 0.6,
                                 channels: { r: 0.9, g: 0.4, b: -0.6 },
@@ -431,7 +848,7 @@ export function registerDefaultGlassEffects(tagName = 'glass-card') {
                         effect: 'aurora',
                         tagName,
                         defaults: {
-                                blur: 0.85,
+                                blur: 0,
                                 frost: 22,
                                 dispersion: 3.4,
                                 channels: { r: 1.4, g: 0.2, b: -1.25 },
@@ -461,4 +878,5 @@ export function registerDefaultGlassEffects(tagName = 'glass-card') {
 
 export function listRegisteredGlassEffects() {
         return Array.from(effectRegistry.keys());
+
 }

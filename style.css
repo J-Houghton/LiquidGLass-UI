@@ -131,11 +131,26 @@
      --r-16: 16px;
      --r-18: 18px;
      --r-24: 24px;
-      --fg: light-dark(#0a0a0a, #f5f5f5);
-      --bg: light-dark(#ffffff, #000000);
-      --muted: color-mix(in oklch, var(--fg), transparent 40%);
-      --chip: color-mix(in oklch, var(--fg), transparent 92%);
-      --ring: color-mix(in oklch, #3b82f6, #60a5fa 40%);
+      --fg: light-dark(#111827, #f8fafc);
+      --fg-strong: light-dark(#0b1220, #ffffff);
+      --bg: light-dark(#f5f7fb, #05070f);
+      --muted: light-dark(#4b5563, #cbd5f5);
+      --muted-strong: light-dark(#374151, #dbe4ff);
+      --chip: light-dark(#e8ecfb, #1d2537);
+      --card-bg: light-dark(#ffffff, #111827);
+      --card-fg: light-dark(#0f172a, #f9fbff);
+      --card-muted: light-dark(#334155, #d1dcff);
+      --card-border: light-dark(#d7def5, #242f45);
+      --preset-bg: light-dark(#ffffff, #182235);
+      --preset-fg: light-dark(#0f172a, #f9fbff);
+      --preset-muted: light-dark(#1f2937, #cfd9ff);
+      --preset-meta: light-dark(#475569, #aebdf0);
+      --preset-border: light-dark(#dbe3fb, #25314a);
+      --button-bg: light-dark(#ffffff, #1f2937);
+      --button-fg: light-dark(#0f172a, #f9fafb);
+      --button-border: light-dark(#d1daf4, #2f3b52);
+      --button-hover-bg: light-dark(#e8ecfb, #273349);
+      --ring: color-mix(in oklch, #2563eb, #60a5fa 35%);
       --grid: #1f2937; 
       --space: 16px;
     }
@@ -144,9 +159,10 @@
   :where(.object-cover){ width:100%; height:100%; object-fit:cover; display:block; }
   :where(.surface){
     padding: 16px;
-    border: 1px solid color-mix(in oklch, var(--fg), transparent 85%);
+    border: 1px solid var(--card-border);
     border-radius: var(--r-12);
-    background: transparent;
+    background: var(--card-bg);
+    color: var(--card-fg);
   }
   :where(button,input,select).focus-ring:focus-visible{
     outline: 2px solid var(--ring);
@@ -191,23 +207,244 @@ section {
 
     .section-header p {
         margin: 0;
-        color: color-mix(in oklch, var(--fg), transparent 40%);
+        color: var(--muted);
         font-size: 0.95rem;
         line-height: 1.6;
+    }
+
+ #showcase {
+        /* position: relative;
+        padding: clamp(1.75rem, 4vw, 3rem);
+        border-radius: var(--r-24);
+        border: 1px solid color-mix(in oklch, var(--card-border), transparent 35%);
+        background:
+            radial-gradient(140% 120% at 0% 0%, color-mix(in oklch, var(--preset-fg), transparent 82%), transparent 68%),
+            radial-gradient(120% 120% at 100% 0%, color-mix(in oklch, var(--preset-meta), transparent 82%), transparent 70%),
+            linear-gradient(145deg,
+                color-mix(in oklch, var(--preset-bg), transparent 55%),
+                color-mix(in oklch, var(--preset-bg), transparent 80%));
+        color: var(--preset-fg);
+        overflow: hidden;
+        isolation: isolate; */
+    --s: 140px; /* control the size */
+  --c1: #AB3E5B;
+  --c2: #FFBE40;
+  
+  --_g: 
+    #0000 25%,#0008 47%,var(--c1)  53% 147%,var(--c2) 153% 247%,
+    var(--c1) 253% 347%,var(--c2) 353% 447%,var(--c1) 453% 547%,#0008 553%,#0000 575%;
+  --_s: calc(25%/3) calc(25%/4) at 50%; 
+  background:
+    radial-gradient(var(--_s) 100%,var(--_g)),
+    radial-gradient(var(--_s) 100%,var(--_g)) calc(var(--s)/2) calc(3*var(--s)/4),
+    radial-gradient(var(--_s) 0   ,var(--_g)) calc(var(--s)/2) 0,
+    radial-gradient(var(--_s) 0   ,var(--_g)) 0                calc(3*var(--s)/4),
+    repeating-linear-gradient(90deg,#ACCEC0 calc(25%/-6) calc(25%/6),#61A6AB 0 calc(25%/2));
+  background-size: var(--s) calc(3*var(--s)/2);
+  animation: m 2.5s infinite linear;
+} 
+
+@keyframes m {
+  to {
+    background-position:
+      var(--s) 0,
+      calc(var(--s)/-2) calc(3*var(--s)/4),
+      calc(3*var(--s)/2) 0,
+      calc(-1*var(--s)) calc(3*var(--s)/4),
+      0 0
+  }
+}
+
+    #showcase::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image:
+            linear-gradient(transparent calc(100% - 1px), color-mix(in oklch, var(--grid), transparent 65%) calc(100% - 1px)),
+            linear-gradient(90deg, transparent calc(100% - 1px), color-mix(in oklch, var(--grid), transparent 65%) calc(100% - 1px));
+        background-size: clamp(120px, 22vw, 220px) clamp(120px, 22vw, 220px);
+        mix-blend-mode: color-dodge;
+        opacity: 0.6;
+        pointer-events: none;
+    }
+
+    #showcase > * {
+        position: relative;
+        z-index: 1;
     }
 
     .glass-grid {
         display: grid;
         gap: 1.5rem;
         grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        position: relative;
+        padding: clamp(1.5rem, 3vw, 2.5rem);
+        border-radius: var(--r-24);
+        border: 1px solid color-mix(in oklch, var(--card-border), transparent 45%);
+        background:
+            linear-gradient(160deg,
+                color-mix(in oklch, var(--card-bg), transparent 50%),
+                color-mix(in oklch, var(--card-bg), transparent 82%));
+        overflow: hidden;
+        isolation: isolate;
     }
 
-    glass-card.glass-card {
+    .glass-grid::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image:
+            linear-gradient(transparent calc(100% - 1px), color-mix(in oklch, var(--grid), transparent 70%) calc(100% - 1px)),
+            linear-gradient(90deg, transparent calc(100% - 1px), color-mix(in oklch, var(--grid), transparent 70%) calc(100% - 1px));
+        background-size: clamp(110px, 18vw, 180px) clamp(110px, 18vw, 180px);
+        opacity: 0.5;
+        pointer-events: none;
+    }
+
+    .glass-grid::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(120% 140% at 20% 120%, color-mix(in oklch, var(--preset-meta), transparent 75%), transparent 75%);
+        mix-blend-mode: soft-light;
+        pointer-events: none;
+    }
+
+    .glass-grid > * {
+        position: relative;
+        z-index: 1;
+    }
+    .preset-grid {
+        display: grid;
+        gap: 1.75rem;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    }
+
+glass-card.glass-card {
         border-radius: 22px;
-        padding: 1.5rem;
         min-height: 220px;
-        background: linear-gradient(160deg, color-mix(in oklch, var(--fg), transparent 85%), transparent 96%);
+        border: 1px solid var(--card-border);
+        background: linear-gradient(160deg,
+                    color-mix(in oklch, var(--card-bg), transparent 35%),
+                    transparent 96%),
+                var(--card-bg);
+        color: var(--card-fg);
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+
+    glass-card.preset-card {
+        position: relative;
+        min-height: 200px;
+        width: min(var(--preset-width, 320px), 100%);
+        height: var(--preset-height, auto);
+        border-radius: var(--preset-radius, 24px);
+        display: flex;
+        flex-direction: column;
         color: inherit;
+        background-color: color-mix(in oklch, var(--preset-fg), transparent 92%);
+        overflow: hidden;
+        isolation: isolate;
+        box-sizing: border-box;
+    }
+
+    glass-card.preset-card > * {
+        position: relative;
+        z-index: 1;
+    }
+
+    @keyframes statusPanelDrift {
+        0% {
+            background-position: 0% 35%, 60% 40%, 20% 80%;
+        }
+
+        50% {
+            background-position: 45% 30%, 50% 55%, 35% 60%;
+        }
+
+        100% {
+            background-position: 95% 60%, 40% 75%, 60% 30%;
+        }
+    }
+
+    @keyframes auroraSweep {
+        0% {
+            background-position: 0% 50%, 50% 60%, 90% 50%;
+        }
+
+        50% {
+            background-position: 40% 45%, 55% 40%, 70% 55%;
+        }
+
+        100% {
+            background-position: 100% 55%, 60% 70%, 50% 45%;
+        }
+    }
+
+    .preset-card.preset-status-panel {
+        background-image:
+            radial-gradient(120% 150% at 0% 20%, color-mix(in oklch, light-dark(#2563eb, #1d4ed8), transparent 65%), transparent 70%),
+            radial-gradient(120% 120% at 85% 20%, color-mix(in oklch, light-dark(#38bdf8, #7dd3fc), transparent 70%), transparent 75%),
+            linear-gradient(145deg, color-mix(in oklch, var(--preset-fg), transparent 86%), transparent 70%);
+        background-blend-mode: screen, lighten, normal;
+        background-size: 200% 200%, 160% 160%, 100% 100%;
+        background-position: 0% 35%, 60% 40%, 20% 80%;
+        animation: statusPanelDrift 24s ease-in-out infinite alternate;
+        will-change: background-position;
+    }
+
+    glass-card.preset-card[data-effect='aurora'] {
+        background-image:
+            radial-gradient(160% 160% at 15% 85%, color-mix(in oklch, light-dark(#f97316, #fb923c), transparent 65%), transparent 75%),
+            conic-gradient(from 180deg at 80% 20%, color-mix(in oklch, light-dark(#c084fc, #a855f7), transparent 60%), transparent 55%, color-mix(in oklch, light-dark(#38bdf8, #0ea5e9), transparent 55%)),
+            linear-gradient(160deg, color-mix(in oklch, var(--preset-fg), transparent 90%), transparent 75%);
+        background-blend-mode: screen, color-dodge, normal;
+        background-size: 220% 220%, 180% 180%, 100% 100%;
+        background-position: 0% 50%, 50% 60%, 90% 50%;
+        animation: auroraSweep 32s ease-in-out infinite alternate;
+        will-change: background-position;
+    }
+
+    .preset-content h4 {
+        margin: 0;
+        font-size: 1.05rem;
+        letter-spacing: 0.01em;
+        color: var(--preset-fg);
+    }
+
+    .preset-content p {
+        margin: 0;
+        color: var(--preset-muted);
+        line-height: 1.55;
+    }
+
+    .preset-meta {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem 1rem;
+        margin: 0;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--preset-meta);
+    }
+
+    .preset-meta div {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .preset-meta dt {
+        margin: 0;
+    }
+
+    .preset-meta dd {
+        margin: 0;
+        font-size: 0.95rem;
+        letter-spacing: normal;
+        text-transform: none;
+        color: var(--preset-fg);
     }
 
     .glass-card .card-content {
@@ -216,6 +453,22 @@ section {
         gap: 1rem;
         position: relative;
         z-index: 2;
+        padding: 1.5rem;
+        min-height: var(--glass-height, 100%);
+        box-sizing: border-box;
+    }
+
+    .preset-card .preset-content {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        padding: 1.5rem 1.5rem 0;
+    }
+
+    .preset-card .preset-meta {
+        padding: 1.25rem 1.5rem 1.5rem;
+        margin-top: auto;
+        box-sizing: border-box;
     }
 
     .glass-card h4 {
@@ -223,63 +476,75 @@ section {
         font-size: 1.1rem;
         font-weight: 600;
         letter-spacing: 0.01em;
+        color: var(--card-fg);
     }
 
     .glass-card p {
         margin: 0;
         line-height: 1.5;
-        color: color-mix(in oklch, var(--fg), transparent 25%);
+        color: var(--card-muted);
     }
 
     .btn-secondary {
         align-self: flex-start;
-        border: 1px solid color-mix(in oklch, var(--fg), transparent 70%);
-        background: color-mix(in oklch, var(--fg), transparent 92%);
+        border: 1px solid var(--button-border);
+        background: var(--button-bg);
         border-radius: 999px;
         padding: 0.5rem 1.15rem;
         font-size: 0.9rem;
-        color: inherit;
+        color: var(--button-fg);
         transition: border-color 0.2s ease, background-color 0.2s ease;
     }
 
     .btn-secondary:hover {
-        border-color: color-mix(in oklch, var(--fg), transparent 45%);
-        background: color-mix(in oklch, var(--fg), transparent 86%);
+        border-color: color-mix(in oklch, var(--button-fg), transparent 35%);
+        background: var(--button-hover-bg);
     }
 
-    header {
+header {
         display: flex;
         gap: 12px;
         align-items: center;
         justify-content: space-between;
-        padding: 20px 0
+        padding: 20px 0;
     }
+
     .title {
         margin: 0;
         font-weight: 700;
-        letter-spacing: .2px;
-        font-size: clamp(22px, 3vw, 28px)
-    } 
+        letter-spacing: 0.2px;
+        font-size: clamp(22px, 3vw, 28px);
+    }
+
     .actions {
         display: flex;
-        gap: 8px
-    } 
+        gap: 8px;
+    }
+
     .btn {
-        padding: .55rem .9rem;
+        padding: 0.55rem 0.9rem;
         border-radius: 999px;
-        border: 1px solid color-mix(in oklch, var(--fg), transparent 82%);
-        background: transparent;
-        color: inherit;
-        cursor: pointer; 
+        border: 1px solid var(--button-border);
+        background: var(--button-bg);
+        color: var(--button-fg);
+        cursor: pointer;
         text-decoration: none;
-    } 
+        transition: border-color 0.2s ease, background-color 0.2s ease;
+    }
+
+    .btn:hover {
+        border-color: color-mix(in oklch, var(--button-fg), transparent 35%);
+        background: var(--button-hover-bg);
+    }
+
     .btn:focus-visible {
         outline: 2px solid var(--ring);
-        outline-offset: 2px
+        outline-offset: 2px;
     }
 
     body {
-        background: light-dark(#fff, #000);
+        background: var(--bg);
+        color: var(--fg);
         overflow-x: hidden;
         min-height: 100vh;
         font-family: 'SF Pro Text', 'SF Pro Icons', 'AOS Icons', 'Helvetica Neue',
@@ -307,6 +572,7 @@ section {
     .text h3 {
       margin: 6px 0 8px
     }
+ 
 
     .band {
       height: 110px;

@@ -10,6 +10,8 @@
         href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/nano.min.css">
       <script type="module" src="/src/main.ts"></script>
     <script type="module" src="/src/plugins/index.ts"></script> 
+          <script type="module" src="/src/presets.ts"></script>
+
 </head>
 
 <body>
@@ -59,40 +61,43 @@
         </div>
     </section>
 
-    <section id="showcase" aria-label="Presets placeholder">
+    <section id="showcase" aria-label="Preset gallery">
       <h3 style="margin:0 0 10px">Presets</h3>
-      <p class="note">Placeholder. Minimal markup on purpose. Styles to be added later.</p>
+      <p class="note">Curated gradients and grids echo the glass components below for a cohesive preview.</p>
+    </section>
+
+ <h3 style="margin:0 0 10px">Presets</h3>
+        <p class="note">Curated gradients and grids echo the glass components below for a cohesive preview.</p>
     </section>
 
     <section id="glass-components" aria-label="Glass component demos">
-      <div class="section-header">
-        <h3>Reusable glass effects</h3>
-        <p>Drop a <code>&lt;glass-card&gt;</code> anywhere once the plugin bundle loads. Effects can be tuned through attributes.</p>
-      </div>
-      <div class="glass-grid">
-        <glass-card effect="frosted" class="glass-card">
-          <div class="card-content">
-            <h4>Frosted</h4>
-            <p>Balanced diffusion with subtle noise. Great for neutral overlays.</p>
-            <button type="button" class="btn-secondary">Launch</button>
-          </div>
-        </glass-card>
-        <glass-card effect="aurora" class="glass-card" dispersion="3.8" frost="26" specular="0.65">
-          <div class="card-content">
-            <h4>Aurora</h4>
-            <p>High dispersion and saturated highlights for vivid UI accents.</p>
-            <button type="button" class="btn-secondary">Preview</button>
-          </div>
-        </glass-card>
-        <glass-card effect="polished" class="glass-card" noise-kind="high" blur="0.45">
-          <div class="card-content">
-            <h4>Polished</h4>
-            <p>Slick reflections with tight blur. Use it for compact widgets.</p>
-            <button type="button" class="btn-secondary">Details</button>
-          </div>
-        </glass-card>
-      </div>
-    </section>
+        <div class="section-header">
+            <h3>Reusable glass effects</h3>
+            <p>Drop a <code>&lt;glass-card&gt;</code> anywhere once the plugin bundle loads. Effects can be tuned through attributes.</p>
+        </div>
+        <div class="glass-grid">
+            <glass-card effect="frosted" class="glass-card">
+                <div class="card-content">
+                    <h4>Frosted</h4>
+                    <p>Balanced diffusion with subtle noise. Great for neutral overlays.</p>
+                    <button type="button" class="btn-secondary">Launch</button>
+                </div>
+            </glass-card>
+            <glass-card effect="aurora" class="glass-card" dispersion="3.8" frost="26" specular="0.65">
+                <div class="card-content">
+                    <h4>Aurora</h4>
+                    <p>High dispersion and saturated highlights for vivid UI accents.</p>
+                    <button type="button" class="btn-secondary">Preview</button>
+                </div>
+            </glass-card>
+            <glass-card effect="polished" class="glass-card" noise-kind="high" blur="0.45">
+                <div class="card-content">
+                    <h4>Polished</h4>
+                    <p>Slick reflections with tight blur. Use it for compact widgets.</p>
+                    <button type="button" class="btn-secondary">Details</button>
+                </div>
+            </glass-card>
+        </div>
 </main>
 </body>
 
