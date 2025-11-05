@@ -1,0 +1,14 @@
+export * from './glass-container.js';
+export { DragController } from './controllers/drag.js';
+export { FilterGraph } from './controllers/filter-graph.js';
+export { RafController } from './controllers/raf.js';
+export { rebuildDisplacementIfNeeded, rebuildSpecularIfNeeded } from './services/images.js';
+export { applyCssVars as applyCssVarsUtil } from './utils/css-vars.js';
+export { SURFACE_FNS, asSurfaceKind, type SurfaceKind } from './optics/surfaces.js';
+export { calculateDisplacementMap } from './optics/disp1d.js';
+export { calculateDisplacementMap2 } from './optics/disp2d.js';
+export { buildSpecularImage } from './optics/specularLight.js';
+export { cache as filterCache, imageDataToBlobURL } from './fx/filterCache.js';
+export { driveRgbOffsets } from './fx/rgbSplit.js';
+export { validate, mapGlassThickness, type Validated, type ShapeKind } from './validation/geometry.js';
+export { drawArrowsFromRG, drawSurfacePlot } from './validation/debug.js';

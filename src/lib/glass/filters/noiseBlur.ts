@@ -1,5 +1,5 @@
-import { el, append } from './core';
-import type { Stage } from './core';
+import { el, append } from './core.js';
+import type { Stage } from './core.js';
 
 /** Fractal-noise → quantize → displacement (scale tied to blur stdDev). */
 export function noiseBlur(kind: 'low' | 'high', stdDev: number): Stage {
@@ -32,6 +32,7 @@ export function noiseBlur(kind: 'low' | 'high', stdDev: number): Stage {
         result: `refrNoise_${suffix}`,
         'data-dyn': '1'
     }); 
+    disp.setAttribute('id', 'kNoiseScale'); 
     append(f, noise, quant, disp);
     return `refrNoise_${suffix}`;
   };

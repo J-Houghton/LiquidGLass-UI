@@ -1,19 +1,6 @@
 import { Pane } from 'tweakpane';
-import { validate } from '../validation/geometry';
-import type { SurfaceKind } from '../optics/surfaces';
-
-/**
- * Shape of the interactive UI state. 
- */
-export interface UIState {
-	surface: SurfaceKind;
-	refractiveIndex: number; glassThickness: number; bezelWidth: number; scale_px: number;
-	showSpecular: boolean; specularAngleDeg: number; specularStrength: number; blurStdDev: number;
-	blurKind: 'gauss' | 'noise1' | 'noise2';
-	width: number; height: number; radius: number; saturation: number; frost: number;
-	debug: boolean;
-	dispersion: number; r: number; g: number; b: number;
-}
+import { validate } from '../lib/glass/index.ts';
+import type { UIState } from '../lib/state/ui-state';
 
 export function buildPane(state: UIState, onChange: (ev: unknown) => void) {
     // Look for a DOM element with ID "pane-root" and mount the pane there if present.
@@ -60,8 +47,8 @@ export function buildPane(state: UIState, onChange: (ev: unknown) => void) {
  
     //Layout folder  
 	const layout = pane.addFolder({ title: 'layout', expanded: false });
-	layout.addBinding(state, 'width', { min: 160, max: 640, step: 1 });
-	layout.addBinding(state, 'height', { min: 120, max: 480, step: 1 });
+	layout.addBinding(state, 'width', { min: 20, max: 1000, step: 1 });
+	layout.addBinding(state, 'height', { min: 10, max: 1000, step: 1 });
 	const radiusBinding = layout.addBinding(state, 'radius', { min: 10, max: 200, step: 1 });
 	layout.addBinding(state, 'saturation', { min: 0, max: 2, step: 0.1 });
 	layout.addBinding(state, 'frost', { min: 0, max: 1, step: 0.01 });
