@@ -1,8 +1,8 @@
-import { el, append } from './core';
+import { el, append } from './core.js';
 
 // Split RGB, optional offsets, blend back over original.
 // in → "refrWithDisp"  
-export const chromatic: import('./core').Stage = (f, input) => {
+export const chromatic: import('./core.js').Stage = (f, input) => {
 	const refrR = el('feColorMatrix', {
 		in: input, type: 'matrix',
 		values: '1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0',

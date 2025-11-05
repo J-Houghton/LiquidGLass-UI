@@ -1,172 +1,240 @@
+import { css, html, LitElement } from "lit";
+import { customElement, property, state } from "lit/decorators.js";
+import { styleMap } from "lit/directives/style-map.js";
+
 import "./toggle-group";
 import "./controls";
 import type { HeroMode } from "./controls";
 
 const DEFAULTS = {
-	grid: "#1f2937",
-	a: "#2b2bff",
-	b: "#00d4ff",
-	c: "#00ffa3",
-	photo: "https://images.unsplash.com/photo-1500964757637-c85e8a162699",
-	photos: [
-		"https://images.unsplash.com/photo-1500964757637-c85e8a162699",
-		"https://plus.unsplash.com/premium_photo-1710193817276-5ebc79f46714",
-		"https://images.unsplash.com/photo-1501908734255-16579c18c25f",
-		"https://images.unsplash.com/photo-1491466424936-e304919aada7",
-	],
+        grid: "#1f2937",
+        a: "#2b2bff",
+        b: "#00d4ff",
+        c: "#00ffa3",
+        photo: "https://images.unsplash.com/photo-1500964757637-c85e8a162699",
+        photos: [
+                "https://images.unsplash.com/photo-1500964757637-c85e8a162699",
+                "https://plus.unsplash.com/premium_photo-1710193817276-5ebc79f46714",
+                "https://images.unsplash.com/photo-1501908734255-16579c18c25f",
+                "https://images.unsplash.com/photo-1491466424936-e304919aada7",
+        ],
 };
 
-export class GlassHero extends HTMLElement {
-	private root: ShadowRoot;
-	private stage!: HTMLElement;
-	private photo!: HTMLImageElement;
-	private icons!: HTMLElement;
-	private controls!: HTMLElement;
+@customElement("glass-hero")
+export class GlassHero extends LitElement {
+        static styles = css`
+                :host {
+                        display: grid;
+                        gap: 10px;
+                }
 
-	constructor() {
-		super();
-		this.root = this.attachShadow({ mode: "open" });
-	}
+                .stage {
+                        position: relative;
+                        height: 360px;
+                        border-radius: 24px;
+                        overflow: hidden;
+                        isolation: isolate;
+                        background: color-mix(in oklch, CanvasText, transparent 97%);
+                }
 
-	connectedCallback() {
-		this.render();
-		this.cache();
-		this.seed();
-		this.listen();
-		this.setMode((this.getAttribute("mode") as HeroMode) ?? "static");
-	}
+                .stage[data-mode="moving"] {
+                        background: linear-gradient(135deg, var(--gradA), var(--gradB), var(--gradC));
+                }
 
-	private html() {
-		const grid = this.getAttribute("grid") ?? DEFAULTS.grid;
-		const grada = this.getAttribute("grada") ?? DEFAULTS.a;
-		const gradb = this.getAttribute("gradb") ?? DEFAULTS.b;
-		const gradc = this.getAttribute("gradc") ?? DEFAULTS.c;
-		const photo = this.getAttribute("photo") ?? DEFAULTS.photo;
-		const mode = (this.getAttribute("mode") as HeroMode) ?? "static";
+                .grad,
+                .grid {
+                        position: absolute;
+                        inset: 0;
+                }
 
-		return /*html*/`
-      <link rel="stylesheet"
-        href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/nano.min.css">
-      <style>
-        :host { display:grid; gap:10px }
-        .stage { position:relative; height:360px; border-radius:24px; overflow:hidden; isolation:isolate;
-                 background: color-mix(in oklch, CanvasText, transparent 97%) }
-        .stage[data-mode="moving"] { background: linear-gradient(135deg, var(--gradA), var(--gradB), var(--gradC)) }
-        .grad, .grid { position:absolute; inset:0 }
-        .grad {
-          inset:-20% -20%;
-          background: linear-gradient(135deg, var(--gradA), var(--gradB), var(--gradC));
+                .grad {
+                        inset: -20% -20%;
+                        background: linear-gradient(135deg, var(--gradA), var(--gradB), var(--gradC));
+                }
+
+                .grid {
+                        background:
+                                repeating-linear-gradient(90deg, var(--grid) 0 1px, #0000 1px 24px),
+                                repeating-linear-gradient(0deg, var(--grid) 0 1px, #0000 1px 24px);
+                        background-position: 0 0, 0 0;
+                        opacity: 0.22;
+                        animation: grid-scroll var(--grid-dur, 0.5s) linear infinite;
+                        animation-play-state: var(--grid-play, running);
+                }
+
+                @keyframes grid-scroll {
+                        from {
+                                background-position: 0 0, 0 0;
+                        }
+
+                        to {
+                                background-position: 0 24px, 0 24px;
+                        }
+                }
+
+                .photo {
+                        position: absolute;
+                        inset: 0;
+                        width: 100%;
+                        height: 100%;
+                        object-fit: cover;
+                }
+
+                .icons {
+                        position: absolute;
+                        inset: 0;
+                        display: grid;
+                        place-items: center;
+                        pointer-events: none;
+                        opacity: 0;
+                        transition: opacity 0.2s ease;
+                }
+
+                .icons[data-show="true"] {
+                        opacity: 1;
+                }
+
+                .dock {
+                        display: grid;
+                        grid-template-columns: repeat(5, 80px);
+                        grid-auto-rows: 80px;
+                        gap: 1rem 2rem;
+                }
+
+                .dock img {
+                        width: 80px;
+                        aspect-ratio: 1;
+                        border-radius: 18px;
+                }
+        `;
+
+        @property({ type: String, reflect: true }) mode: HeroMode = "static";
+
+        @property({ type: String }) grid = DEFAULTS.grid;
+
+        @property({ type: String, attribute: "grada" }) grada = DEFAULTS.a;
+
+        @property({ type: String, attribute: "gradb" }) gradb = DEFAULTS.b;
+
+        @property({ type: String, attribute: "gradc" }) gradc = DEFAULTS.c;
+
+        @property({ type: String }) photo = DEFAULTS.photo;
+
+        @property({ attribute: false }) photos: string[] = [...DEFAULTS.photos];
+
+        @state() private showIcons = false;
+
+        @state() private gridDuration = "";
+
+        @state() private gridPlay = "running";
+
+        @state() private speed = 1.0;
+
+        protected firstUpdated(): void {
+                // ensure defaults pick up any initial attributes supplied before upgrade
+                this.grid ||= DEFAULTS.grid;
+                this.grada ||= DEFAULTS.a;
+                this.gradb ||= DEFAULTS.b;
+                this.gradc ||= DEFAULTS.c;
+                this.photo ||= DEFAULTS.photo;
         }
-        /* seamless infinite grid scroll using background-position */
-        .grid {
-          background:
-            repeating-linear-gradient(90deg, var(--grid) 0 1px, #0000 1px 24px),
-            repeating-linear-gradient(0deg,  var(--grid) 0 1px, #0000 1px 24px);
-          background-position: 0 0, 0 0;
-          opacity:.22;
-          animation: grid-scroll var(--grid-dur, 0.5s) linear infinite;
-          animation-play-state: var(--grid-play, running);
+
+        protected updated(changed: Map<string | number | symbol, unknown>): void {
+                if (changed.has("mode") && this.mode === "moving" && !this.gridDuration) {
+                        this.gridDuration = "1.00s";
+                        this.gridPlay = "running";
+                }
+
+                if (changed.has("mode") && this.mode === "moving") {
+                        this.showIcons = false;
+                }
         }
-        @keyframes grid-scroll {
-          from { background-position: 0 0, 0 0; }
-          to   { background-position: 0 24px, 0 24px; }
+
+        private handleModeChange(event: CustomEvent<{ mode: HeroMode }>): void {
+                if (event.detail.mode === this.mode) return;
+                this.mode = event.detail.mode;
         }
-        .photo { position:absolute; inset:0; width:100%; height:100%; object-fit:cover }
-        .icons { position:absolute; inset:0; display:grid; place-items:center; pointer-events:none; opacity:0; transition:opacity .2s ease }
-        .icons[data-show="true"]{ opacity:1 }
-        .dock { display:grid; grid-template-columns:repeat(5, 80px); grid-auto-rows:80px; gap:1rem 2rem }
-        .dock img { width:80px; aspect-ratio:1; border-radius:18px }
-      </style>
 
-      <div class="stage" id="stage" data-mode="${mode}"
-           style="--grid:${grid}; --gradA:${grada}; --gradB:${gradb}; --gradC:${gradc};">
-        <div class="grad" hidden></div>
-        <div class="grid" hidden></div>
-        <img class="photo" id="heroPhoto" alt="Selected background" src="${photo}">
-        <div class="icons" id="icons" data-show="false" aria-hidden="true">
-          <div class="dock">
-            <img src="https://assets.codepen.io/605876/finder.png" alt="Finder">
-            <img src="https://assets.codepen.io/605876/launch-control.png" alt="Launch Control">
-            <img src="https://assets.codepen.io/605876/safari.png" alt="Safari">
-            <img src="https://assets.codepen.io/605876/calendar.png" alt="Calendar">
-            <img src="https://assets.codepen.io/605876/photos.png" alt="Photos">
-            <img src="https://assets.codepen.io/605876/signal.png" alt="Signal">
-            <img src="https://assets.codepen.io/605876/spotify.png" alt="Spotify">
-            <img src="https://assets.codepen.io/605876/brave.png" alt="Brave">
-            <img src="https://assets.codepen.io/605876/raycast.png" alt="Raycast">
-            <img src="https://assets.codepen.io/605876/screenstudio.png" alt="Screen">
-          </div>
-        </div>
-      </div>
-      <lg-controls id="controls"></lg-controls>`;
-	}
+        private handlePhotoChange(event: CustomEvent<{ url: string }>): void {
+                if (event.detail.url === this.photo) return;
+                this.photo = event.detail.url;
+        }
 
-	private render() { this.root.innerHTML = this.html(); }
+        private handleIconsToggle(event: CustomEvent<{ show: boolean }>): void {
+                this.showIcons = event.detail.show;
+        }
 
-	private cache() {
-		this.stage = this.root.getElementById("stage") as HTMLElement;
-		this.photo = this.root.getElementById("heroPhoto") as HTMLImageElement;
-		this.icons = this.root.getElementById("icons") as HTMLElement;
-		this.controls = this.root.getElementById("controls") as HTMLElement;
-	}
+        private handleColorChange(event: CustomEvent<{ grid: string; a: string; b: string; c: string }>): void {
+                const { grid, a, b, c } = event.detail;
+                this.grid = grid;
+                this.grada = a;
+                this.gradb = b;
+                this.gradc = c;
+        }
 
-	private seed() {
-		// seed controls from attributes and defaults
-		(this.controls as any).mode = (this.getAttribute("mode") as HeroMode) ?? "static";
-		(this.controls as any).photos = DEFAULTS.photos;
-		(this.controls as any).colors = {
-			grid: this.stage.style.getPropertyValue("--grid"),
-			a: this.stage.style.getPropertyValue("--gradA"),
-			b: this.stage.style.getPropertyValue("--gradB"),
-			c: this.stage.style.getPropertyValue("--gradC"),
-		};
-	}
+        private handleSpeedChange(event: CustomEvent<{ speed: number }>): void {
+                const factor = Math.max(0, Math.min(3, event.detail.speed));
+                const base = 1;
+                const dur = factor <= 0.001 ? base : base / factor;
+                this.gridDuration = `${dur.toFixed(2)}s`;
+                this.gridPlay = factor === 0 ? "paused" : "running";
+                this.speed = factor;
+        }
 
-	private listen() {
-		this.controls.addEventListener("modechange", (e: Event) => {
-			this.setMode((e as CustomEvent).detail.mode as HeroMode);
-		});
-		this.controls.addEventListener("photochange", (e: Event) => {
-			this.photo.src = (e as CustomEvent).detail.url as string;
-		});
-		this.controls.addEventListener("iconstoggle", (e: Event) => {
-			const show = (e as CustomEvent).detail.show as boolean;
-			const moving = this.stage.dataset.mode === "moving";
-			this.icons.dataset.show = String(!moving && show);
-		});
-		this.controls.addEventListener("colorchange", (e: Event) => {
-			const { grid, a, b, c } = (e as CustomEvent).detail as { grid: string; a: string; b: string; c: string };
-			this.stage.style.setProperty("--grid", grid);
-			this.stage.style.setProperty("--gradA", a);
-			this.stage.style.setProperty("--gradB", b);
-			this.stage.style.setProperty("--gradC", c);
-		});
-		this.controls.addEventListener("speedchange", (e: Event) => {
-			const factor = Math.max(0, Math.min(3, (e as CustomEvent).detail.speed as number));
-			const base = 1;
-			const dur = factor <= 0.001 ? base : base / factor;
-			this.stage.style.setProperty("--grid-dur", `${dur.toFixed(2)}s`);
-			this.stage.style.setProperty("--grid-play", factor === 0 ? "paused" : "running");
-		});
-	}
+        render() {
+                const moving = this.mode === "moving";
+                const iconsVisible = !moving && this.showIcons;
+                const stageStyles = styleMap({
+                        "--grid": this.grid,
+                        "--gradA": this.grada,
+                        "--gradB": this.gradb,
+                        "--gradC": this.gradc,
+                        "--grid-dur": this.gridDuration || undefined,
+                        "--grid-play": this.gridPlay || undefined,
+                });
 
-	private setMode(mode: HeroMode) {
-		this.stage.dataset.mode = mode;
-		const moving = mode === "moving";
-		(this.stage.querySelector(".grad") as HTMLElement).hidden = !moving;
-		(this.stage.querySelector(".grid") as HTMLElement).hidden = !moving;
-		this.photo.hidden = moving;
-		// keep icons off in moving mode regardless of control toggle
-		const showIcons = this.icons.dataset.show === "true";
-		this.icons.dataset.show = String(!moving && showIcons);
-
-		if (moving && !this.stage.style.getPropertyValue("--grid-dur")) {
-			this.stage.style.setProperty("--grid-dur", "1");
-			this.stage.style.setProperty("--grid-play", "running");
-		}
-	}
+                return html`
+                        <div class="stage" data-mode=${this.mode} style=${stageStyles}>
+                                <div class="grad" ?hidden=${!moving}></div>
+                                <div class="grid" ?hidden=${!moving}></div>
+                                <img class="photo" alt="Selected background" src=${this.photo} ?hidden=${moving} />
+                                <div class="icons" data-show=${String(iconsVisible)} aria-hidden=${iconsVisible ? "false" : "true"}>
+                                        <div class="dock">
+                                                <img src="https://assets.codepen.io/605876/finder.png" alt="Finder" />
+                                                <img src="https://assets.codepen.io/605876/launch-control.png" alt="Launch Control" />
+                                                <img src="https://assets.codepen.io/605876/safari.png" alt="Safari" />
+                                                <img src="https://assets.codepen.io/605876/calendar.png" alt="Calendar" />
+                                                <img src="https://assets.codepen.io/605876/photos.png" alt="Photos" />
+                                                <img src="https://assets.codepen.io/605876/signal.png" alt="Signal" />
+                                                <img src="https://assets.codepen.io/605876/spotify.png" alt="Spotify" />
+                                                <img src="https://assets.codepen.io/605876/brave.png" alt="Brave" />
+                                                <img src="https://assets.codepen.io/605876/raycast.png" alt="Raycast" />
+                                                <img src="https://assets.codepen.io/605876/screenstudio.png" alt="Screen" />
+                                        </div>
+                                </div>
+                        </div>
+                        <lg-controls
+                                .mode=${this.mode}
+                                .photos=${this.photos}
+                                .photo=${this.photo}
+                                .grid=${this.grid}
+                                .grada=${this.grada}
+                                .gradb=${this.gradb}
+                                .gradc=${this.gradc}
+                                .showIcons=${this.showIcons}
+                                .speed=${this.speed}
+                                @modechange=${this.handleModeChange}
+                                @photochange=${this.handlePhotoChange}
+                                @iconstoggle=${this.handleIconsToggle}
+                                @colorchange=${this.handleColorChange}
+                                @speedchange=${this.handleSpeedChange}
+                        ></lg-controls>
+                `;
+        }
 }
 
-if (!customElements.get("glass-hero")) {
-	customElements.define("glass-hero", GlassHero);
+declare global {
+        interface HTMLElementTagNameMap {
+                "glass-hero": GlassHero;
+        }
 }

@@ -38,3 +38,13 @@ export const LIP: Surf = {
 export const SURFACE_FNS: Record<SurfaceKind, Surf> = {
 	convex_circle: CONVEX_CIRCLE, convex_squircle: CONVEX, concave: CONCAVE, lip: LIP
 }; 
+
+export const asSurfaceKind = (v: string): SurfaceKind => {
+  const allowed: SurfaceKind[] = [
+    'convex_circle',
+    'convex_squircle',
+    'concave',
+    'lip',
+  ];
+  return (allowed.includes(v as SurfaceKind) ? v : 'convex_squircle') as SurfaceKind;
+};

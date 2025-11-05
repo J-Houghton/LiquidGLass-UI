@@ -1,0 +1,72 @@
+:root {
+  font-family: 'SF Pro Text', 'SF Pro Icons', 'AOS Icons', 'Helvetica Neue', Helvetica, Arial, sans-serif, system-ui;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark; 
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  --content-width: 62rem;
+
+  --button-bg: light-dark(#ffffff, #1f2937);
+  --button-fg: light-dark(#0f172a, #f9fafb);
+  --button-border: light-dark(#d1daf4, #2f3b52);
+  --button-hover-bg: light-dark(#e8ecfb, #273349);
+  --ring: color-mix(in oklch, #2563eb, #60a5fa 35%);
+
+
+  --card-border: light-dark(#d7def5, #242f45);
+  --wrap: 62rem;
+  --r-12: 12px; 
+  --card-bg: light-dark(#ffffff, #111827);
+  --card-fg: light-dark(#0f172a, #f9fbff);
+  --p: 1rem; 
+} 
+body {
+    background: var(--bg);
+    color: var(--fg);
+    overflow-x: hidden; 
+    margin: 0 auto; 
+    max-width: var(--content-width);
+    min-height: 100vh;
+}
+
+body::before {
+    --size: 45px;
+    --line: color-mix(in hsl, canvasText, transparent 80%);
+    content: '';
+    height: 100vh;
+    width: 100vw;
+    position: fixed; inset: 0;
+    background: linear-gradient(90deg,
+            var(--line) 1px,
+            transparent 1px var(--size)) calc(var(--size) * 0.36) 50% / var(--size) var(--size),
+        linear-gradient(var(--line) 1px, transparent 1px var(--size)) 0% calc(var(--size) * 0.32) / var(--size) var(--size);
+    mask: linear-gradient(-20deg, transparent 3%, white);
+ 
+    transform-style: flat;
+    pointer-events: none;
+    z-index: -1;
+}  
+
+:where(button,input,select).focus-ring:focus-visible{
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+*,
+*:after,
+*:before {
+    box-sizing: border-box;
+}
+
+div.tp-dfwv {
+    position: fixed;
+    width: 280px;
+    bottom: 8px;
+    top: unset;
+    view-transition-name: pane;
+} 

@@ -1,8 +1,8 @@
-import { el, append } from './core';
+import { el, append } from './core.js';
 
 // Expects caller to provide image href separately via DOM id #specImage if needed.
 // This stage just wires gain + blend on top of input stream.
-export const specular = (gain = 1): import('./core').Stage => (f, input) => {
+export const specular = (gain = 1): import('./core.js').Stage => (f, input) => {
 	const specAdj = el('feComponentTransfer', { in: 'specSrc', result: 'specAdj', 'data-dyn': '1' });
 	const funcA = el('feFuncA', { type: 'linear', slope: gain.toString(), 'data-dyn': '1' });
 	specAdj.appendChild(funcA);

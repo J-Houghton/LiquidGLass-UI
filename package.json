@@ -1,5 +1,5 @@
 {
-  "name": "liquid-glass",
+  "name": "lit-project",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -8,16 +8,14 @@
     "build": "tsc && vite build",
     "preview": "vite preview"
   },
+  "dependencies": {
+    "@lit/context": "^1.1.6",
+    "@simonwep/pickr": "^1.9.1",
+    "lit": "^3.3.1",
+    "tweakpane": "^4.0.5"
+  },
   "devDependencies": {
     "typescript": "~5.9.3",
-    "vite": "npm:rolldown-vite@7.1.14"
-  },
-  "overrides": {
-    "vite": "npm:rolldown-vite@7.1.14"
-  },
-  "dependencies": {
-    "gsap": "^3.13.0",
-    "@simonwep/pickr": "^1.9.1",
-    "tweakpane": "^4.0.5"
+    "vite": "^7.1.7"
   }
 }

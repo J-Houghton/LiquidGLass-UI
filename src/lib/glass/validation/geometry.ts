@@ -1,5 +1,5 @@
 // src/validation/geometry.ts
-import type { SurfaceKind } from '../optics/surfaces';
+import type { SurfaceKind } from '../optics/surfaces.js';
 
 export type ShapeKind = 'circle' | 'rect';
 
