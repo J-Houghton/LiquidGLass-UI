@@ -1,6 +1,6 @@
 import {LitElement, html} from 'lit';
 import {customElement} from 'lit/decorators.js';
-import { buildPane } from '../UI/pane';
+import { buildPane } from './pane';
 import {uiStateCtx, UIStateStore} from '../lib/state/ui-state';
 import type { UIState } from '../lib/state/ui-state';
 import {ContextProvider} from '@lit/context';
@@ -18,7 +18,7 @@ import '../index.css';
 export class MyPage extends LitElement {
 
   private store = new UIStateStore({
-    width: 300, height: 120, radius: 60,
+    width: 300, height: 220, radius: 60,
     refractiveIndex: 1.5, glassThickness: 50,
     bezelWidth: 60, scale_px: 180, dispersion: 0,
     surface: 'convex_squircle', frost: 0.05, saturation: 1, debug: false,
