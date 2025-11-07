@@ -1,0 +1,20 @@
+{
+  "name": "liquid-glass-filter",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@tweakpane/core": "^2.0.5",
+    "lit": "^3.3.1",
+    "tweakpane": "^4.0.5"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "vite": "^7.1.7"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  }
+}
