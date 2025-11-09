@@ -2,6 +2,7 @@ import { LitElement, html } from 'lit';
 import type { PropertyValues } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { generateUniqueFilterId } from './liquid-glass-filter.js';
+import { DEFAULT_GLASS_CONTAINER_PARAMS, type GlassContainerParams } from './glassDefaults.js';
 
 const DEFAULT_CONTAINER_FILTER_ID = 'lg-container-filter';
 /**
@@ -66,28 +67,26 @@ export class LiquidGlassContainer extends LitElement {
   }
 
   // Geometry and material properties mirrored to the internal filter
-  @property({ type: Number }) width = 300;
-  @property({ type: Number }) height = 120;
-  @property({ type: Number }) radius = 60;
-  @property({ type: Number, attribute: 'bezel-width' }) bezelWidth = 60;
-  @property({ type: Number, attribute: 'glass-thickness' }) glassThickness = 50;
-  @property({ type: String }) surface: string = 'convex_squircle';
-  @property({ type: Number, attribute: 'refractive-index' }) refractiveIndex = 1.5;
-  @property({ type: Number, attribute: 'scale-px' }) scalePx = 180;
-  @property({ type: Number }) dispersion = 0;
-  @property({ type: String, attribute: 'blur-kind' }) blurKind: 'gauss' | 'noise1' | 'noise2' = 'gauss';
-  @property({ type: Number, attribute: 'blur-std-dev' }) blurStdDev = 0.2;
-  @property({ type: Boolean, attribute: 'show-specular' }) showSpecular = true;
-  @property({ type: Number, attribute: 'specular-angle-deg' }) specularAngleDeg = 60;
-  @property({ type: Number, attribute: 'specular-strength' }) specularStrength = 0.9;
-  @property({ type: Number, attribute: 'disp-r' }) disp_r = 0;
-  @property({ type: Number, attribute: 'disp-g' }) disp_g = 0;
-  @property({ type: Number, attribute: 'disp-b' }) disp_b = 0;
-
+  @property({ type: Number }) width = DEFAULT_GLASS_CONTAINER_PARAMS.width;
+  @property({ type: Number }) height = DEFAULT_GLASS_CONTAINER_PARAMS.height;
+  @property({ type: Number }) radius = DEFAULT_GLASS_CONTAINER_PARAMS.radius;
+  @property({ type: Number, attribute: 'bezel-width' }) bezelWidth = DEFAULT_GLASS_CONTAINER_PARAMS.bezelWidth;
+  @property({ type: Number, attribute: 'glass-thickness' }) glassThickness = DEFAULT_GLASS_CONTAINER_PARAMS.glassThickness;
+  @property({ type: String }) surface: GlassContainerParams['surface'] = DEFAULT_GLASS_CONTAINER_PARAMS.surface;
+  @property({ type: Number, attribute: 'refractive-index' }) refractiveIndex = DEFAULT_GLASS_CONTAINER_PARAMS.refractiveIndex;
+  @property({ type: Number, attribute: 'scale-px' }) scalePx = DEFAULT_GLASS_CONTAINER_PARAMS.scalePx;
+  @property({ type: Number }) dispersion = DEFAULT_GLASS_CONTAINER_PARAMS.dispersion;
+  @property({ type: String, attribute: 'blur-kind' }) blurKind: GlassContainerParams['blurKind'] = DEFAULT_GLASS_CONTAINER_PARAMS.blurKind;
+  @property({ type: Number, attribute: 'blur-std-dev' }) blurStdDev = DEFAULT_GLASS_CONTAINER_PARAMS.blurStdDev;
+  @property({ type: Boolean, attribute: 'show-specular' }) showSpecular = DEFAULT_GLASS_CONTAINER_PARAMS.showSpecular;
+  @property({ type: Number, attribute: 'specular-angle-deg' }) specularAngleDeg = DEFAULT_GLASS_CONTAINER_PARAMS.specularAngleDeg;
+  @property({ type: Number, attribute: 'specular-strength' }) specularStrength = DEFAULT_GLASS_CONTAINER_PARAMS.specularStrength;
+ 
   /** Frost overlay opacity.  A value between 0 and 1. */
-  @property({ type: Number }) frost = 0.05;
+  @property({ type: Number }) frost = DEFAULT_GLASS_CONTAINER_PARAMS.frost;
   /** Saturation multiplier applied to the backdrop. */
-  @property({ type: Number }) saturation = 1;
+  @property({ type: Number }) saturation = DEFAULT_GLASS_CONTAINER_PARAMS.saturation;
+
 
   /**
    * The component does not perform any custom update cycle – the nested
@@ -102,10 +101,11 @@ export class LiquidGlassContainer extends LitElement {
       'position:absolute',
       'inset:0',
       'pointer-events:none',
-      `background: rgba(255,255,255,${this.frost})`,
+      `background: hsl(0 0% 0% / ${this.frost})`,
       `backdrop-filter: url(#${filterId}) saturate(${this.saturation})`,
       `-webkit-backdrop-filter: url(#${filterId}) saturate(${this.saturation})`,
       'border-radius: inherit',
+      // background: light-dark(hsl(0 0% 100% / ${this.frost}), hsl(0 0% 0% / ${this.frost}));
     ].join(';');
     return html`<div style="${containerStyle}">
       <liquid-glass-filter
@@ -123,10 +123,7 @@ export class LiquidGlassContainer extends LitElement {
         .blurStdDev=${this.blurStdDev}
         .showSpecular=${this.showSpecular}
         .specularAngleDeg=${this.specularAngleDeg}
-        .specularStrength=${this.specularStrength}
-        .disp_r=${this.disp_r}
-        .disp_g=${this.disp_g}
-        .disp_b=${this.disp_b}
+        .specularStrength=${this.specularStrength} 
       ></liquid-glass-filter>
       <div style="${overlayStyle}"></div>
     </div>`;

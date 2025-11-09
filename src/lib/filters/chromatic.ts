@@ -7,7 +7,7 @@ export const chromatic: Stage = (f, input) => {
   // Split the incoming image into separate R, G and B channels.  We
   // deliberately avoid assigning global IDs to these primitives so that
   // multiple filters on the same page do not clash.  Instead we mark
-  // the offset nodes with data attributes so they can be adjusted later
+  // the displacement nodes with data attributes so they can be adjusted later
   // without relying on unique ids.
   const refrR = el('feColorMatrix', {
     in: input,
@@ -31,46 +31,52 @@ export const chromatic: Stage = (f, input) => {
     'data-dyn': '1',
   });
 
-  // Create per-channel offsets.  Use data-role attributes instead of ids so
-  // that these elements can be located relative to the filter root without
-  // risk of conflicts between multiple filters.  The offsets will be
-  // adjusted in updateParams() on the FilterGraph.
-  const offR = el('feOffset', {
+  // Create per-channel displacement maps.  These use data-role attributes so
+  // they can be located relative to the filter root without risk of id
+  // collisions.  The displacement scale will be adjusted in updateParams() on
+  // the FilterGraph.
+  const dispR = el('feDisplacementMap', {
     in: 'refrR',
-    dx: '0',
-    dy: '0',
-    result: 'refrR_off',
+    in2: 'map',
+    xChannelSelector: 'R',
+    yChannelSelector: 'G',
+    scale: '0',
+    result: 'refrR_disp',
     'data-dyn': '1',
-    'data-role': 'offR',
+    'data-role': 'dispR',
   });
-  const offG = el('feOffset', {
+  const dispG = el('feDisplacementMap', {
     in: 'refrG',
-    dx: '0',
-    dy: '0',
-    result: 'refrG_off',
+    in2: 'map',
+    xChannelSelector: 'R',
+    yChannelSelector: 'G',
+    scale: '0',
+    result: 'refrG_disp',
     'data-dyn': '1',
-    'data-role': 'offG',
+    'data-role': 'dispG',
   });
-  const offB = el('feOffset', {
+  const dispB = el('feDisplacementMap', {
     in: 'refrB',
-    dx: '0',
-    dy: '0',
-    result: 'refrB_off',
+    in2: 'map',
+    xChannelSelector: 'R',
+    yChannelSelector: 'G',
+    scale: '0',
+    result: 'refrB_disp',
     'data-dyn': '1',
-    'data-role': 'offB',
+    'data-role': 'dispB',
   });
 
   // Blend the channel offsets back together.
   const blendRG = el('feBlend', {
-    in: 'refrR_off',
-    in2: 'refrG_off',
+    in: 'refrR_disp',
+    in2: 'refrG_disp',
     mode: 'screen',
     result: 'refrRG',
     'data-dyn': '1',
   });
   const blendRGB = el('feBlend', {
     in: 'refrRG',
-    in2: 'refrB_off',
+    in2: 'refrB_disp',
     mode: 'screen',
     result: 'rgbSum',
     'data-dyn': '1',
@@ -104,6 +110,6 @@ export const chromatic: Stage = (f, input) => {
     'data-dyn': '1',
   });
 
-  append(f, refrR, refrG, refrB, offR, offG, offB, blendRG, blendRGB, alpha, rgbClipped, over);
+  append(f, refrR, refrG, refrB, dispR, dispG, dispB, blendRG, blendRGB, alpha, rgbClipped, over);
   return 'refrWithDisp';
 };

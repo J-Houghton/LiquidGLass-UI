@@ -100,10 +100,7 @@ function syncParamsFromContainer(
   params.showSpecular = container.showSpecular;
   params.specularAngleDeg = container.specularAngleDeg;
   params.specularStrength = container.specularStrength;
-  params.dispersion = container.dispersion;
-  params.disp_r = container.disp_r;
-  params.disp_g = container.disp_g;
-  params.disp_b = container.disp_b;
+  params.dispersion = container.dispersion; 
   params.frost = container.frost;
   params.saturation = container.saturation;
   if (!backgroundSynced) {
@@ -306,19 +303,7 @@ function init() {
   bind(chromatic, 'dispersion', { min: 0, max: 5, step: 0.05 }, () => {
     if (!activeContainer) return;
     activeContainer.dispersion = params.dispersion;
-  });
-  bind(chromatic, 'disp_r', { min: -80, max: 80, step: 0.5, label: 'Disp R' }, () => {
-    if (!activeContainer) return;
-    activeContainer.disp_r = params.disp_r;
-  });
-  bind(chromatic, 'disp_g', { min: -80, max: 80, step: 0.5, label: 'Disp G' }, () => {
-    if (!activeContainer) return;
-    activeContainer.disp_g = params.disp_g;
-  });
-  bind(chromatic, 'disp_b', { min: -80, max: 80, step: 0.5, label: 'Disp B' }, () => {
-    if (!activeContainer) return;
-    activeContainer.disp_b = params.disp_b;
-  });
+  }); 
 
   const specular = pane.addFolder({ title: 'Specular' });
   bind(specular, 'showSpecular', { label: 'Enable' }, () => {

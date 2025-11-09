@@ -1,9 +1,28 @@
 :root {
   color-scheme: light;
-  --demo-color-bg: hsl(220 45% 96%);
-  --demo-color-text: hsl(222 47% 14%);
-  --demo-color-muted: hsl(217 18% 42%);
-  --demo-color-accent: hsl(222 100% 78%);
+  /* fonts */
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-ui: var(--font-sans);
+  --font-display: var(--font-sans);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+
+  /* color HSL components */
+  --bg-h: 220; --bg-s: 45%; --bg-l: 96%;
+  --text-h: 222; --text-s: 47%; --text-l: 14%;
+  --muted-h: 217; --muted-s: 18%; --muted-l: 42%;
+  --accent-h: 222; --accent-s: 100%; --accent-l: 78%;
+  /* resolved colors */
+  --demo-color-bg: hsl(var(--bg-h) var(--bg-s) var(--bg-l));
+  --demo-color-text: hsl(var(--text-h) var(--text-s) var(--text-l));
+  --demo-color-muted: hsl(var(--muted-h) var(--muted-s) var(--muted-l));
+  --demo-color-accent: hsl(var(--accent-h) var(--accent-s) var(--accent-l));
+
+  /* derived surfaces */
+  --surface: color-mix(in srgb, var(--demo-color-bg) 82%, var(--demo-color-accent));
+  --surface-strong: color-mix(in srgb, var(--demo-color-bg) 78%, var(--demo-color-accent) 22%);
+  --border: color-mix(in srgb, var(--demo-color-text) 12%, transparent);
+  --shadow: color-mix(in srgb, var(--demo-color-text) 18%, transparent);
+  --shadow-strong: color-mix(in srgb, var(--demo-color-text) 22%, transparent);
 
   --demo-bg-stop-1: color-mix(in srgb, var(--demo-color-accent) 75%, var(--demo-color-bg));
   --demo-bg-stop-2: color-mix(in srgb, var(--demo-color-accent) 55%, var(--demo-color-text) 45%);
@@ -16,10 +35,15 @@
 
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --demo-color-bg: hsl(222 64% 11%);
-  --demo-color-text: hsl(216 33% 92%);
-  --demo-color-muted: hsl(215 15% 69%);
-  --demo-color-accent: hsl(222 90% 62%);
+   --bg-l: calc(100% - var(--bg-l));
+   --text-l: calc(100% - var(--text-l));
+   --muted-l: calc(100% - var(--muted-l));
+   --accent-l: calc(100% - var(--accent-l));
+   /* re-resolve colors after L inversion */
+   --demo-color-bg: hsl(var(--bg-h) var(--bg-s) var(--bg-l));
+   --demo-color-text: hsl(var(--text-h) var(--text-s) var(--text-l));
+   --demo-color-muted: hsl(var(--muted-h) var(--muted-s) var(--muted-l));
+   --demo-color-accent: hsl(var(--accent-h) var(--accent-s) var(--accent-l));
 }
 
 * {
@@ -30,14 +54,10 @@
 body {
   margin: 0;
   min-height: 100vh;
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  content: '';
-  position: fixed;
+  font-family: var(--font-sans);
   display: flex;
   justify-content: center;
-  padding: 3.5rem 1.5rem;
-  inset: 0; 
-  position: relative;
+  padding: clamp(2rem, 6vw, 3.5rem) clamp(1rem, 4vw, 1.5rem);
   background-image:
     linear-gradient(135deg, var(--demo-bg-stop-1), var(--demo-bg-stop-2));
   color: var(--demo-color-text);
@@ -56,6 +76,7 @@ body::before {
   background-size: 20px 20px;  
   opacity: 0.9;
   animation: moveGrid var(--demo-grid-speed) linear infinite; 
+  z-index: 0;
   
 }
  
@@ -74,21 +95,55 @@ body::before {
 }
 @media (max-width: 768px) {
   body {
-    padding: 2.5rem 1rem;
+    padding: 2rem 1rem;
   }
 }
 
 .demo-layout {
-  width: min(1080px, 100%);
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
+   width: min(1080px, 100%);
+   margin-inline: auto;             
+   display: flex;
+   flex-direction: column;
+   gap: 2rem;
+   position: relative;
+   z-index: 1;   
+}
+
+.demo-workspace {
+  display: grid;
+  gap: clamp(1.5rem, 4vw, 3rem);
+  align-items: center; /* keep phone and stage vertically aligned */
+  justify-items: stretch;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 420px); /* always 2 cols */
+  transition: grid-template-columns 0.4s ease, gap 0.3s ease;
+}
+
+
+.demo-workspace > * {
+  width: 100%;
+}
+
+.demo-workspace ios-home-screen {
+  justify-self: center;
+  transition: transform 0.35s ease;
+}
+
+@media (min-width: 960px) {
+  .demo-workspace ios-home-screen { justify-self: end; }
+}
+.demo-workspace[data-mode='ipad'] .demo-stage__content {
+  transform: scale(0.9);            /* shrink demo content for iPad view */
+  transform-origin: center;
+}
+.demo-workspace[data-mode='ipad'] .demo-stage {
+  padding: clamp(1.75rem, 4vw, 3rem);
 }
 
 .demo-header h1 {
   margin: 0 0 0.5rem;
   font-size: clamp(2rem, 4vw, 2.75rem);
   color: color-mix(in srgb, var(--demo-color-text) 94%, var(--demo-color-bg) 6%);
+  font-family: var(--font-display);
 }
 
 .demo-header p {
@@ -97,6 +152,7 @@ body::before {
   line-height: 1.6;
   color: var(--demo-color-muted);
   max-width: 60ch;
+  font-family: var(--font-ui);
 }
 
 .demo-controls {
@@ -105,9 +161,9 @@ body::before {
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   padding: 1.25rem;
   border-radius: 1.25rem;
-  background: color-mix(in srgb, var(--demo-color-bg) 82%, var(--demo-color-accent) 18%);
-  border: 1px solid color-mix(in srgb, var(--demo-color-text) 12%, transparent);
-  box-shadow: 0 18px 40px color-mix(in srgb, var(--demo-color-text) 14%, transparent);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 18px 40px var(--shadow);
   backdrop-filter: blur(16px);
 }
 
@@ -118,12 +174,13 @@ body::before {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--demo-color-muted);
+  font-family: var(--font-ui);
 }
 
 .demo-controls input[type='color'] {
   width: 100%;
   height: 2.75rem;
-  border: 1px solid color-mix(in srgb, var(--demo-color-text) 16%, transparent);
+  border: 1px solid var(--border);
   border-radius: 0.9rem;
   background: color-mix(in srgb, var(--demo-color-bg) 92%, transparent 8%);
   cursor: pointer;
@@ -151,6 +208,7 @@ body::before {
   min-width: 3ch;
   font-variant-numeric: tabular-nums;
   color: color-mix(in srgb, var(--demo-color-text) 80%, var(--demo-color-bg) 20%);
+  font-family: var(--font-ui);
 }
 
 .demo-stage {
@@ -158,15 +216,25 @@ body::before {
   border-radius: 1.75rem;
   overflow: hidden;
   padding: clamp(2rem, 4vw, 3rem);
-  min-height: clamp(22rem, 45vw, 28rem);
+  min-height: clamp(22rem, 48vw, 28rem);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in srgb, var(--demo-color-bg) 78%, var(--demo-color-accent) 22%);
-  border: 1px solid color-mix(in srgb, var(--demo-color-text) 10%, transparent);
-  box-shadow: 0 20px 45px color-mix(in srgb, var(--demo-color-text) 18%, transparent);
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+  box-shadow: 0 20px 45px var(--shadow);
   isolation: isolate;
+  width: 100%;
+  transition: min-height 0.35s ease, padding 0.35s ease;
 }
+
+.demo-workspace[data-mode='ipad'] .demo-stage {
+  min-height: clamp(26rem, 56vw, 34rem);
+  padding: clamp(2rem, 4.5vw, 3.25rem);
+}
+
+.demo-workspace[data-layout='stacked'] { grid-template-columns: minmax(0, 1fr) minmax(320px, 420px); }
+
 
 .demo-stage__content {
   position: relative;
@@ -175,12 +243,14 @@ body::before {
   display: grid;
   gap: 0.75rem;
   text-align: center;
+  font-family: var(--font-ui);
 }
 
 .demo-stage__content h2 {
   margin: 0;
   font-size: clamp(1.5rem, 3vw, 2.2rem);
   letter-spacing: 0.02em;
+  font-family: var(--font-display); 
 }
 
 .demo-stage__content p {
@@ -201,8 +271,8 @@ body::before {
 .demo-stage__badge {
   padding: 0.4rem 0.75rem;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--demo-color-bg) 82%, var(--demo-color-accent) 18%);
-  border: 1px solid color-mix(in srgb, var(--demo-color-text) 12%, transparent);
+  background: var(--surface);
+  border: 1px solid var(--border);
   font-size: 0.8rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -219,9 +289,9 @@ body::before {
 
 .demo-stage__actions button {
   appearance: none;
-  border: 1px solid var(--demo-border-color);
-  border-radius: 999px;
-  background: var(--demo-surface-color);
+  border: 1px solid var(--border);
+  border-radius: 999px; 
+  background: var(--surface);
   color: inherit;
   font-family: inherit;
   font-size: 0.95rem;
@@ -230,7 +300,7 @@ body::before {
   padding: 0.6rem 1.35rem;
   cursor: pointer;
   transition: background-color 0.2s ease, box-shadow 0.2s ease;
-  box-shadow: var(--demo-shadow);
+  box-shadow: 0 10px 24px var(--shadow);
 }
 
 .demo-stage__actions button:hover,
@@ -305,7 +375,7 @@ body::before {
 
 .config-pane-wrapper .tp-dfwv {
   width: 100%;
-  box-shadow: 0 24px 50px color-mix(in srgb, var(--demo-color-text) 22%, transparent);
+  box-shadow: 0 24px 50px var(--shadow-strong); 
   border-radius: 1rem;
   overflow: hidden;
 }

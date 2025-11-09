@@ -45,7 +45,7 @@ export class LiquidGlassFilter extends LitElement {
   /** Unique id assigned to the `<filter>` definition.  Must be referenced
    * from CSS using `backdrop-filter: url(#<filter-id>)`. */
   @property({ type: String, attribute: 'filter-id' }) filterId = DEFAULT_FILTER_ID;
-
+  @query('filter') private filterEl!: SVGFilterElement; 
   // material
   @property({ type: String }) surface: string = 'convex_squircle';
   @property({ type: Number, attribute: 'refractive-index' }) refractiveIndex = 1.5;
@@ -69,12 +69,7 @@ export class LiquidGlassFilter extends LitElement {
   @property({ type: Number }) frost = 0.05; // overlay opacity [0..1]
  
   // Chromatic aberration strength; values above zero enable dispersion
-  @property({ type: Number }) dispersion = 0; 
-  @property({ type: Number, attribute: 'disp-r' }) disp_r = 0;
-  @property({ type: Number, attribute: 'disp-g' }) disp_g = 0;
-  @property({ type: Number, attribute: 'disp-b' }) disp_b = 0;
-  
-
+  @property({ type: Number }) dispersion = 0;  
 
   // Internal references to filter primitives
   @query('feImage[result="map"]') private feMap!: SVGFEImageElement;
@@ -144,6 +139,13 @@ export class LiquidGlassFilter extends LitElement {
 
   private async _updateFilter() {
     const v = this.computeValidated();
+
+    const DPR = (typeof window !== 'undefined' && window.devicePixelRatio) ? window.devicePixelRatio : 1;
+    if (this.filterEl) {
+      // Set once or whenever size/DPR changes
+      this.filterEl.setAttribute('filterRes',
+        `${Math.round(this.width * DPR)} ${Math.round(this.height * DPR)}`); // ← added
+    }
     // Displacement map
     await rebuildDisplacementIfNeeded(
       v,
@@ -179,8 +181,7 @@ export class LiquidGlassFilter extends LitElement {
       blurKind: this.blurKind,
       specularStrength: this.specularStrength,
       scale_px: this.scalePx,
-      dispersion: this.dispersion,
-      disp_r: this.disp_r, disp_g: this.disp_g, disp_b: this.disp_b,
+      dispersion: this.dispersion, 
     }); 
   }
 
@@ -190,8 +191,15 @@ export class LiquidGlassFilter extends LitElement {
   protected render() {
     return html`<svg width=${this.width} height=${this.height} style="position:absolute" aria-hidden="true">
       <defs>
-        <filter id=${this.filterId} filterUnits="objectBoundingBox" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">
-          <feImage x="0" y="0" width="100%" height="100%" preserveAspectRatio="none" result="map"></feImage>
+        <!-- <filter id=${this.filterId} filterUnits="objectBoundingBox" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB"> -->
+        <filter id=${this.filterId}
+            filterUnits="userSpaceOnUse"        
+            primitiveUnits="userSpaceOnUse"     
+            x="0" y="0"                         
+            width=${this.width} height=${this.height}
+            color-interpolation-filters="sRGB"> 
+          <!-- <feImage x="0" y="0" width="100%" height="100%" preserveAspectRatio="none" result="map"></feImage> -->
+           <feImage x="0" y="0" width=${this.width} height=${this.height} preserveAspectRatio="none" result="map"></feImage>
           <!-- The displacement map no longer uses a global id; rely on query selection instead -->
           <feDisplacementMap in="SourceGraphic" in2="map" xChannelSelector="R" yChannelSelector="G" scale="0" result="refr"></feDisplacementMap>
           <!-- Specular highlight source: result="specSrc" for later lookup -->

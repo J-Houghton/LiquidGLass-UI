@@ -79,7 +79,7 @@ export class FilterGraph {
     blurKind: 'gauss' | 'noise1' | 'noise2';
     specularStrength: number;
     scale_px: number;
-    dispersion?: number; disp_r?: number; disp_g?: number; disp_b?: number;
+    dispersion?: number; 
   }) {
     const root = this.host.renderRoot as ShadowRoot;
     if (state.blurKind === 'gauss') {
@@ -105,34 +105,26 @@ export class FilterGraph {
     if (this.dispEl && this.dispEl.getAttribute('scale') !== String(state.scale_px)) {
       this.dispEl.setAttribute('scale', String(state.scale_px));
     }
-    // Update dispersion offsets.  Compute a base magnitude proportional to
-    // the dispersion amount and the displacement scale.  When per-channel
-    // multipliers are provided they scale the base; otherwise sensible
-    // defaults (+1, 0, -1) are used.  The values are clamped to ±8 px.
+    // Update dispersion displacement.  Compute a base magnitude proportional
+    // to the dispersion amount and the displacement scale.  Fixed multipliers
+    // (+1, 0, -1) keep the channels separated while allowing dispersion to
+    // control overall strength.  Values are clamped to ±8 to avoid extreme warping.
     const dispersion = state.dispersion ?? 0;
     const px = Math.max(0, state.scale_px);
-    const base = dispersion * px * 0.01;
+    
     const clamp = (v: number) => Math.max(-8, Math.min(8, v));
-    const dxR = clamp((state.disp_r ?? 1) * base);
-    const dxG = clamp((state.disp_g ?? 0) * base);
-    const dxB = clamp((state.disp_b ?? -1) * base);
-    // Locate the per-channel offset elements using data-role markers and
-    // update their dx/dy values.  These are local to the filter so they
-    // will not collide with other instances.
-    const offR = root.querySelector('feOffset[data-role="offR"]') as SVGFEOffsetElement | null;
-    const offG = root.querySelector('feOffset[data-role="offG"]') as SVGFEOffsetElement | null;
-    const offB = root.querySelector('feOffset[data-role="offB"]') as SVGFEOffsetElement | null;
-    if (offR) {
-      offR.setAttribute('dx', String(dxR));
-      offR.setAttribute('dy', '0');
+    const base = clamp(dispersion * px * 0.01);
+    const dispR = root.querySelector('feDisplacementMap[data-role="dispR"]') as SVGFEDisplacementMapElement | null;
+    const dispG = root.querySelector('feDisplacementMap[data-role="dispG"]') as SVGFEDisplacementMapElement | null;
+    const dispB = root.querySelector('feDisplacementMap[data-role="dispB"]') as SVGFEDisplacementMapElement | null;
+    if (dispR) {
+      dispR.setAttribute('scale', String(clamp(base * 1)));
     }
-    if (offG) {
-      offG.setAttribute('dx', String(dxG));
-      offG.setAttribute('dy', '0');
+    if (dispG) {
+      dispG.setAttribute('scale', String(clamp(base * 0)));
     }
-    if (offB) {
-      offB.setAttribute('dx', String(dxB));
-      offB.setAttribute('dy', '0');
+    if (dispB) {
+      dispB.setAttribute('scale', String(clamp(base * -1)));
     }
   }
 }

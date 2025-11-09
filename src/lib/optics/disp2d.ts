@@ -109,8 +109,16 @@ export function calculateDisplacementMap2(
       }
 
       const u = Math.max(0, Math.min(1, t / B)); // [0..1] across bezel
-      const i = Math.min(precomputedDisplacementMap.length - 1, (u * precomputedDisplacementMap.length) | 0);
-      const disp = precomputedDisplacementMap[i] || 0;
+      // const i = Math.min(precomputedDisplacementMap.length - 1, (u * precomputedDisplacementMap.length) | 0);
+      // const disp = precomputedDisplacementMap[i] || 0;
+
+      const f = u * (precomputedDisplacementMap.length - 1);
+      const i0 = Math.max(0, Math.floor(f));
+      const i1 = Math.min(precomputedDisplacementMap.length - 1, i0 + 1);
+      const w1 = f - i0;
+      const w0 = 1 - w1;
+      const disp = (precomputedDisplacementMap[i0] ?? 0) * w0 + (precomputedDisplacementMap[i1] ?? 0) * w1;
+
 
       // outward normal → use -n for inward refraction feel, same as before
       const dX = (-nx * disp) / maximumDisplacement;

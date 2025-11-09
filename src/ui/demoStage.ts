@@ -1,26 +1,11 @@
 import type { LiquidGlassContainer } from '../lib/liquid-glass-container.js';
-
-type ContainerConfig = {
-  width: number;
-  height: number;
-  radius: number;
-  bezelWidth: number;
-  glassThickness: number;
-  surface: string;
-  refractiveIndex: number;
-  scalePx: number;
-  blurKind: 'gauss' | 'noise1' | 'noise2';
-  blurStdDev: number;
-  showSpecular: boolean;
-  specularAngleDeg: number;
-  specularStrength: number;
-  dispersion: number;
-  disp_r: number;
-  disp_g: number;
-  disp_b: number;
-  frost: number;
-  saturation: number;
-};
+import {
+  CONTAINERS_CHANGED_EVENT,
+  DEFAULT_GLASS_CONTAINER_PARAMS,
+  REMOVE_CONTAINER_EVENT,
+  SELECT_CONTAINER_EVENT,
+  type GlassContainerParams,
+} from '../lib/glassDefaults.js';
 
 type StageEntry = {
   id: string;
@@ -39,31 +24,25 @@ type StageSelectionDetail = {
 
 type StageRemovalDetail = StageSelectionDetail;
 
-const DEFAULT_CONTAINER_CONFIG: ContainerConfig = {
-  width: 340,
-  height: 160,
-  radius: 64,
-  bezelWidth: 72,
+const DEFAULT_STAGE_CONTAINER_CONFIG: GlassContainerParams = {
+  ...DEFAULT_GLASS_CONTAINER_PARAMS,
+  width: 640,
+  height: 320,
+  radius: 160,
+  bezelWidth: 160,
   glassThickness: 48,
-  surface: 'convex_squircle',
-  refractiveIndex: 1.48,
-  scalePx: 210,
-  blurKind: 'gauss',
+  refractiveIndex: 1.5,
+  scalePx: 160,
   blurStdDev: 0.24,
-  showSpecular: true,
   specularAngleDeg: 58,
   specularStrength: 0.95,
-  dispersion: 0.32,
-  disp_r: 6,
-  disp_g: 0,
-  disp_b: -6,
+  dispersion: 0, 
   frost: 0.18,
   saturation: 1.05,
 };
 
-const CONTAINERS_CHANGED_EVENT = 'demo-stage:containers-changed';
-const REMOVE_REQUEST_EVENT = 'demo-stage:remove-container';
-const SELECT_EVENT = 'demo-stage:select-container';
+const REMOVE_REQUEST_EVENT = REMOVE_CONTAINER_EVENT;
+const SELECT_EVENT = SELECT_CONTAINER_EVENT;
 
 class DemoStageController {
   private readonly stage: HTMLElement;
@@ -89,13 +68,13 @@ class DemoStageController {
     window.addEventListener(SELECT_EVENT, this.handleSelectionRequest);
 
     if (!this.containers.size) {
-      const entry = this.createContainer({ ...DEFAULT_CONTAINER_CONFIG });
+      const entry = this.createContainer({ ...DEFAULT_STAGE_CONTAINER_CONFIG });
       this.setActiveId(entry.id);
       this.emitChange(entry.id);
     }
   }
 
-  private createContainer(config: ContainerConfig, origin?: StageEntry): StageEntry {
+  private createContainer(config: GlassContainerParams, origin?: StageEntry): StageEntry {
     const container = document.createElement('liquid-glass-container') as LiquidGlassContainer;
     this.applyConfig(container, config);
 
@@ -145,7 +124,7 @@ class DemoStageController {
       top: Math.min(Math.max(top, rect.top), maxTop),
     };
   }
-  private applyConfig(container: LiquidGlassContainer, config: ContainerConfig) {
+  private applyConfig(container: LiquidGlassContainer, config: GlassContainerParams) {
     container.width = config.width;
     container.height = config.height;
     container.radius = config.radius;
@@ -159,15 +138,12 @@ class DemoStageController {
     container.showSpecular = config.showSpecular;
     container.specularAngleDeg = config.specularAngleDeg;
     container.specularStrength = config.specularStrength;
-    container.dispersion = config.dispersion;
-    container.disp_r = config.disp_r;
-    container.disp_g = config.disp_g;
-    container.disp_b = config.disp_b;
+    container.dispersion = config.dispersion; 
     container.frost = config.frost;
     container.saturation = config.saturation;
   }
 
-  private readConfig(container: LiquidGlassContainer): ContainerConfig {
+  private readConfig(container: LiquidGlassContainer): GlassContainerParams {
     return {
       width: container.width,
       height: container.height,
@@ -182,10 +158,7 @@ class DemoStageController {
       showSpecular: container.showSpecular,
       specularAngleDeg: container.specularAngleDeg,
       specularStrength: container.specularStrength,
-      dispersion: container.dispersion,
-      disp_r: container.disp_r,
-      disp_g: container.disp_g,
-      disp_b: container.disp_b,
+      dispersion: container.dispersion, 
       frost: container.frost,
       saturation: container.saturation,
     };
@@ -273,7 +246,7 @@ class DemoStageController {
 
   private handleAddClick() {
     const template = this.activeId ? this.containers.get(this.activeId) : undefined;
-    const config = template ? this.readConfig(template.container) : { ...DEFAULT_CONTAINER_CONFIG };
+    const config = template ? this.readConfig(template.container) : { ...DEFAULT_STAGE_CONTAINER_CONFIG };
     const entry = this.createContainer(config, template);
     entry.wrapper.focus({ preventScroll: true });
     this.setActiveId(entry.id);
