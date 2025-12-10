@@ -1,0 +1,16 @@
+{
+  "name": "svg-filter-core",
+  "version": "1.0.0",
+  "description": "Framework agnostic TypeScript utilities for computing the liquid glass displacement and specular maps used by the original project.",
+  "type": "module",
+  "exports": "./dist/index.js",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p .",
+    "test": "node --test ./tests/test.js"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}

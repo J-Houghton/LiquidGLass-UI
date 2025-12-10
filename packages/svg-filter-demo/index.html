@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Liquid Glass SVG Filter Demo</title>
+  <style>
+    :root {
+      /* Variables controlling the animated stripe background */
+      --stripe-color1: #ffffff;
+      --stripe-color2: #f0f0f0;
+      --stripe-speed: 10s;
+    }
+
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 1rem;
+      overflow: hidden;
+      /* Animated repeating stripes drawn on the page background */
+      background-image: repeating-linear-gradient(
+        135deg,
+        var(--stripe-color1),
+        var(--stripe-color1) 9.9px,
+        var(--stripe-color2) 9.9px,
+        var(--stripe-color2) 12.7px
+      );
+      background-size: 400% 400%;
+      animation: stripeAnim var(--stripe-speed) linear infinite;
+      position: relative;
+      height: 100vh;
+      box-sizing: border-box;
+    }
+
+    @keyframes stripeAnim {
+      from { background-position: 0 0; }
+      to { background-position: -200% 200%; }
+    }
+
+    /* Draggable control panel */
+    #control-panel {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      background: rgba(255,255,255,0.2);
+      border-radius: 8px;
+      padding: 0.5rem;
+      max-width: 320px;
+      cursor: move;
+      z-index: 20;
+    }
+
+    #control-panel h2 {
+      font-size: 1rem;
+      margin: 0 0 0.5rem;
+    }
+
+    #controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1rem;
+    }
+
+    #controls label {
+      display: flex;
+      flex-direction: column;
+      font-size: 0.8rem;
+      width: 140px;
+    }
+
+    /* Container for demo content and draggable glass */
+    #demo-area {
+      position: relative;
+      border: 1px dashed #ccc;
+      padding: 1rem;
+      border-radius: 8px;
+      max-width: 800px;
+      margin-top: 1rem;
+      background: rgba(0,0,0,0.05);
+      overflow: hidden;
+    }
+
+    #demo-content {
+      pointer-events: none;
+    }
+
+    #demo-content h2 {
+      margin: 0;
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+
+    #demo-content p {
+      margin: 0.5rem 0 1rem;
+      max-width: 600px;
+      line-height: 1.4;
+    }
+
+    #demo-content a {
+      color: #007acc;
+    }
+
+    /* Visual bars used to inspect refraction */
+    #gradient-bar,
+    #stripes-bar {
+      height: 80px;
+      border-radius: 8px;
+      margin-bottom: 0.75rem;
+    }
+
+    #gradient-bar {
+      background: linear-gradient(90deg, #444, #bbb);
+    }
+
+    #stripes-bar {
+      background-image: repeating-linear-gradient(135deg, #fff 0, #fff 10px, #ccc 10px, #ccc 20px);
+      background-size: 200% 200%;
+      animation: stripeBarAnim 20s linear infinite;
+    }
+
+    @keyframes stripeBarAnim {
+      from { background-position: 0 0; }
+      to { background-position: -100% 100%; }
+    }
+
+    /* The liquid glass overlay, draggable within demo-area */
+    #glass-container {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: move;
+      z-index: 10;
+    }
+
+    textarea {
+      width: 100%;
+      font-family: monospace;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <!-- Draggable configuration pane -->
+  <div id="control-panel">
+    <h2>Glass Controls</h2>
+    <div id="controls"></div>
+  </div>
+
+  <!-- Demonstration area: content plus a draggable glass overlay -->
+  <div id="demo-area">
+    <!-- Hidden SVG used to define the filter.  Kept in the light DOM so that backdrop-filter can reference it. -->
+    <svg id="filter-defs" style="position: absolute; width: 0; height: 0;" aria-hidden="true"></svg>
+    <div id="demo-content">
+      <h2>Readable, mixed-weight text</h2>
+      <p>
+        Real-time refraction and frost. Configurable surfaces. Drag anywhere.
+        <a href="#">Sample link</a> and <strong>bold text</strong> to test contrast.
+        Use this row to pass beneath your glass and verify displacement along edges and glyph stems.
+      </p>
+      <div id="gradient-bar"></div>
+      <div id="stripes-bar"></div>
+    </div>
+    <div id="glass-container"></div>
+  </div>
+
+  <details open>
+    <summary>Generated Filter Markup</summary>
+    <textarea id="filter-source" rows="12" readonly></textarea>
+  </details>
+
+  <script type="module">
+    import {
+      SURFACE_FNS,
+      calculateDisplacementCurve,
+      calculateDisplacementMap2,
+      buildSpecularImage,
+    } from '../svg-filter-core/dist/index.js';
+
+    // Create an SVG element with specified attributes.
+    function el(tag, attrs) {
+      const node = document.createElementNS('http://www.w3.org/2000/svg', tag);
+      for (const k of Object.keys(attrs)) {
+        node.setAttribute(k, String(attrs[k]));
+      }
+      return node;
+    }
+
+    // Convert ImageDataLike into a PNG data URL using a tiny canvas.
+    function imageDataToURL(img) {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      const id = new ImageData(img.data, img.width, img.height);
+      ctx.putImageData(id, 0, 0);
+      return canvas.toDataURL('image/png');
+    }
+
+    // Application state.  Extends the original parameters with background stripe settings.
+    const params = {
+      width: 300,
+      height: 120,
+      radius: 60,
+      bezelWidth: 60,
+      glassThickness: 50,
+      surface: 'convex_squircle',
+      refractiveIndex: 1.5,
+      scalePx: 180,
+      blurKind: 'gauss',
+      blurStdDev: 0.2,
+      showSpecular: true,
+      specularAngleDeg: 60,
+      specularStrength: 0.9,
+      dispersion: 0,
+      frost: 0.05,
+      saturation: 1,
+      stripeColor1: getComputedStyle(document.documentElement).getPropertyValue('--stripe-color1').trim() || '#ffffff',
+      stripeColor2: getComputedStyle(document.documentElement).getPropertyValue('--stripe-color2').trim() || '#f0f0f0',
+      stripeSpeed: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--stripe-speed')) || 10,
+    };
+
+    // Where we'll insert controls
+    const controlsContainer = document.getElementById('controls');
+
+    // Definitions for the control inputs, including new stripe parameters.
+    const controlDefs = [
+      { key: 'width', label: 'Width', type: 'number', min: 50, max: 800, step: 10 },
+      { key: 'height', label: 'Height', type: 'number', min: 50, max: 800, step: 10 },
+      { key: 'radius', label: 'Corner radius', type: 'number', min: 0, max: 200, step: 1 },
+      { key: 'bezelWidth', label: 'Bezel width', type: 'number', min: 1, max: 200, step: 1 },
+      { key: 'glassThickness', label: 'Glass thickness', type: 'number', min: 0, max: 200, step: 1 },
+      { key: 'surface', label: 'Surface', type: 'select', options: Object.keys(SURFACE_FNS) },
+      { key: 'refractiveIndex', label: 'Refractive index', type: 'number', min: 1, max: 3, step: 0.01 },
+      { key: 'scalePx', label: 'Refraction scale', type: 'number', min: 0, max: 500, step: 1 },
+      { key: 'blurKind', label: 'Blur type', type: 'select', options: ['gauss', 'noise1', 'noise2'] },
+      { key: 'blurStdDev', label: 'Blur stddev', type: 'number', min: 0, max: 5, step: 0.05 },
+      { key: 'showSpecular', label: 'Show specular', type: 'checkbox' },
+      { key: 'specularAngleDeg', label: 'Spec angle', type: 'number', min: 0, max: 360, step: 1 },
+      { key: 'specularStrength', label: 'Spec strength', type: 'number', min: 0, max: 2, step: 0.01 },
+      { key: 'dispersion', label: 'Dispersion', type: 'number', min: 0, max: 100, step: 1 },
+      { key: 'frost', label: 'Frost', type: 'number', min: 0, max: 1, step: 0.01 },
+      { key: 'saturation', label: 'Saturation', type: 'number', min: 0, max: 2, step: 0.01 },
+      { key: 'stripeColor1', label: 'Stripe color 1', type: 'color' },
+      { key: 'stripeColor2', label: 'Stripe color 2', type: 'color' },
+      { key: 'stripeSpeed', label: 'Stripe speed (s)', type: 'number', min: 1, max: 60, step: 1 },
+    ];
+
+    // Create a control input and append to the controls container
+    function addControl(def) {
+      const wrapper = document.createElement('label');
+      wrapper.textContent = def.label;
+      const input = document.createElement(def.type === 'select' ? 'select' : 'input');
+      if (def.type === 'checkbox') {
+          input.type = 'checkbox';
+          input.checked = Boolean(params[def.key]);
+      } else if (def.type === 'select') {
+          for (const opt of def.options) {
+            const o = document.createElement('option');
+            o.value = opt;
+            o.textContent = opt;
+            input.appendChild(o);
+          }
+          input.value = params[def.key];
+      } else {
+          input.type = def.type;
+          if (def.min !== undefined) input.min = def.min;
+          if (def.max !== undefined) input.max = def.max;
+          if (def.step !== undefined) input.step = def.step;
+          input.value = params[def.key];
+      }
+      input.addEventListener('input', () => {
+        if (def.type === 'checkbox') {
+          params[def.key] = input.checked;
+        } else if (def.type === 'select') {
+          params[def.key] = input.value;
+        } else if (def.type === 'color') {
+          params[def.key] = input.value;
+        } else {
+          params[def.key] = parseFloat(input.value);
+        }
+        if (def.key.startsWith('stripe')) {
+          updateBackground();
+        }
+        update();
+      });
+      wrapper.appendChild(input);
+      controlsContainer.appendChild(wrapper);
+    }
+
+    controlDefs.forEach(addControl);
+
+    // Update CSS variables for the background stripes.
+    function updateBackground() {
+      document.documentElement.style.setProperty('--stripe-color1', params.stripeColor1);
+      document.documentElement.style.setProperty('--stripe-color2', params.stripeColor2);
+      document.documentElement.style.setProperty('--stripe-speed', params.stripeSpeed + 's');
+    }
+
+    // Generate the SVG filter markup based on current parameters.
+    let currentDispUrl = '';
+    let currentSpecUrl = '';
+    const filterId = 'glassFilter';
+
+    function buildFilter(filterEl) {
+      const w = params.width;
+      const h = params.height;
+      const filter = el('filter', {
+        id: filterId,
+        x: 0,
+        y: 0,
+        width: w,
+        height: h,
+        filterUnits: 'userSpaceOnUse',
+        primitiveUnits: 'userSpaceOnUse',
+        'color-interpolation-filters': 'sRGB',
+      });
+      // Base images: displacement map and specular source
+      const dispImg = el('feImage', {
+        x: 0,
+        y: 0,
+        width: w,
+        height: h,
+        preserveAspectRatio: 'none',
+        result: 'map',
+        href: currentDispUrl,
+      });
+      const dispMap = el('feDisplacementMap', {
+        in: 'SourceGraphic',
+        in2: 'map',
+        xChannelSelector: 'R',
+        yChannelSelector: 'G',
+        scale: params.scalePx,
+        result: 'refr',
+      });
+      const specImg = el('feImage', {
+        x: 0,
+        y: 0,
+        width: w,
+        height: h,
+        preserveAspectRatio: 'none',
+        result: 'specSrc',
+        href: currentSpecUrl,
+      });
+      filter.appendChild(dispImg);
+      filter.appendChild(dispMap);
+      filter.appendChild(specImg);
+      // Track the last result to chain subsequent primitives
+      let lastResult = 'refr';
+      // Chromatic dispersion (optional)
+      if (params.dispersion > 0) {
+        const cIn = lastResult;
+        const splitR = el('feColorMatrix', {
+          in: cIn,
+          type: 'matrix',
+          values: '1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0',
+          result: 'refrR',
+        });
+        const splitG = el('feColorMatrix', {
+          in: cIn,
+          type: 'matrix',
+          values: '0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0',
+          result: 'refrG',
+        });
+        const splitB = el('feColorMatrix', {
+          in: cIn,
+          type: 'matrix',
+          values: '0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0',
+          result: 'refrB',
+        });
+        filter.appendChild(splitR);
+        filter.appendChild(splitG);
+        filter.appendChild(splitB);
+        const clamp = (v) => Math.max(-8, Math.min(8, v));
+        const base = clamp(params.dispersion * params.scalePx * 0.01);
+        const dispR = el('feDisplacementMap', {
+          in: 'refrR',
+          in2: 'map',
+          xChannelSelector: 'R',
+          yChannelSelector: 'G',
+          scale: clamp(base * 1),
+          result: 'refrR_disp',
+        });
+        const dispG = el('feDisplacementMap', {
+          in: 'refrG',
+          in2: 'map',
+          xChannelSelector: 'R',
+          yChannelSelector: 'G',
+          scale: clamp(base * 0),
+          result: 'refrG_disp',
+        });
+        const dispB = el('feDisplacementMap', {
+          in: 'refrB',
+          in2: 'map',
+          xChannelSelector: 'R',
+          yChannelSelector: 'G',
+          scale: clamp(base * -1),
+          result: 'refrB_disp',
+        });
+        filter.appendChild(dispR);
+        filter.appendChild(dispG);
+        filter.appendChild(dispB);
+        const blendRG = el('feBlend', {
+          in: 'refrR_disp',
+          in2: 'refrG_disp',
+          mode: 'screen',
+          result: 'refrRG',
+        });
+        const blendRGB = el('feBlend', {
+          in: 'refrRG',
+          in2: 'refrB_disp',
+          mode: 'screen',
+          result: 'rgbSum',
+        });
+        const alpha = el('feColorMatrix', {
+          in: cIn,
+          type: 'matrix',
+          values: '0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0',
+          result: 'refrA',
+        });
+        const clip = el('feComposite', {
+          in: 'rgbSum',
+          in2: 'refrA',
+          operator: 'in',
+          result: 'dispersionRGB',
+        });
+        const over = el('feComposite', {
+          in: 'dispersionRGB',
+          in2: cIn,
+          operator: 'over',
+          result: 'refrWithDisp',
+        });
+        filter.appendChild(blendRG);
+        filter.appendChild(blendRGB);
+        filter.appendChild(alpha);
+        filter.appendChild(clip);
+        filter.appendChild(over);
+        lastResult = 'refrWithDisp';
+      }
+      // Blur stage: gaussian or noise-driven
+      if (params.blurStdDev > 0) {
+        if (params.blurKind === 'gauss') {
+          const g = el('feGaussianBlur', {
+            in: lastResult,
+            stdDeviation: params.blurStdDev.toFixed(2),
+            result: 'blurred',
+          });
+          filter.appendChild(g);
+          lastResult = 'blurred';
+        } else {
+          const kind = params.blurKind === 'noise1' ? 'low' : 'high';
+          const baseFrequency = kind === 'low' ? 0.035 : 0.4;
+          const numOctaves = kind === 'low' ? 5 : 4;
+          const suffix = kind === 'low' ? 'low' : 'high';
+          const noise = el('feTurbulence', {
+            type: 'fractalNoise',
+            baseFrequency: String(baseFrequency),
+            numOctaves: String(numOctaves),
+            seed: '7',
+            result: `noise_${suffix}`,
+          });
+          const quant = el('feColorMatrix', {
+            in: `noise_${suffix}`,
+            type: 'matrix',
+            values: '1.8 0 0 0 -0.4  0 1.8 0 0 -0.4  0 0 1.8 0 -0.4  0 0 0 1 0',
+            result: `quant_${suffix}`,
+          });
+          const factor = kind === 'low' ? 20 : 40;
+          const disp = el('feDisplacementMap', {
+            in: lastResult,
+            in2: `quant_${suffix}`,
+            xChannelSelector: 'R',
+            yChannelSelector: 'G',
+            scale: (params.blurStdDev * factor * 100).toFixed(2),
+            result: `refrNoise_${suffix}`,
+          });
+          filter.appendChild(noise);
+          filter.appendChild(quant);
+          filter.appendChild(disp);
+          lastResult = `refrNoise_${suffix}`;
+        }
+      }
+      // Specular highlight stage
+      if (params.showSpecular) {
+        const comp = el('feComponentTransfer', {
+          in: 'specSrc',
+          result: 'specAdj',
+        });
+        const funcA = el('feFuncA', {
+          type: 'linear',
+          slope: params.specularStrength,
+        });
+        comp.appendChild(funcA);
+        const blend = el('feBlend', {
+          in: lastResult,
+          in2: 'specAdj',
+          mode: 'screen',
+          result: 'final',
+        });
+        filter.appendChild(comp);
+        filter.appendChild(blend);
+        lastResult = 'final';
+      }
+      filterEl.appendChild(filter);
+    }
+
+    // Recompute assets and apply them to the filter and glass container.
+    async function update() {
+      // 1D displacement curve for the selected surface
+      const surfFn = SURFACE_FNS[params.surface].fn;
+      const disp1D = calculateDisplacementCurve(
+        params.glassThickness,
+        params.bezelWidth,
+        surfFn,
+        params.refractiveIndex,
+        512,
+      );
+      const maxAbs = disp1D.reduce((m, v) => Math.max(m, Math.abs(v)), 1);
+      // 2D displacement map at device pixel ratio
+      const disp2D = calculateDisplacementMap2(
+        params.width,
+        params.height,
+        params.radius,
+        params.bezelWidth,
+        maxAbs,
+        disp1D,
+        window.devicePixelRatio || 1,
+      );
+      currentDispUrl = imageDataToURL(disp2D);
+      if (params.showSpecular && params.specularStrength > 0) {
+        const specImg = buildSpecularImage(
+          params.width,
+          params.height,
+          params.radius,
+          params.bezelWidth,
+          params.specularAngleDeg,
+          params.specularStrength,
+          window.devicePixelRatio || 1,
+          2,
+        );
+        currentSpecUrl = imageDataToURL(specImg);
+      } else {
+        // Transparent pixel as fallback for specular image
+        currentSpecUrl = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+      }
+      // Refresh filter definition
+      const defs = document.getElementById('filter-defs');
+      defs.innerHTML = '';
+      buildFilter(defs);
+      // Apply styling to the glass container
+      const container = document.getElementById('glass-container');
+      container.style.width = params.width + 'px';
+      container.style.height = params.height + 'px';
+      container.style.borderRadius = params.radius + 'px';
+      container.style.backdropFilter = `url(#${filterId}) saturate(${params.saturation})`;
+      container.style.webkitBackdropFilter = `url(#${filterId}) saturate(${params.saturation})`;
+      container.style.background = `rgba(0,0,0,${params.frost})`;
+      // Display the raw markup for inspection
+      const textarea = document.getElementById('filter-source');
+      textarea.value = defs.innerHTML.trim();
+    }
+
+    // Make an element draggable; optionally restrict movement to its parent
+    function makeDraggable(el, restrictToParent = false) {
+      let isDragging = false;
+      let startX = 0;
+      let startY = 0;
+      let origX = 0;
+      let origY = 0;
+      const parent = restrictToParent ? el.parentElement : document.body;
+      el.addEventListener('pointerdown', (e) => {
+        isDragging = true;
+        el.setPointerCapture(e.pointerId);
+        origX = parseFloat(el.dataset.dx) || 0;
+        origY = parseFloat(el.dataset.dy) || 0;
+        startX = e.clientX;
+        startY = e.clientY;
+      });
+      el.addEventListener('pointermove', (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        let newX = origX + dx;
+        let newY = origY + dy;
+        if (restrictToParent) {
+          const pRect = parent.getBoundingClientRect();
+          const cRect = el.getBoundingClientRect();
+          const maxX = pRect.width - cRect.width;
+          const maxY = pRect.height - cRect.height;
+          newX = Math.min(maxX, Math.max(0, newX));
+          newY = Math.min(maxY, Math.max(0, newY));
+        }
+        el.style.transform = `translate(${newX}px, ${newY}px)`;
+        el.dataset.dx = newX;
+        el.dataset.dy = newY;
+      });
+      el.addEventListener('pointerup', (e) => {
+        isDragging = false;
+        el.releasePointerCapture(e.pointerId);
+      });
+      el.addEventListener('pointercancel', (e) => {
+        isDragging = false;
+        el.releasePointerCapture(e.pointerId);
+      });
+    }
+
+    // Apply draggable behavior to the control panel and glass container
+    makeDraggable(document.getElementById('control-panel'), false);
+    makeDraggable(document.getElementById('glass-container'), true);
+
+    // Initialize CSS variables and compute the initial filter
+    updateBackground();
+    update();
+  </script>
+</body>
+</html>
