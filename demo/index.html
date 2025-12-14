@@ -4,120 +4,77 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Liquid Glass Demo</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      padding: 2rem;
-      background: #f5f7fa;
-      color: #1a1a1a;
-    }
-    .controls {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1rem;
-      margin-bottom: 2rem;
-    }
-    .controls label {
-      display: flex;
-      flex-direction: column;
-      font-size: 0.875rem;
-    }
-    .demo-area {
-      width: 100%;
-      height: 300px;
-      position: relative;
-      background-image: url('https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=1200&q=60');
-      background-size: cover;
-      background-position: center;
-      border-radius: 1rem;
-      overflow: hidden;
-    }
-    .demo-area p {
-      position: absolute;
-      bottom: 1rem;
-      right: 1rem;
-      margin: 0;
-      padding: 0.5rem 1rem;
-      background: rgba(255, 255, 255, 0.6);
-      backdrop-filter: blur(4px);
-      border-radius: 0.5rem;
-      font-weight: bold;
-    }
-  </style>
+  <link rel="stylesheet" href="./ui/demoPage.css" />
 </head>
 <body>
-  <h1>Liquid Glass Filter Demo</h1>
-  <p>Use the controls below to adjust the filter parameters and observe the effect in real‑time.</p>
-  <div class="controls">
-    <label>Width (px)
-      <input type="number" id="width" value="300" min="50" max="600" />
-    </label>
-    <label>Height (px)
-      <input type="number" id="height" value="120" min="50" max="400" />
-    </label>
-    <label>Radius (px)
-      <input type="number" id="radius" value="60" min="0" max="200" />
-    </label>
-    <label>Bezel (px)
-      <input type="number" id="bezel" value="60" min="1" max="200" />
-    </label>
-    <label>Scale
-      <input type="number" id="scale" value="180" min="0" max="400" />
-    </label>
-    <label>Blur σ
-      <input type="number" step="0.05" id="blur" value="0.2" min="0" max="1" />
-    </label>
-    <label>Dispersion
-      <input type="number" step="0.1" id="dispersion" value="0" min="0" max="5" />
-    </label>
-    <label>Show specular
-      <input type="checkbox" id="specular" checked />
-    </label>
-  </div>
-  <div class="demo-area">
-    <!-- The filter definition is hidden but present in the DOM -->
-    <liquid-glass-filter
-      id="demoFilter"
-      filter-id="demoGlass"
-      width="300"
-      height="120"
-      radius="60"
-      bezel-width="60"
-      glass-thickness="50"
-      scale-px="180"
-      blur-std-dev="0.2"
-      dispersion="0"
-      show-specular
-    ></liquid-glass-filter>
-    <div class="glass-overlay" style="position:absolute; inset:0; pointer-events:none; border-radius:1rem; background: rgba(255,255,255,0.1); backdrop-filter: url(#demoGlass) saturate(1);
-      -webkit-backdrop-filter: url(#demoGlass) saturate(1);"></div>
-    <p>Backdrop content goes here</p>
-  </div>
+  <main class="demo-layout">
+    <header class="demo-header">
+      <h1>Liquid Glass Filter Demo</h1>
+      <p>Experiment with refraction, chromatic dispersion and frost blends using the floating control pane. Select any liquid glass container to see updates in real time.</p>
+    </header>
 
-  <script type="module">
+    <section class="demo-workspace" data-demo-workspace data-layout="columns" data-mode="iphone">
+      <section class="demo-stage" aria-labelledby="stage-title" data-demo-stage>
+        <div class="demo-stage__content">
+          <h2 id="stage-title">Future-ready glass UI</h2>
+          <p>Blend refraction, specular highlights and chromatic aberration to craft immersive glassmorphism surfaces. Fine-tune every optical parameter with the draggable pane.</p>
+          <div class="demo-stage__badges" aria-hidden="true">
+            <span class="demo-stage__badge">Realtime</span>
+            <span class="demo-stage__badge">WebGL-free</span>
+            <span class="demo-stage__badge">Customizable</span>
+          </div>
+          <div class="demo-stage__actions">
+            <button type="button" data-action="add-container">Add container</button>
+          </div>
+        </div>
+      </section>
+      <ios-home-screen data-simulator></ios-home-screen>
+    </section>
+  </main>
+
+ <script type="module">
     import '../src/index.ts';
-    const filter = document.getElementById('demoFilter');
-    const inputs = {
-      width: document.getElementById('width'),
-      height: document.getElementById('height'),
-      radius: document.getElementById('radius'),
-      bezel: document.getElementById('bezel'),
-      scale: document.getElementById('scale'),
-      blur: document.getElementById('blur'),
-      dispersion: document.getElementById('dispersion'),
-      specular: document.getElementById('specular'),
+    
+    import './ui/demoStage.ts';
+    import './ui/configPane.ts';
+    import './ui/iosHomeScreen.ts';
+
+    const workspace = document.querySelector('[data-demo-workspace]');
+    const simulator = document.querySelector('ios-home-screen');
+    const stage = document.querySelector('[data-demo-stage]');
+
+    const applyModeLayout = (mode) => {
+      if (!workspace) return;
+      workspace.dataset.mode = mode;
+      workspace.dataset.layout = 'columns'; // always 2 columns
     };
-    function update() {
-      filter.width = Number(inputs.width.value);
-      filter.height = Number(inputs.height.value);
-      filter.radius = Number(inputs.radius.value);
-      filter.bezelWidth = Number(inputs.bezel.value);
-      filter.scalePx = Number(inputs.scale.value);
-      filter.blurStdDev = Number(inputs.blur.value);
-      filter.dispersion = Number(inputs.dispersion.value);
-      filter.showSpecular = inputs.specular.checked;
+
+    if (workspace && simulator) {
+      customElements.whenDefined('ios-home-screen').then(() => {
+        const currentMode = simulator.getAttribute('mode') ?? 'iphone';
+        applyModeLayout(currentMode);
+        simulator.addEventListener('mode-change', (event) => {
+          const { detail } = /** @type {CustomEvent} */ (event);
+          if (detail?.mode) {
+            applyModeLayout(detail.mode);
+          }
+        });
+      });
     }
-    Object.values(inputs).forEach((el) => el.addEventListener('input', update));
+    // Keep demo stage height ~ equal to the iOS home screen height
+    const syncStageHeight = () => {
+      if (!stage || !simulator) return;
+      const rect = simulator.getBoundingClientRect();
+      // set min-height to actual device height to avoid shrink on small content
+      stage.style.minHeight = `${Math.round(rect.height)}px`;
+    };
+     if (simulator) {
+       const ro = new ResizeObserver(syncStageHeight);
+       ro.observe(simulator);
+     }
+    // Also run once on load and on window resize
+    syncStageHeight();
+    window.addEventListener('resize', syncStageHeight, { passive: true });
   </script>
 </body>
 </html>

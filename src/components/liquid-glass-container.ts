@@ -2,25 +2,15 @@ import { LitElement, html } from 'lit';
 import type { PropertyValues } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { generateUniqueFilterId } from './liquid-glass-filter.js';
-import { DEFAULT_GLASS_CONTAINER_PARAMS, type GlassContainerParams } from './glassDefaults.js';
+// UPDATED IMPORT
+import { DEFAULT_GLASS_CONTAINER_PARAMS, type GlassContainerParams } from '../core/defaults.js';
 
 const DEFAULT_CONTAINER_FILTER_ID = 'lg-container-filter';
-/**
- * `<liquid-glass-container>` combines a liquid glass filter definition with a
- * convenient overlay.  It positions itself using the provided width, height
- * and radius and applies a translucent frosted backdrop using the generated
- * filter.  The element does not capture pointer events, allowing
- * interaction to pass through to elements underneath.
- *
- * All optical parameters are forwarded to an internal `<liquid-glass-filter>`.
- */
+
 @customElement('liquid-glass-container')
 export class LiquidGlassContainer extends LitElement {
-  // Render into light DOM so that the nested filter is globally visible
   protected createRenderRoot() { return this; }
 
-  /** Unique id for the nested filter definition.  This id is referenced by
-   * the backdrop-filter on the overlay. */
 @property({ type: String, attribute: 'filter-id' }) filterId = DEFAULT_CONTAINER_FILTER_ID;
 
   private resolvedFilterId = DEFAULT_CONTAINER_FILTER_ID;
@@ -66,7 +56,6 @@ export class LiquidGlassContainer extends LitElement {
     return candidate;
   }
 
-  // Geometry and material properties mirrored to the internal filter
   @property({ type: Number }) width = DEFAULT_GLASS_CONTAINER_PARAMS.width;
   @property({ type: Number }) height = DEFAULT_GLASS_CONTAINER_PARAMS.height;
   @property({ type: Number }) radius = DEFAULT_GLASS_CONTAINER_PARAMS.radius;
@@ -82,20 +71,11 @@ export class LiquidGlassContainer extends LitElement {
   @property({ type: Number, attribute: 'specular-angle-deg' }) specularAngleDeg = DEFAULT_GLASS_CONTAINER_PARAMS.specularAngleDeg;
   @property({ type: Number, attribute: 'specular-strength' }) specularStrength = DEFAULT_GLASS_CONTAINER_PARAMS.specularStrength;
  
-  /** Frost overlay opacity.  A value between 0 and 1. */
   @property({ type: Number }) frost = DEFAULT_GLASS_CONTAINER_PARAMS.frost;
-  /** Saturation multiplier applied to the backdrop. */
   @property({ type: Number }) saturation = DEFAULT_GLASS_CONTAINER_PARAMS.saturation;
 
-
-  /**
-   * The component does not perform any custom update cycle – the nested
-   * `<liquid-glass-filter>` takes care of image generation based on the
-   * forwarded properties.  Here we simply compute inline styles and render
-   * the container and overlay.
-   */
   protected render() {
-        const filterId = this.resolvedFilterId = this.resolveFilterId();
+    const filterId = this.resolvedFilterId = this.resolveFilterId();
     const containerStyle = `position:relative; display:block; width:${this.width}px; height:${this.height}px; border-radius:${this.radius}px;`;
     const overlayStyle = [
       'position:absolute',
@@ -105,7 +85,6 @@ export class LiquidGlassContainer extends LitElement {
       `backdrop-filter: url(#${filterId}) saturate(${this.saturation})`,
       `-webkit-backdrop-filter: url(#${filterId}) saturate(${this.saturation})`,
       'border-radius: inherit',
-      // background: light-dark(hsl(0 0% 100% / ${this.frost}), hsl(0 0% 0% / ${this.frost}));
     ].join(';');
     return html`<div style="${containerStyle}">
       <liquid-glass-filter
@@ -127,11 +106,5 @@ export class LiquidGlassContainer extends LitElement {
       ></liquid-glass-filter>
       <div style="${overlayStyle}"></div>
     </div>`;
-  }
-}
-
-declare global {
-  interface HTMLElementTagNameMap {
-    'liquid-glass-container': LiquidGlassContainer;
   }
 }

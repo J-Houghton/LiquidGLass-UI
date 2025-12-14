@@ -1,3 +1,4 @@
+// src/core/images.ts
 import { SURFACE_FNS, type SurfaceKind } from './optics/surfaces.js';
 import { calculateDisplacementMap } from './optics/disp1d.js';
 import { calculateDisplacementMap2 } from './optics/disp2d.js';
@@ -30,7 +31,7 @@ export async function rebuildDisplacementIfNeeded(
     surface: state.surface,
   });
   if (cache.dispKey === dispKey) return;
-  // compute 1D map
+  
   const disp1D = calculateDisplacementMap(
     v.glassThickness_eff,
     v.bezelWidth,
@@ -47,7 +48,7 @@ export async function rebuildDisplacementIfNeeded(
     maxAbs,
     disp1D
   );
-  // release previous URL
+  
   if (cache.dispUrl) URL.revokeObjectURL(cache.dispUrl);
   cache.dispUrl = await imageDataToBlobURL(img);
   cache.dispKey = dispKey;
@@ -82,7 +83,7 @@ export async function rebuildSpecularIfNeeded(
     on: state.showSpecular,
   });
   if (cache.specKey === specKey) return;
-  // release previous URL
+  
   if (cache.specUrl) {
     URL.revokeObjectURL(cache.specUrl);
     cache.specUrl = null;

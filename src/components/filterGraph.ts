@@ -1,9 +1,9 @@
 import type { LitElement } from 'lit';
-import { clearDynamic, build } from './filters/core.js';
-import { chromatic } from './filters/chromatic.js';
-import { blur } from './filters/blur.js';
-import { noiseBlur } from './filters/noiseBlur.js';
-import { specular } from './filters/specularFilter.js';
+import { clearDynamic, build } from '../core/filters/core.js';
+import { chromatic } from '../core/filters/chromatic.js';
+import { blur } from '../core/filters/blur.js';
+import { noiseBlur } from '../core/filters/noiseBlur.js';
+import { specular } from '../core/filters/specularFilter.js';
 
 /**
  * Runtime builder for a composable SVG filter graph.  Given a host element,

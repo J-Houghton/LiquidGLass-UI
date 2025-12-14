@@ -1,4 +1,4 @@
-export { LiquidGlassFilter } from './lib/liquid-glass-filter.js';
-export { LiquidGlassContainer } from './lib/liquid-glass-container.js';
-export * from './lib/optics/surfaces.js';
-export * from './lib/validation/geometry.js';
+export { LiquidGlassFilter } from './components/liquid-glass-filter.js';
+export { LiquidGlassContainer } from './components/liquid-glass-container.js';
+export * from './core/optics/surfaces.js';
+export * from './core/validation/geometry.js';

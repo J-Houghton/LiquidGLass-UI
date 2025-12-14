@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { scoreDisplacement, type Score } from './metrics';
 
 // New implementation
-import { calculateDisplacementMap as newDisp1D } from '../src/lib/optics/disp1d';
-import { calculateDisplacementMap2 as newDisp2D } from '../src/lib/optics/disp2d';
-import { SURFACE_FNS as NEW_SURFACES } from '../src/lib/optics/surfaces';
+import { calculateDisplacementMap as newDisp1D } from '../src/core/optics/disp1d';
+import { calculateDisplacementMap2 as newDisp2D } from '../src/core/optics/disp2d';
+import { SURFACE_FNS as NEW_SURFACES } from '../src/core/optics/surfaces';
 
 // Original implementation (kept under tests/)
 import { calculateDisplacementMap as origDisp1D } from './orig_displacement_funcs/displacementmap';
