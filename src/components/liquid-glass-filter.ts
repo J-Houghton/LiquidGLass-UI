@@ -1,8 +1,8 @@
 import { LitElement, html } from 'lit';
 import { customElement, property, query } from 'lit/decorators.js';
-import { FilterGraph } from './filterGraph.js';
-// UPDATED IMPORTS
+import { FilterGraph } from './filterGraph.js'; 
 import { rebuildDisplacementIfNeeded, rebuildSpecularIfNeeded } from '../core/images.js';
+import { cache } from '../core/fx/filterCache.js';
 import { asSurfaceKind } from '../core/optics/surfaces.js';
 import { validate, type Validated } from '../core/validation/geometry.js';
 import type { PropertyValues } from 'lit';
@@ -45,7 +45,8 @@ export class LiquidGlassFilter extends LitElement {
   @property({ type: Number }) saturation = 1;  
   @property({ type: Number }) frost = 0.05; 
  
-  @property({ type: Number }) dispersion = 0;  
+  @property({ type: Number }) dispersion = 0;
+  @property({ type: Number, attribute: 'chromatic-bezel-factor' }) chromaticBezelFactor = 4;
 
   @query('feImage[result="map"]') private feMap!: SVGFEImageElement;
   @query('feDisplacementMap') private dispEl!: SVGFEDisplacementMapElement;
@@ -115,9 +116,23 @@ export class LiquidGlassFilter extends LitElement {
     }
     await rebuildDisplacementIfNeeded(
       v,
-      { refractiveIndex: this.refractiveIndex, surface: asSurfaceKind(this.surface) },
+      {
+        refractiveIndex: this.refractiveIndex,
+        surface: asSurfaceKind(this.surface),
+        chromaticBezelFactor: this.chromaticBezelFactor
+      },
       this.feMap
     );
+    
+    // Emit event with the new map URL
+    if (cache.dispUrl) {
+        this.dispatchEvent(new CustomEvent('displacement-updated', {
+            detail: { url: cache.dispUrl },
+            bubbles: true,
+            composed: true
+        }));
+    }
+
     if (this.dispEl) {
       this.dispEl.setAttribute('xChannelSelector', 'R');
       this.dispEl.setAttribute('yChannelSelector', 'G');

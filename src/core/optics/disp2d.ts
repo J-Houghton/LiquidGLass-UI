@@ -25,12 +25,14 @@ export function calculateDisplacementMap2(
   bezelWidth: number,
   maximumDisplacement: number,
   precomputedDisplacementMap: number[] = [],
-  dpr?: number
+  dpr?: number,
+  chromaticBezelFactor: number = 4
 ): ImageData {
   const DPR = dpr ?? (typeof window !== 'undefined' ? (window.devicePixelRatio ?? 1) : 1);
   const W = Math.round(canvasWidth * DPR);
   const H = Math.round(canvasHeight * DPR);
   const imageData = new ImageData(W, H);
+  // Initialize: R=128 (0 vector), G=128 (0 vector), B=0 (No Chromatic Mask), A=255 (Opaque)
   new Uint32Array(imageData.data.buffer).fill(0xff008080);
 
   const R = Math.round(radius * DPR);
@@ -69,10 +71,8 @@ export function calculateDisplacementMap2(
       let t = 0;
 
       // corner sector
-      const onL = x < R;
-      const onR = x >= W - R;
-      const onT = y < R;
-      const onB = y >= H - R;
+      const onL = x < R, onR = x >= W - R;
+      const onT = y < R, onB = y >= H - R;
       if ((onL || onR) && (onT || onB)) {
         const flatW = W - 2 * R;
         const flatH = H - 2 * R;
@@ -83,35 +83,16 @@ export function calculateDisplacementMap2(
         ny = cy / dist;
         t = R - dist; // 0 at rim → B at inner edge
       } else {
-        // flats: pick the nearest edge
-        const dL = x;
-        const dR = W - 1 - x;
-        const dT = y;
-        const dB = H - 1 - y;
+        const dL = x, dR = W - 1 - x, dT = y, dB = H - 1 - y;
         const m = Math.min(dL, dR, dT, dB);
-        if (m === dT) {
-          nx = 0;
-          ny = -1;
-          t = dT;
-        } else if (m === dB) {
-          nx = 0;
-          ny = +1;
-          t = dB;
-        } else if (m === dL) {
-          nx = -1;
-          ny = 0;
-          t = dL;
-        } else {
-          nx = +1;
-          ny = 0;
-          t = dR;
-        }
+        if (m === dT) { nx = 0; ny = -1; t = dT; }
+        else if (m === dB) { nx = 0; ny = +1; t = dB; }
+        else if (m === dL) { nx = -1; ny = 0; t = dL; }
+        else { nx = +1; ny = 0; t = dR; }
       }
 
       const u = Math.max(0, Math.min(1, t / B)); // [0..1] across bezel
-      // const i = Math.min(precomputedDisplacementMap.length - 1, (u * precomputedDisplacementMap.length) | 0);
-      // const disp = precomputedDisplacementMap[i] || 0;
-
+      
       const f = u * (precomputedDisplacementMap.length - 1);
       const i0 = Math.max(0, Math.floor(f));
       const i1 = Math.min(precomputedDisplacementMap.length - 1, i0 + 1);
@@ -120,13 +101,20 @@ export function calculateDisplacementMap2(
       const disp = (precomputedDisplacementMap[i0] ?? 0) * w0 + (precomputedDisplacementMap[i1] ?? 0) * w1;
 
 
-      // outward normal → use -n for inward refraction feel, same as before
+      // outward normal → use -n for inward refraction feel
       const dX = (-nx * disp) / maximumDisplacement;
       const dY = (-ny * disp) / maximumDisplacement;
 
       imageData.data[idx + 0] = 128 + dX * 127;
       imageData.data[idx + 1] = 128 + dY * 127;
-      imageData.data[idx + 2] = 0;
+      
+      // Blue Channel: Chromatic Bezel Mask
+      // Limit the chromatic effect to the outer chromaticBezelFactor% of the bezel 
+      const maskVal = Math.max(0, 1 - u * chromaticBezelFactor);
+      
+      // Apply quadratic falloff for smoother fade
+      imageData.data[idx + 2] = Math.floor(maskVal * maskVal * 255);
+      
       imageData.data[idx + 3] = 255;
     }
   }

@@ -1,115 +1,97 @@
-// filters/chromatic.ts
 import { el, append } from './core.js';
 import type { Stage } from './core.js';
 
-/** Lightweight chromatic split/offset/recombine with single alpha clip. */
-export const chromatic: Stage = (f, input) => {
-  // Split the incoming image into separate R, G and B channels.  We
-  // deliberately avoid assigning global IDs to these primitives so that
-  // multiple filters on the same page do not clash.  Instead we mark
-  // the displacement nodes with data attributes so they can be adjusted later
-  // without relying on unique ids.
-  const refrR = el('feColorMatrix', {
-    in: input,
+/**
+ * Fast chromatic aberration using simple offsets, masked by the displacement map's Blue channel.
+ * This ensures the chromatic effect appears only on the bezel/edges, not the flat center.
+ */
+export const chromaticFast: Stage = (f, input) => {
+  // 1. Extract the Mask from the Map (Blue channel -> Alpha)
+  // The map is expected to be available at 'map'
+  const mask = el('feColorMatrix', {
+    in: 'map', 
     type: 'matrix',
+    // R=0, G=0, B=0, A=Blue. This creates an alpha mask from the Blue channel.
+    values: '0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0',
+    result: 'chromaticMask',
+    'data-dyn': '1'
+  });
+
+  // 2. Split Input into Channels
+  const r = el('feColorMatrix', {
+    in: input, type: 'matrix',
     values: '1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0',
-    result: 'refrR',
-    'data-dyn': '1',
+    result: 'fastR', 'data-dyn': '1'
   });
-  const refrG = el('feColorMatrix', {
-    in: input,
-    type: 'matrix',
+  const g = el('feColorMatrix', {
+    in: input, type: 'matrix',
     values: '0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0',
-    result: 'refrG',
-    'data-dyn': '1',
+    result: 'fastG', 'data-dyn': '1'
   });
-  const refrB = el('feColorMatrix', {
-    in: input,
-    type: 'matrix',
+  const b = el('feColorMatrix', {
+    in: input, type: 'matrix',
     values: '0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0',
-    result: 'refrB',
-    'data-dyn': '1',
+    result: 'fastB', 'data-dyn': '1'
   });
 
-  // Create per-channel displacement maps.  These use data-role attributes so
-  // they can be located relative to the filter root without risk of id
-  // collisions.  The displacement scale will be adjusted in updateParams() on
-  // the FilterGraph.
-  const dispR = el('feDisplacementMap', {
-    in: 'refrR',
-    in2: 'map',
-    xChannelSelector: 'R',
-    yChannelSelector: 'G',
-    scale: '0',
-    result: 'refrR_disp',
-    'data-dyn': '1',
-    'data-role': 'dispR',
+  // 3. Offset Red and Blue
+  const offR = el('feOffset', {
+    in: 'fastR', dx: '0', dy: '0', result: 'offR_shifted',
+    'data-dyn': '1', 'data-role': 'offR'
   });
-  const dispG = el('feDisplacementMap', {
-    in: 'refrG',
-    in2: 'map',
-    xChannelSelector: 'R',
-    yChannelSelector: 'G',
-    scale: '0',
-    result: 'refrG_disp',
-    'data-dyn': '1',
-    'data-role': 'dispG',
-  });
-  const dispB = el('feDisplacementMap', {
-    in: 'refrB',
-    in2: 'map',
-    xChannelSelector: 'R',
-    yChannelSelector: 'G',
-    scale: '0',
-    result: 'refrB_disp',
-    'data-dyn': '1',
-    'data-role': 'dispB',
+  const offB = el('feOffset', {
+    in: 'fastB', dx: '0', dy: '0', result: 'offB_shifted',
+    'data-dyn': '1', 'data-role': 'offB'
   });
 
-  // Blend the channel offsets back together.
+  // 4. Composite Offsets with Mask (Bezel Area)
+  // in operator: Source * DestinationAlpha (where destination is our mask)
+  const rBezel = el('feComposite', {
+    in: 'offR_shifted', in2: 'chromaticMask', operator: 'in', result: 'rBezel', 'data-dyn': '1'
+  });
+  const bBezel = el('feComposite', {
+    in: 'offB_shifted', in2: 'chromaticMask', operator: 'in', result: 'bBezel', 'data-dyn': '1'
+  });
+
+  // 5. Composite Originals with Inverse Mask (Center Area)
+  // out operator: Source * (1 - DestinationAlpha)
+  const rCenter = el('feComposite', {
+    in: 'fastR', in2: 'chromaticMask', operator: 'out', result: 'rCenter', 'data-dyn': '1'
+  });
+  const bCenter = el('feComposite', {
+    in: 'fastB', in2: 'chromaticMask', operator: 'out', result: 'bCenter', 'data-dyn': '1'
+  });
+
+  // 6. Combine Bezel + Center for each channel
+  // arithmetic k2=1 k3=1 corresponds to A + B
+  const finalR = el('feComposite', {
+    in: 'rBezel', in2: 'rCenter', operator: 'arithmetic',
+    k1: '0', k2: '1', k3: '1', k4: '0', result: 'finalR', 'data-dyn': '1'
+  });
+  const finalB = el('feComposite', {
+    in: 'bBezel', in2: 'bCenter', operator: 'arithmetic',
+    k1: '0', k2: '1', k3: '1', k4: '0', result: 'finalB', 'data-dyn': '1'
+  });
+
+  // 7. Blend Channels Back Together
+  // Green passes through untouched (anchored)
   const blendRG = el('feBlend', {
-    in: 'refrR_disp',
-    in2: 'refrG_disp',
-    mode: 'screen',
-    result: 'refrRG',
-    'data-dyn': '1',
+    in: 'finalR', in2: 'fastG', mode: 'screen', result: 'fastRG', 'data-dyn': '1'
   });
   const blendRGB = el('feBlend', {
-    in: 'refrRG',
-    in2: 'refrB_disp',
-    mode: 'screen',
-    result: 'rgbSum',
-    'data-dyn': '1',
+    in: 'fastRG', in2: 'finalB', mode: 'screen', result: 'fastRGB', 'data-dyn': '1'
   });
 
-  // Extract the alpha channel from the original refracted image.
+  // 8. Final Alpha Clip (Edge cleanup)
   const alpha = el('feColorMatrix', {
-    in: input,
-    type: 'matrix',
+    in: input, type: 'matrix',
     values: '0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0',
-    result: 'refrA',
-    'data-dyn': '1',
+    result: 'fastA', 'data-dyn': '1'
+  });
+  const final = el('feComposite', {
+    in: 'fastRGB', in2: 'fastA', operator: 'in', result: 'chromaticFastOut', 'data-dyn': '1'
   });
 
-  // Apply the alpha mask to the recombined RGB image to prevent hard
-  // coloured fringes at the edges.
-  const rgbClipped = el('feComposite', {
-    in: 'rgbSum',
-    in2: 'refrA',
-    operator: 'in',
-    result: 'dispersionRGB',
-    'data-dyn': '1',
-  });
-
-  // Composite the dispersion layer back over the original input.
-  const over = el('feComposite', {
-    in: 'dispersionRGB',
-    in2: input,
-    operator: 'over',
-    result: 'refrWithDisp',
-    'data-dyn': '1',
-  });
-
-  append(f, refrR, refrG, refrB, dispR, dispG, dispB, blendRG, blendRGB, alpha, rgbClipped, over);
-  return 'refrWithDisp';
+  append(f, mask, r, g, b, offR, offB, rBezel, bBezel, rCenter, bCenter, finalR, finalB, blendRG, blendRGB, alpha, final);
+  return 'chromaticFastOut';
 };

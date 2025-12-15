@@ -18,6 +18,7 @@ export type GlassContainerParams = {
   specularAngleDeg: number;
   specularStrength: number;
   dispersion: number;
+  chromaticBezelFactor: number;
   frost: number;
   saturation: number;
 };
@@ -37,6 +38,7 @@ export const DEFAULT_GLASS_CONTAINER_PARAMS: GlassContainerParams = {
   specularAngleDeg: 60,
   specularStrength: 0.9,
   dispersion: 0,
+  chromaticBezelFactor: 4, // Default to 25% of bezel
   frost: 0.05,
   saturation: 1,
 };

@@ -6,6 +6,7 @@ import {
   SELECT_CONTAINER_EVENT,
   type GlassContainerParams,
 } from '../../src/core/defaults.js';
+import { PRESETS, BACKGROUNDS, type Preset } from './presets.js';
 
 type StageEntry = {
   id: string;
@@ -13,68 +14,163 @@ type StageEntry = {
   container: LiquidGlassContainer;
 };
 
-type StageContainersChangedDetail = {
-  containers: string[];
-  activeId?: string;
-};
-
-type StageSelectionDetail = {
-  id: string;
-};
-
-type StageRemovalDetail = StageSelectionDetail;
-
-const DEFAULT_STAGE_CONTAINER_CONFIG: GlassContainerParams = {
-  ...DEFAULT_GLASS_CONTAINER_PARAMS,
-  width: 640,
-  height: 320,
-  radius: 160,
-  bezelWidth: 160,
-  glassThickness: 48,
-  refractiveIndex: 1.5,
-  scalePx: 160,
-  blurStdDev: 0.24,
-  specularAngleDeg: 58,
-  specularStrength: 0.95,
-  dispersion: 0, 
-  frost: 0.18,
-  saturation: 1.05,
-};
+// Simplified event types
+type StageContainersChangedDetail = { containers: string[]; activeId?: string; };
 
 const REMOVE_REQUEST_EVENT = REMOVE_CONTAINER_EVENT;
 const SELECT_EVENT = SELECT_CONTAINER_EVENT;
 
-class DemoStageController {
+export class DemoStageController {
   private readonly stage: HTMLElement;
-  private readonly addButton: HTMLButtonElement | null;
   private readonly containers = new Map<string, StageEntry>();
   private activeId: string | undefined;
   private idCounter = 0;
+  
+  // Ghost preview
+  private ghostWrapper: HTMLDivElement | null = null;
+  private ghostContainer: LiquidGlassContainer | null = null;
 
   constructor(stage: HTMLElement) {
     this.stage = stage;
-    this.addButton = stage.querySelector<HTMLButtonElement>('[data-action="add-container"]');
-
-    this.handleAddClick = this.handleAddClick.bind(this);
     this.handleRemoveRequest = this.handleRemoveRequest.bind(this);
     this.handleSelectionRequest = this.handleSelectionRequest.bind(this);
   }
 
   init() {
-    if (!this.stage.isConnected) return;
-    this.stage.style.position = this.stage.style.position || 'relative';
-    this.addButton?.addEventListener('click', this.handleAddClick);
     window.addEventListener(REMOVE_REQUEST_EVENT, this.handleRemoveRequest);
     window.addEventListener(SELECT_EVENT, this.handleSelectionRequest);
 
+    // Initial Setup
+    this.setupUI();
+
+    // Default Container
+    // We don't auto-create one if the user wants a clean slate, 
+    // but for a demo, a default one is nice.
     if (!this.containers.size) {
-      const entry = this.createContainer({ ...DEFAULT_STAGE_CONTAINER_CONFIG });
-      this.setActiveId(entry.id);
-      this.emitChange(entry.id);
+      this.addPresetToStage(PRESETS[0]);
+    }
+    
+    // Default BG
+    this.setBackground(BACKGROUNDS[0]);
+  }
+
+  // --- External API for UI ---
+
+  public addPresetToStage(preset: Preset) {
+    const config = { ...DEFAULT_GLASS_CONTAINER_PARAMS, ...preset.config };
+    // Randomize position slightly
+    const entry = this.createContainer(config);
+    this.centerInScreen(entry, (Math.random() - 0.5) * 40, (Math.random() - 0.5) * 40);
+    this.setActiveId(entry.id);
+    this.emitChange(entry.id);
+  }
+
+  public setBackground(bg: { id: string; type: string; value: string }) {
+    document.body.className = ''; // Clear existing
+    document.body.style.backgroundImage = '';
+
+    if (bg.type === 'css') {
+      document.body.classList.add('show-grid');
+      document.documentElement.style.removeProperty('--active-bg');
+    } else {
+      document.documentElement.style.setProperty('--active-bg', `url('${bg.value}')`);
     }
   }
 
-  private createContainer(config: GlassContainerParams, origin?: StageEntry): StageEntry {
+  public showPreview(preset: Preset) {
+    if (!this.ghostWrapper) {
+      this.ghostWrapper = document.createElement('div');
+      this.ghostWrapper.className = 'preview-ghost';
+      this.ghostContainer = document.createElement('liquid-glass-container') as LiquidGlassContainer;
+      this.ghostWrapper.appendChild(this.ghostContainer);
+      document.body.appendChild(this.ghostWrapper);
+    }
+    
+    if (this.ghostContainer) {
+      const config = { ...DEFAULT_GLASS_CONTAINER_PARAMS, ...preset.config };
+      this.applyConfig(this.ghostContainer, config);
+      this.ghostContainer.requestUpdate();
+    }
+
+    // Position ghost in center of screen
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const w = this.ghostContainer?.width || 300;
+    const h = this.ghostContainer?.height || 200;
+    
+    this.ghostWrapper.style.left = `${(vw - w) / 2}px`;
+    this.ghostWrapper.style.top = `${(vh - h) / 2}px`;
+    this.ghostWrapper.style.opacity = '1';
+  }
+
+  public hidePreview() {
+    if (this.ghostWrapper) {
+      this.ghostWrapper.style.opacity = '0';
+    }
+  }
+
+  // --- Internal Logic ---
+
+  private setupUI() {
+    // Render Presets
+    const presetList = document.getElementById('presetList');
+    if (presetList) {
+      presetList.innerHTML = '';
+      PRESETS.forEach(p => {
+        const btn = document.createElement('button');
+        btn.className = 'preset-btn';
+        btn.innerHTML = `<span class="preset-name">${p.name}</span><span class="preset-desc">${p.description}</span>`;
+        btn.onclick = () => this.addPresetToStage(p);
+        btn.onmouseenter = () => this.showPreview(p);
+        btn.onmouseleave = () => this.hidePreview();
+        presetList.appendChild(btn);
+      });
+    }
+
+    // Render Backgrounds
+    const bgList = document.getElementById('bgList');
+    if (bgList) {
+      bgList.innerHTML = '';
+      BACKGROUNDS.forEach(bg => {
+        const thumb = document.createElement('div');
+        thumb.className = 'bg-thumb';
+        if (bg.type === 'img') {
+          thumb.style.backgroundImage = `url(${bg.value})`;
+        } else {
+          thumb.style.background = 'linear-gradient(135deg, #eee, #ccc)';
+          thumb.innerHTML = '<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:bold;color:#333;">GRID</span>';
+        }
+        thumb.onclick = () => {
+          // visual selection state
+          Array.from(bgList.children).forEach(c => c.classList.remove('active'));
+          thumb.classList.add('active');
+          this.setBackground(bg);
+        };
+        bgList.appendChild(thumb);
+      });
+
+      // Upload Button
+      const label = document.createElement('label');
+      label.className = 'bg-thumb file-upload-label';
+      label.innerHTML = '+';
+      label.title = 'Upload Image';
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.style.display = 'none';
+      input.onchange = (e: any) => {
+        const file = e.target.files[0];
+        if (file) {
+          const url = URL.createObjectURL(file);
+          this.setBackground({ id: 'custom', type: 'img', value: url });
+        }
+      };
+      label.appendChild(input);
+      bgList.appendChild(label);
+    }
+  }
+
+  private createContainer(config: GlassContainerParams): StageEntry {
     const container = document.createElement('liquid-glass-container') as LiquidGlassContainer;
     this.applyConfig(container, config);
 
@@ -86,44 +182,27 @@ class DemoStageController {
     const wrapper = document.createElement('div');
     wrapper.className = 'demo-stage__draggable';
     wrapper.dataset.containerId = id;
-    wrapper.style.position = 'fixed';
-    wrapper.style.touchAction = 'none';
+    // Default off-screen or 0,0, will be moved immediately
+    wrapper.style.left = '0px'; 
+    wrapper.style.top = '0px';
     wrapper.tabIndex = 0;
     wrapper.append(container);
     document.body.append(wrapper);
 
- const position = origin
-       ? this.offsetFrom(origin, container)
-       : (this.containers.size === 0
-           ? this.centerInStage(container)   // place initial inside demo box
-           : this.centerPosition(container));
-    this.positionWrapper(wrapper, position.left, position.top);
     this.makeDraggable(wrapper, id);
-
     const entry: StageEntry = { id, wrapper, container };
     this.containers.set(id, entry);
     return entry;
   }
-  private centerInStage(container: LiquidGlassContainer) {
-    const rect = this.stage.getBoundingClientRect();
-    const desiredLeft = rect.left + (rect.width - container.width) / 2;
-    const desiredTop  = rect.top  + (rect.height - container.height) / 2;
-    return this.clampToRect(desiredLeft, desiredTop, container.width, container.height, rect);
+
+  private centerInScreen(entry: StageEntry, offsetX = 0, offsetY = 0) {
+     const vw = window.innerWidth;
+     const vh = window.innerHeight;
+     const x = (vw - entry.container.width) / 2 + offsetX;
+     const y = (vh - entry.container.height) / 2 + offsetY;
+     this.positionWrapper(entry.wrapper, x, y);
   }
-   private clampToRect(
-    left: number,
-    top: number,
-    width: number,
-    height: number,
-    rect: DOMRect
-  ) {
-    const maxLeft = Math.max(rect.left, rect.right - width);
-    const maxTop = Math.max(rect.top, rect.bottom - height);
-    return {
-      left: Math.min(Math.max(left, rect.left), maxLeft),
-      top: Math.min(Math.max(top, rect.top), maxTop),
-    };
-  }
+
   private applyConfig(container: LiquidGlassContainer, config: GlassContainerParams) {
     container.width = config.width;
     container.height = config.height;
@@ -138,56 +217,10 @@ class DemoStageController {
     container.showSpecular = config.showSpecular;
     container.specularAngleDeg = config.specularAngleDeg;
     container.specularStrength = config.specularStrength;
-    container.dispersion = config.dispersion; 
+    container.dispersion = config.dispersion;
+    container.chromaticBezelFactor = config.chromaticBezelFactor;
     container.frost = config.frost;
     container.saturation = config.saturation;
-  }
-
-  private readConfig(container: LiquidGlassContainer): GlassContainerParams {
-    return {
-      width: container.width,
-      height: container.height,
-      radius: container.radius,
-      bezelWidth: container.bezelWidth,
-      glassThickness: container.glassThickness,
-      surface: container.surface,
-      refractiveIndex: container.refractiveIndex,
-      scalePx: container.scalePx,
-      blurKind: container.blurKind,
-      blurStdDev: container.blurStdDev,
-      showSpecular: container.showSpecular,
-      specularAngleDeg: container.specularAngleDeg,
-      specularStrength: container.specularStrength,
-      dispersion: container.dispersion, 
-      frost: container.frost,
-      saturation: container.saturation,
-    };
-  }
-
-  private centerPosition(container: LiquidGlassContainer) {
-    const vw = window.innerWidth || 1;
-    const vh = window.innerHeight || 1;
-    const left = (vw - container.width) / 2;
-    const top = (vh - container.height) / 2;
-    return this.clampPosition(left, top, container.width, container.height);
-  }
-
-  private offsetFrom(entry: StageEntry, container: LiquidGlassContainer) {
-    const baseLeft = parseFloat(entry.wrapper.style.left || '0');
-    const baseTop = parseFloat(entry.wrapper.style.top || '0');
-    const offset = 48;
-    return this.clampPosition(baseLeft + offset, baseTop + offset * 0.6, container.width, container.height);
-  }
-
-  private clampPosition(left: number, top: number, width: number, height: number) {
-    const vw = window.innerWidth || width;
-    const vh = window.innerHeight || height;
-    const maxLeft = Math.max(0, vw - width);
-    const maxTop = Math.max(0, vh - height);
-    return {
-      left: Math.min(Math.max(left, 0), maxLeft),
-      top: Math.min(Math.max(top, 0), maxTop),
-    };
   }
 
   private positionWrapper(wrapper: HTMLDivElement, left: number, top: number) {
@@ -197,10 +230,7 @@ class DemoStageController {
 
   private makeDraggable(wrapper: HTMLDivElement, id: string) {
     let pointerId: number | null = null;
-    let startX = 0;
-    let startY = 0;
-    let startLeft = 0;
-    let startTop = 0;
+    let startX = 0, startY = 0, startLeft = 0, startTop = 0;
 
     const onPointerDown = (event: PointerEvent) => {
       if (event.button !== 0 || pointerId !== null) return;
@@ -216,15 +246,15 @@ class DemoStageController {
         this.emitChange(this.activeId);
       }
       event.preventDefault();
+      // Hide ghost if dragging starts to avoid confusion
+      this.hidePreview();
     };
 
     const onPointerMove = (event: PointerEvent) => {
       if (pointerId !== event.pointerId) return;
       const dx = event.clientX - startX;
       const dy = event.clientY - startY;
-      const rect = wrapper.getBoundingClientRect();
-      const next = this.clampPosition(startLeft + dx, startTop + dy, rect.width, rect.height); 
-      this.positionWrapper(wrapper, next.left, next.top);
+      this.positionWrapper(wrapper, startLeft + dx, startTop + dy);
     };
 
     const endDrag = (event: PointerEvent) => {
@@ -238,19 +268,6 @@ class DemoStageController {
     wrapper.addEventListener('pointermove', onPointerMove);
     wrapper.addEventListener('pointerup', endDrag);
     wrapper.addEventListener('pointercancel', endDrag);
-    wrapper.addEventListener('lostpointercapture', () => {
-      pointerId = null;
-      wrapper.classList.remove('is-dragging');
-    });
-  }
-
-  private handleAddClick() {
-    const template = this.activeId ? this.containers.get(this.activeId) : undefined;
-    const config = template ? this.readConfig(template.container) : { ...DEFAULT_STAGE_CONTAINER_CONFIG };
-    const entry = this.createContainer(config, template);
-    entry.wrapper.focus({ preventScroll: true });
-    this.setActiveId(entry.id);
-    this.emitChange(entry.id);
   }
 
   private handleRemoveRequest(event: WindowEventMap[typeof REMOVE_REQUEST_EVENT]) {
@@ -265,7 +282,6 @@ class DemoStageController {
       const next = this.containers.keys().next();
       this.setActiveId(next.done ? undefined : next.value);
     }
-
     this.emitChange(this.activeId);
   }
 
@@ -278,10 +294,20 @@ class DemoStageController {
   }
 
   private setActiveId(id: string | undefined) {
-    if (this.activeId === id) {
-      return false;
-    }
+    if (this.activeId === id) return false;
     this.activeId = id;
+    
+    // Bring to front
+    if (id) {
+        const entry = this.containers.get(id);
+        if (entry) {
+            // Simple z-index bump, simpler than full management for a demo
+            entry.wrapper.style.zIndex = '101';
+            this.containers.forEach((e, k) => {
+                if (k !== id) e.wrapper.style.zIndex = '100';
+            });
+        }
+    }
     return true;
   }
 
@@ -294,10 +320,12 @@ class DemoStageController {
   }
 }
 
+// Global Singleton Init
+let controller: DemoStageController | null = null;
 function init() {
   const stage = document.querySelector<HTMLElement>('[data-demo-stage]');
   if (!stage) return;
-  const controller = new DemoStageController(stage);
+  controller = new DemoStageController(stage);
   controller.init();
 }
 
@@ -305,14 +333,4 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init, { once: true });
 } else {
   init();
-}
-
-export {};
-
-declare global {
-  interface WindowEventMap {
-    'demo-stage:containers-changed': CustomEvent<StageContainersChangedDetail>;
-    'demo-stage:remove-container': CustomEvent<StageRemovalDetail>;
-    'demo-stage:select-container': CustomEvent<StageSelectionDetail>;
-  }
 }
