@@ -1,0 +1,365 @@
+:root {
+  color-scheme: light;
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  
+  /* --- Theme Variables (Light Mode) --- */
+  /* Darkened slightly from 97% to 94% to reduce brightness */
+  --bg-h: 220; --bg-s: 30%; --bg-l: 94%;
+  --text-h: 220; --text-s: 40%; --text-l: 10%;
+  
+  --demo-color-bg: hsl(var(--bg-h) var(--bg-s) var(--bg-l));
+  --demo-color-text: hsl(var(--text-h) var(--text-s) var(--text-l));
+  
+  /* Gradient Stops (Solid colors for inputs) - Darkened slightly */
+  --demo-bg-stop-1: #eef2f6;
+  --demo-bg-stop-2: #dbe4ef;
+  
+  --border: rgba(0,0,0,0.08);
+  --glass-panel: rgba(255, 255, 255, 0.7);
+  --paper-bg: #ffffff;
+  --paper-shadow: 0 4px 20px rgba(0,0,0,0.06);
+  
+  --demo-grid-base: #000000;
+  --demo-grid-opacity: 5%;
+  --demo-grid-size: 40px;
+
+  /* --- Tweakpane Light Theme Overrides --- */
+  --tp-base-background-color: rgba(255, 255, 255, 0.85);
+  --tp-base-shadow-color: rgba(0, 0, 0, 0.1);
+  --tp-button-background-color: #e6e6e6;
+  --tp-button-background-color-hover: #d9d9d9;
+  --tp-button-foreground-color: #333;
+  --tp-container-background-color: rgba(255, 255, 255, 0.5);
+  --tp-container-foreground-color: #333;
+  --tp-groove-foreground-color: rgba(0, 0, 0, 0.1);
+  --tp-input-background-color: #f0f0f0;
+  --tp-input-background-color-active: #e0e0e0;
+  --tp-input-background-color-focus: #e0e0e0;
+  --tp-input-foreground-color: #333;
+  --tp-label-foreground-color: #555;
+  --tp-monitor-background-color: rgba(0, 0, 0, 0.1);
+  --tp-monitor-foreground-color: #333;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg-h: 220; --bg-s: 14%; --bg-l: 8%;
+  --text-h: 220; --text-s: 20%; --text-l: 90%;
+  
+  --demo-color-bg: hsl(var(--bg-h) var(--bg-s) var(--bg-l));
+  --demo-color-text: hsl(var(--text-h) var(--text-s) var(--text-l));
+
+  /* Gradient Stops */
+  --demo-bg-stop-1: #191f29;
+  --demo-bg-stop-2: #07090d;
+  
+  --border: rgba(255,255,255,0.1);
+  --glass-panel: rgba(20, 20, 30, 0.7);
+  --paper-bg: #131313;
+  --paper-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  
+  --demo-grid-base: #ffffff;
+  --demo-grid-opacity: 8%;
+
+  /* --- Tweakpane Dark Theme (Revert to defaults or custom dark) --- */
+  --tp-base-background-color: rgba(20, 20, 20, 0.8);
+  --tp-base-shadow-color: rgba(0, 0, 0, 0.2);
+  --tp-button-background-color: #333;
+  --tp-button-background-color-hover: #444;
+  --tp-button-foreground-color: red;
+  --tp-container-background-color: rgba(0, 0, 0, 0.3);
+  --tp-container-foreground-color: #eee;
+  --tp-groove-foreground-color: rgba(0, 0, 0, 0.2);
+  --tp-input-background-color: #1a1a1a;
+  --tp-input-background-color-active: #222;
+  --tp-input-background-color-focus: #222;
+  --tp-input-foreground-color: #eee;
+  --tp-label-foreground-color: #bbb;
+  --tp-monitor-background-color: rgba(0, 0, 0, 0.3);
+  --tp-monitor-foreground-color: #bbb;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-sans);
+  background-color: var(--demo-color-bg);
+  /* Default background is gradient, updated via JS */
+  background-image: var(--active-bg, linear-gradient(135deg, var(--demo-bg-stop-1), var(--demo-bg-stop-2)));
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  color: var(--demo-color-text);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* App-like feel */
+}
+
+/* --- Moving Grid Background (Only when class present) --- */
+body.show-grid::before {
+  content: '';
+  position: fixed;
+  inset: -40px;
+  pointer-events: none;
+  --grid-line: color-mix(in srgb, var(--demo-grid-base), transparent calc(100% - var(--demo-grid-opacity)));
+  background-image: 
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+  background-size: var(--demo-grid-size) var(--demo-grid-size);
+  animation: panGrid 4s linear infinite;
+  z-index: 0;
+}
+
+@keyframes panGrid {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(var(--demo-grid-size), var(--demo-grid-size)); }
+}
+
+/* --- Toolbar --- */
+.demo-toolbar {
+  position: relative;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.5rem;
+  height: 60px;
+  background: var(--glass-panel);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+  gap: 1rem;
+}
+
+.toolbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.1rem;
+  margin-right: auto;
+}
+
+.brand-name { font-weight: 700; letter-spacing: -0.01em; }
+.brand-badge {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  background: var(--border);
+  opacity: 0.8;
+}
+
+.toolbar-controls {
+  display: flex;
+  flex-direction: row; /* Enforce row direction */
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* --- Main Layout --- */
+.app-container {
+  display: flex;
+  flex: 1;
+  height: calc(100vh - 60px); /* Minus toolbar */
+  position: relative;
+  z-index: 1;
+}
+
+/* --- Sidebar (Library) --- */
+.app-sidebar {
+  width: 280px;
+  background: var(--glass-panel);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 1.5rem;
+  gap: 2rem;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: transform 0.3s ease;
+  z-index: 40;
+}
+
+.sidebar-section h3 {
+  margin: 0 0 1rem 0;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--demo-color-text);
+  opacity: 0.6;
+}
+
+.preset-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+.preset-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--demo-color-text);
+  position: relative;
+  overflow: hidden;
+}
+
+.preset-btn:hover {
+  background: var(--border);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  border-color: currentColor;
+}
+
+.preset-name {
+  display: block;
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-bottom: 0.25rem;
+}
+
+.preset-desc {
+  display: block;
+  font-size: 0.8rem;
+  opacity: 0.7;
+  line-height: 1.3;
+}
+
+.bg-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.bg-thumb {
+  aspect-ratio: 1;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  background-size: cover;
+  background-position: center;
+  transition: transform 0.2s;
+  position: relative;
+}
+.bg-thumb:hover { transform: scale(1.05); z-index: 1; border-color: var(--demo-color-text); }
+.bg-thumb.active { outline: 2px solid var(--demo-color-text); outline-offset: 2px; }
+
+.file-upload-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--border);
+  color: var(--demo-color-text);
+  font-size: 1.5rem;
+}
+
+/* --- Stage Area --- */
+.demo-layout {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center; /* Center the patterns if empty */
+  padding: 4rem 1rem;
+  overflow: hidden; /* The stage handles dragging */
+}
+
+.demo-workspace {
+  position: relative;
+  width: min(90vw, 800px);
+  transition: opacity 0.3s;
+}
+
+/* --- Patterns Sheet Container --- */
+.paper-sheet {
+  background: var(--paper-bg);
+  box-shadow: var(--paper-shadow);
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  padding: 3rem;
+  width: 100%;
+  margin-bottom: 2rem;
+  transition: background-color 0.3s, box-shadow 0.3s;
+}
+
+/* --- Draggables --- */
+.demo-stage__draggable {
+  position: fixed;
+  z-index: 100;
+  cursor: grab;
+  touch-action: none;
+  outline: none;
+}
+.demo-stage__draggable:active {
+  cursor: grabbing;
+}
+/* Focus ring for accessibility */
+.demo-stage__draggable:focus-visible {
+  outline: 2px solid var(--demo-color-text);
+  outline-offset: 4px;
+}
+
+/* --- Preview Ghost --- */
+.preview-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 200;
+  opacity: 0.6;
+  filter: grayscale(1);
+  transition: opacity 0.2s;
+}
+
+/* --- Config Pane & Glass Overlay --- */
+.config-pane-host {
+  position: fixed;
+  top: 5rem;
+  right: 2rem;
+  width: 280px;
+  z-index: 1000;
+}
+@media (max-width: 900px) {
+  .app-container { flex-direction: column; }
+  .app-sidebar {
+    width: 100%;
+    height: auto;
+    flex-shrink: 0;
+    max-height: 200px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    flex-direction: row;
+  }
+  .preset-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  .config-pane-host {
+    top: auto; bottom: 1rem; right: 1rem;
+  }
+}
+
+/* Utilities */
+.btn-icon {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+.btn-icon:hover { background: var(--border); }
+
+.vr {
+  width: 1px;
+  height: 24px;
+  background: var(--border);
+}
