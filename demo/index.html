@@ -3,78 +3,106 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Liquid Glass Demo</title>
-  <link rel="stylesheet" href="./ui/demoPage.css" />
+  <title>Liquid Glass Workbench</title>
+  <link rel="stylesheet" href="./ui/demoPage.css" /> 
 </head>
-<body>
-  <main class="demo-layout">
-    <header class="demo-header">
-      <h1>Liquid Glass Filter Demo</h1>
-      <p>Experiment with refraction, chromatic dispersion and frost blends using the floating control pane. Select any liquid glass container to see updates in real time.</p>
-    </header>
-
-    <section class="demo-workspace" data-demo-workspace data-layout="columns" data-mode="iphone">
-      <section class="demo-stage" aria-labelledby="stage-title" data-demo-stage>
-        <div class="demo-stage__content">
-          <h2 id="stage-title">Future-ready glass UI</h2>
-          <p>Blend refraction, specular highlights and chromatic aberration to craft immersive glassmorphism surfaces. Fine-tune every optical parameter with the draggable pane.</p>
-          <div class="demo-stage__badges" aria-hidden="true">
-            <span class="demo-stage__badge">Realtime</span>
-            <span class="demo-stage__badge">WebGL-free</span>
-            <span class="demo-stage__badge">Customizable</span>
-          </div>
-          <div class="demo-stage__actions">
-            <button type="button" data-action="add-container">Add container</button>
-          </div>
-        </div>
-      </section>
-      <ios-home-screen data-simulator></ios-home-screen>
-    </section>
-  </main>
-
- <script type="module">
-    import '../src/index.ts';
+<body class="show-grid"> <!-- Default to grid -->
+  <!-- Toolbar -->
+  <nav class="demo-toolbar">
+    <div class="toolbar-brand">
+      <span class="brand-name">Liquid Glass</span>
+      <span class="brand-badge">Workbench</span>
+    </div>
     
+    <div class="toolbar-controls">
+      <button type="button" id="btnTheme" class="btn-icon" aria-label="Toggle Theme">
+        <svg class="icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+        <svg class="icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+      </button>
+      <div class="vr"></div>
+      <a href="https://github.com/J-Houghton" target="_blank" class="btn-icon" title="View on GitHub">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+      </a>
+    </div>
+  </nav>
+
+  <!-- App Layout -->
+  <div class="app-container">
+    
+    <!-- Sidebar: Library -->
+    <aside class="app-sidebar">
+      <div class="sidebar-section">
+        <h3>Glass Presets</h3>
+        <div id="presetList" class="preset-grid">
+          <!-- Populated by demoStage.ts -->
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>Backgrounds</h3>
+        <div id="bgList" class="bg-grid">
+          <!-- Populated by demoStage.ts -->
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <main class="demo-layout">
+      <section class="demo-workspace" data-demo-workspace>
+        <div class="paper-sheet">
+          <workbench-patterns></workbench-patterns>
+        </div>
+        <div class="demo-stage-layer" data-demo-stage></div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module">
+    import '../src/index.ts';
     import './ui/demoStage.ts';
-    import './ui/configPane.ts';
-    import './ui/iosHomeScreen.ts';
+    import './ui/configPane.ts'; // Still used for tweaking active element
+    import './ui/workbenchPatterns.ts';
 
-    const workspace = document.querySelector('[data-demo-workspace]');
-    const simulator = document.querySelector('ios-home-screen');
-    const stage = document.querySelector('[data-demo-stage]');
+    // Theme Toggle Logic
+    const btnTheme = document.getElementById('btnTheme');
+    const root = document.documentElement;
+    const sun = btnTheme.querySelector('.icon-sun');
+    const moon = btnTheme.querySelector('.icon-moon');
 
-    const applyModeLayout = (mode) => {
-      if (!workspace) return;
-      workspace.dataset.mode = mode;
-      workspace.dataset.layout = 'columns'; // always 2 columns
+    const updateThemeIcon = (isDark) => {
+      if (isDark) {
+        sun.style.display = 'block';
+        moon.style.display = 'none';
+      } else {
+        sun.style.display = 'none';
+        moon.style.display = 'block';
+      }
     };
 
-    if (workspace && simulator) {
-      customElements.whenDefined('ios-home-screen').then(() => {
-        const currentMode = simulator.getAttribute('mode') ?? 'iphone';
-        applyModeLayout(currentMode);
-        simulator.addEventListener('mode-change', (event) => {
-          const { detail } = /** @type {CustomEvent} */ (event);
-          if (detail?.mode) {
-            applyModeLayout(detail.mode);
-          }
-        });
-      });
+    btnTheme.addEventListener('click', () => {
+      const isDark = root.dataset.theme === 'dark';
+      root.dataset.theme = isDark ? 'light' : 'dark';
+      updateThemeIcon(!isDark);
+    });
+
+    // Init Theme
+    const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (isSystemDark) {
+      root.dataset.theme = 'dark';
+      updateThemeIcon(true);
     }
-    // Keep demo stage height ~ equal to the iOS home screen height
-    const syncStageHeight = () => {
-      if (!stage || !simulator) return;
-      const rect = simulator.getBoundingClientRect();
-      // set min-height to actual device height to avoid shrink on small content
-      stage.style.minHeight = `${Math.round(rect.height)}px`;
-    };
-     if (simulator) {
-       const ro = new ResizeObserver(syncStageHeight);
-       ro.observe(simulator);
-     }
-    // Also run once on load and on window resize
-    syncStageHeight();
-    window.addEventListener('resize', syncStageHeight, { passive: true });
   </script>
 </body>
 </html>
