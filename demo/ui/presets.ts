@@ -8,10 +8,11 @@ export type Preset = {
 };
 
 export const PRESETS: Preset[] = [
+  // 1. Surface: Squircle (Standard)
   {
-    id: 'default',
+    id: 'surface-squircle',
     name: 'Standard Glass',
-    description: 'Balanced refraction and reflection.',
+    description: 'Convex squircle profile. Balanced refraction.',
     config: {
       surface: 'convex_squircle',
       radius: 60,
@@ -24,89 +25,95 @@ export const PRESETS: Preset[] = [
       specularStrength: 0.9,
     },
   },
+  // 2. Surface: Circle (Lens)
   {
-    id: 'heavy-prism',
-    name: 'Heavy Prism',
-    description: 'Thick glass with strong chromatic aberration.',
+    id: 'surface-circle',
+    name: 'Optical Lens',
+    description: 'Convex circular profile. Strong magnification feel.',
+    config: {
+      surface: 'convex_circle',
+      width: 200,
+      height: 200, // Circle shape
+      radius: 100,
+      bezelWidth: 100, // Full dome
+      glassThickness: 100,
+      refractiveIndex: 1.6,
+      scalePx: 100,
+      showSpecular: true,
+      specularStrength: 1.2,
+      frost: 0,
+    },
+  },
+  // 3. Surface: Concave
+  {
+    id: 'surface-concave',
+    name: 'Concave Dish',
+    description: 'Inward curve. Shrinks content slightly.',
+    config: {
+      surface: 'concave',
+      radius: 60,
+      bezelWidth: 60,
+      glassThickness: 60,
+      refractiveIndex: 1.4,
+      scalePx: 122,
+      specularStrength: 0.5,
+      frost: 0.1,
+    },
+  },
+  // 4. Surface: Lip
+  {
+    id: 'surface-lip',
+    name: 'Sculpted Lip',
+    description: 'Complex "S" profile with a distinct rim.',
+    config: {
+      surface: 'lip',
+      radius: 60,
+      bezelWidth: 50,
+      glassThickness: 40,
+      refractiveIndex: 1.5,
+      scalePx: 180,
+      specularStrength: 1.0,
+      frost: 0.05,
+    },
+  },
+  // 5. Blur: Noise 1 (Coarse)
+  {
+    id: 'blur-noise-1',
+    name: 'School Glass',
+    description: 'Coarse, organic distortion. Heavy texture.',
+    config: {
+      surface: 'convex_squircle',
+      radius: 30,
+      bezelWidth: 30,
+      glassThickness: 80,
+      refractiveIndex: 1.5,
+      blurKind: 'noise1',
+      blurStdDev: 0.8,
+      frost: 0.1,
+      scalePx: 100, // Higher displacement for the "wet" look
+    },
+  },
+  
+  // 6. Blur: Noise 2 (Fine)
+  {
+    id: 'blur-noise-2',
+    name: 'Privacy Glass',
+    description: 'Fine-grain noise blur. Textured look.',
     config: {
       surface: 'convex_squircle',
       radius: 40,
       bezelWidth: 40,
-      glassThickness: 180,
-      refractiveIndex: 1.6,
-      dispersion: 1.5,
-      chromaticBezelFactor: 2.5,
-      scalePx: 250,
-      frost: 0,
-    },
-  },
-  {
-    id: 'frosted-diffuser',
-    name: 'Frosted Diffuser',
-    description: 'High roughness/blur for privacy UI.',
-    config: {
-      surface: 'convex_squircle',
-      radius: 20,
-      bezelWidth: 2,
-      glassThickness: 20,
-      refractiveIndex: 1.33,
-      blurKind: 'noise1',
-      blurStdDev: 1.5,
-      frost: 0.4,
-      saturation: 1.2,
-      scalePx: 50,
-    },
-  },
-  {
-    id: 'thin-lens',
-    name: 'Thin Lens',
-    description: 'High refraction with minimal bezel.',
-    config: {
-      surface: 'convex_circle',
-      radius: 120,
-      bezelWidth: 10,
-      glassThickness: 10,
-      refractiveIndex: 2.1,
-      scalePx: 300,
-      dispersion: 0.2,
-      showSpecular: true,
-      specularStrength: 1.5,
-    },
-  },
-  {
-    id: 'aerogel',
-    name: 'Aerogel',
-    description: 'Ghostly, low-contrast, ethereal look.',
-    config: {
-      surface: 'concave',
-      radius: 80,
-      bezelWidth: 80,
-      glassThickness: 150,
-      refractiveIndex: 1.1,
+      glassThickness: 50,
+      refractiveIndex: 1.45,
+      blurKind: 'noise2',
+      blurStdDev: 0.33,
       frost: 0.1,
-      saturation: 0.5,
-      specularStrength: 0.3,
-      blurKind: 'gauss',
-      blurStdDev: 0.5,
+      scalePx: 60,
     },
-  },
-  {
-    id: 'magnifier',
-    name: 'Reading Magnifier',
-    description: 'Clean expansion for reading text.',
-    config: {
-      width: 400,
-      height: 100,
-      radius: 50,
-      bezelWidth: 10,
-      glassThickness: 30,
-      refractiveIndex: 1.4,
-      scalePx: 120, // Negative relative scale often creates zoom depending on implementation, here we rely on standard IOR
-      frost: 0,
-      dispersion: 0.1,
-    }
   }
 ];
+
+
 
 export const BACKGROUNDS = [
   { id: 'grid', name: 'Animated Grid', type: 'css', value: '' }, // Handled by CSS class removal

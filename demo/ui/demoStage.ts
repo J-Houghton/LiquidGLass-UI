@@ -43,9 +43,7 @@ export class DemoStageController {
     // Initial Setup
     this.setupUI();
 
-    // Default Container
-    // We don't auto-create one if the user wants a clean slate, 
-    // but for a demo, a default one is nice.
+    // Default Container (Preset 0)
     if (!this.containers.size) {
       this.addPresetToStage(PRESETS[0]);
     }
@@ -58,15 +56,15 @@ export class DemoStageController {
 
   public addPresetToStage(preset: Preset) {
     const config = { ...DEFAULT_GLASS_CONTAINER_PARAMS, ...preset.config };
-    // Randomize position slightly
     const entry = this.createContainer(config);
+    // Center with slight random offset
     this.centerInScreen(entry, (Math.random() - 0.5) * 40, (Math.random() - 0.5) * 40);
     this.setActiveId(entry.id);
     this.emitChange(entry.id);
   }
 
   public setBackground(bg: { id: string; type: string; value: string }) {
-    document.body.className = ''; // Clear existing
+    document.body.className = ''; 
     document.body.style.backgroundImage = '';
 
     if (bg.type === 'css') {
@@ -77,7 +75,7 @@ export class DemoStageController {
     }
   }
 
-  public showPreview(preset: Preset) {
+  public showPreview(preset: Preset, anchor: HTMLElement) {
     if (!this.ghostWrapper) {
       this.ghostWrapper = document.createElement('div');
       this.ghostWrapper.className = 'preview-ghost';
@@ -92,20 +90,44 @@ export class DemoStageController {
       this.ghostContainer.requestUpdate();
     }
 
-    // Position ghost in center of screen
+    // Positioning: Right of the sidebar button
+    const rect = anchor.getBoundingClientRect();
+    const ghostW = this.ghostContainer?.width || 300;
+    const ghostH = this.ghostContainer?.height || 120;
+    const gap = 16;
+    
+    // Default placement: Right of button, Vertically centered on button
+    let left = rect.right + gap;
+    let top = rect.top + (rect.height / 2) - (ghostH / 2);
+
+    // Safety clamps
+    const pad = 10;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    const w = this.ghostContainer?.width || 300;
-    const h = this.ghostContainer?.height || 200;
-    
-    this.ghostWrapper.style.left = `${(vw - w) / 2}px`;
-    this.ghostWrapper.style.top = `${(vh - h) / 2}px`;
+
+    // Boundary check for small screens or wide ghosts
+    if (left + ghostW > vw - pad) {
+       // Just clamp to right edge if it overflows
+       left = vw - ghostW - pad;
+    }
+
+    if (top < pad) top = pad;
+    if (top + ghostH > vh - pad) top = vh - ghostH - pad;
+
+    this.ghostWrapper.style.left = `${left}px`;
+    this.ghostWrapper.style.top = `${top}px`;
     this.ghostWrapper.style.opacity = '1';
   }
 
   public hidePreview() {
     if (this.ghostWrapper) {
       this.ghostWrapper.style.opacity = '0';
+      // Move offscreen to avoid blocking interaction while fading out
+      setTimeout(() => {
+         if (this.ghostWrapper && this.ghostWrapper.style.opacity === '0') {
+             this.ghostWrapper.style.left = '-9999px';
+         }
+      }, 200);
     }
   }
 
@@ -121,8 +143,11 @@ export class DemoStageController {
         btn.className = 'preset-btn';
         btn.innerHTML = `<span class="preset-name">${p.name}</span><span class="preset-desc">${p.description}</span>`;
         btn.onclick = () => this.addPresetToStage(p);
-        btn.onmouseenter = () => this.showPreview(p);
+        
+        // Pass the button as the anchor
+        btn.onmouseenter = () => this.showPreview(p, btn);
         btn.onmouseleave = () => this.hidePreview();
+        
         presetList.appendChild(btn);
       });
     }
@@ -141,7 +166,6 @@ export class DemoStageController {
           thumb.innerHTML = '<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:bold;color:#333;">GRID</span>';
         }
         thumb.onclick = () => {
-          // visual selection state
           Array.from(bgList.children).forEach(c => c.classList.remove('active'));
           thumb.classList.add('active');
           this.setBackground(bg);
@@ -182,7 +206,6 @@ export class DemoStageController {
     const wrapper = document.createElement('div');
     wrapper.className = 'demo-stage__draggable';
     wrapper.dataset.containerId = id;
-    // Default off-screen or 0,0, will be moved immediately
     wrapper.style.left = '0px'; 
     wrapper.style.top = '0px';
     wrapper.tabIndex = 0;
@@ -246,7 +269,6 @@ export class DemoStageController {
         this.emitChange(this.activeId);
       }
       event.preventDefault();
-      // Hide ghost if dragging starts to avoid confusion
       this.hidePreview();
     };
 
@@ -297,11 +319,9 @@ export class DemoStageController {
     if (this.activeId === id) return false;
     this.activeId = id;
     
-    // Bring to front
     if (id) {
         const entry = this.containers.get(id);
         if (entry) {
-            // Simple z-index bump, simpler than full management for a demo
             entry.wrapper.style.zIndex = '101';
             this.containers.forEach((e, k) => {
                 if (k !== id) e.wrapper.style.zIndex = '100';
@@ -320,7 +340,6 @@ export class DemoStageController {
   }
 }
 
-// Global Singleton Init
 let controller: DemoStageController | null = null;
 function init() {
   const stage = document.querySelector<HTMLElement>('[data-demo-stage]');
