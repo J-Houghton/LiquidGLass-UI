@@ -42,8 +42,3 @@ export const DEFAULT_GLASS_CONTAINER_PARAMS: GlassContainerParams = {
   frost: 0.05,
   saturation: 1,
 };
-
-// Demo-specific events (Will be moved to demo folder in a later)
-export const CONTAINERS_CHANGED_EVENT = 'demo-stage:containers-changed';
-export const REMOVE_CONTAINER_EVENT = 'demo-stage:remove-container';
-export const SELECT_CONTAINER_EVENT = 'demo-stage:select-container';
