@@ -13,7 +13,8 @@ const encodeImage = async (img: RGBAImage) => {
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
 beforeAll(() => {
-  defineLiquidGlassElements({ defaults: { encodeImage, revokeImage: () => {}, dpr: 1 } });
+  // happy-dom is not Chromium, so detection would pick the frost fallback; force the glass path.
+  defineLiquidGlassElements({ defaults: { encodeImage, revokeImage: () => {}, dpr: 1, support: 'full' } });
 });
 
 describe('<liquid-glass-container>', () => {

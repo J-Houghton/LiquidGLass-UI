@@ -7,13 +7,16 @@ export * from './core/index.js';
 export type { GlassFilterOptions, GlassFilterHandle, GlassFilterDebug } from './dom/createGlassFilter.js';
 export { createGlassFilter, nextGlassId, splitGlassOptions } from './dom/createGlassFilter.js';
 
-export type { LiquidGlassOptions, LiquidGlassHandle } from './dom/attachLiquidGlass.js';
-export { attachLiquidGlass } from './dom/attachLiquidGlass.js';
+export type { LiquidGlassOptions, LiquidGlassHandle, GlassFallback } from './dom/attachLiquidGlass.js';
+export { attachLiquidGlass, reducedTransparencyParams } from './dom/attachLiquidGlass.js';
 
 export type { ImageEncoder, UrlRevoker } from './dom/encodeImage.js';
 export { encodeImageToBlobUrl, revokeBlobUrl } from './dom/encodeImage.js';
 
+export { MapRegistry, defaultMapRegistry } from './dom/mapCache.js';
+
 export type { ElementFactory } from './dom/mountFilter.js';
 export { createFilterSvg, applyFilterSpec } from './dom/mountFilter.js';
 
-export { isLiquidGlassSupported } from './dom/support.js';
+export type { GlassSupport, SupportEnvironment } from './dom/support.js';
+export { detectGlassSupport, isLiquidGlassSupported, isChromiumEngine, browserSupportEnvironment } from './dom/support.js';

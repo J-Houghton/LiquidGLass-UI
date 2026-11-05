@@ -24,12 +24,31 @@ class FakeResizeObserver {
   }
 }
 
+class FakeMediaQueryList {
+  listeners: Array<(e: MediaQueryListEvent) => void> = [];
+  constructor(public matches: boolean) {}
+  addEventListener(_t: string, cb: (e: MediaQueryListEvent) => void) {
+    this.listeners.push(cb);
+  }
+  removeEventListener(_t: string, cb: (e: MediaQueryListEvent) => void) {
+    this.listeners = this.listeners.filter((l) => l !== cb);
+  }
+  set(matches: boolean) {
+    this.matches = matches;
+    for (const l of this.listeners) l({ matches } as MediaQueryListEvent);
+  }
+}
+
 function env() {
   const doc = new FakeDocument();
   const target = doc.body.appendChild(doc.createElement('div'));
   target.rect = { x: 0, y: 0, top: 0, left: 0, width: 320, height: 100, right: 320, bottom: 100 };
   let n = 0;
-  const encodeImage = async (_img: RGBAImage) => `blob:${++n}`;
+  const encoded: RGBAImage[] = [];
+  const encodeImage = async (img: RGBAImage) => {
+    encoded.push(img);
+    return `blob:${++n}`;
+  };
   FakeResizeObserver.instances = [];
   const attach = (opts: Parameters<typeof attachLiquidGlass>[1] = {}) =>
     attachLiquidGlass(target as unknown as HTMLElement, {
@@ -39,17 +58,21 @@ function env() {
       revokeImage: () => {},
       resizeObserver: FakeResizeObserver as unknown as typeof ResizeObserver,
       radius: 24,
+      support: 'full',
       ...opts,
     });
-  return { doc, target, attach };
+  return { doc, target, attach, encoded };
 }
 
-describe('attachLiquidGlass', () => {
+describe('attachLiquidGlass (glass mode)', () => {
   it('measures the target, observes it, and applies the styles after the first render', async () => {
     const { target, attach } = env();
     const h = attach({ id: 'lg-t' });
     expect(h.target).toBe(target);
+    expect(h.mode).toBe('glass');
+    expect(h.support).toBe('full');
     expect(target.style.backdropFilter).toBeUndefined();
+    expect(target.getAttribute('data-liquid-glass')).toBeNull();
     await h.ready;
     expect(h.params.width).toBe(320);
     expect(h.params.height).toBe(100);
@@ -58,6 +81,7 @@ describe('attachLiquidGlass', () => {
     expect(target.style.WebkitBackdropFilter).toBe('url(#lg-t) saturate(1)');
     expect(target.style.backgroundColor).toBe('rgba(0, 0, 0, 0.05)');
     expect(target.style.borderRadius).toBe('24px');
+    expect(target.getAttribute('data-liquid-glass')).toBe('glass');
     expect(FakeResizeObserver.instances).toHaveLength(1);
     expect(FakeResizeObserver.instances[0].observed).toEqual([target]);
     expect(target.children.map((c) => c.tagName)).toEqual(['svg']);
@@ -106,6 +130,7 @@ describe('attachLiquidGlass', () => {
     const h = attach({ id: 'lg-n', applyStyles: false });
     await h.ready;
     expect(target.style.backdropFilter).toBeUndefined();
+    expect(target.getAttribute('data-liquid-glass')).toBeNull();
     expect(h.getStyle()).toEqual({
       backdropFilter: 'url(#lg-n) saturate(1)',
       WebkitBackdropFilter: 'url(#lg-n) saturate(1)',
@@ -122,7 +147,16 @@ describe('attachLiquidGlass', () => {
     expect(h.getStyle().borderRadius).toBeUndefined();
   });
 
-  it('destroy disconnects the observer, restores inline styles, removes the svg', async () => {
+  it("fallback:'none' attaches the real filter even when detection says frost", async () => {
+    const { attach, encoded } = env();
+    const h = attach({ support: 'frost', fallback: 'none' });
+    await h.ready;
+    expect(h.mode).toBe('glass');
+    expect(h.support).toBe('frost');
+    expect(encoded).toHaveLength(1);
+  });
+
+  it('destroy disconnects the observer, restores inline styles, removes the svg and the data attribute', async () => {
     const { target, attach } = env();
     target.style.backgroundColor = 'tomato';
     const h = attach();
@@ -133,6 +167,96 @@ describe('attachLiquidGlass', () => {
     expect(target.style.backgroundColor).toBe('tomato');
     expect(target.style.backdropFilter).toBe('');
     expect(target.children).toHaveLength(0);
+    expect(target.getAttribute('data-liquid-glass')).toBeNull();
     expect(h.destroyed).toBe(true);
+  });
+});
+
+describe('attachLiquidGlass (frost fallback)', () => {
+  it('generates no maps and applies a CSS blur, tint and rim hint', async () => {
+    const { target, attach, encoded } = env();
+    const h = attach({ support: 'frost', tint: 0.1, specularStrength: 1 });
+    expect(h.mode).toBe('frost');
+    await h.ready;
+    expect(encoded).toHaveLength(0);
+    expect(FakeResizeObserver.instances).toHaveLength(0);
+    expect(target.style.backdropFilter).toBe('blur(12px) saturate(1)');
+    expect(target.style.WebkitBackdropFilter).toBe('blur(12px) saturate(1)');
+    expect(target.style.backgroundColor).toBe('rgba(0, 0, 0, 0.1)');
+    expect(target.style.boxShadow).toBe('inset 0 0 0 1px rgba(255, 255, 255, 0.35)');
+    expect(target.style.borderRadius).toBe('24px');
+    expect(target.getAttribute('data-liquid-glass')).toBe('frost');
+    expect(h.url).toMatch(/^url\(#lg-frost-/);
+    expect(target.children.map((c) => c.tagName)).toEqual(['svg']); // empty shell, no primitives
+    expect((h.filterElement as unknown as FakeElement).children).toHaveLength(0);
+    expect(h.debug.renders).toBe(1);
+  });
+
+  it("'none' support also takes the frost path, and frostBlurPx tunes it", async () => {
+    const { target, attach } = env();
+    const h = attach({ support: 'none', frostBlurPx: 20, specular: false });
+    await h.ready;
+    expect(h.mode).toBe('frost');
+    expect(target.style.backdropFilter).toBe('blur(20px) saturate(1)');
+    expect(target.style.boxShadow).toBe('');
+  });
+
+  it('update re-resolves params and restyles; destroy restores', async () => {
+    const { target, attach } = env();
+    target.style.boxShadow = 'none';
+    const h = attach({ support: 'frost' });
+    await h.ready;
+    await h.update({ tint: 0.5, saturation: 2, blur: 2.2, specular: false });
+    expect(target.style.backgroundColor).toBe('rgba(0, 0, 0, 0.5)');
+    expect(target.style.backdropFilter).toBe('blur(20px) saturate(2)');
+    expect(target.style.boxShadow).toBe('none');
+    expect(h.params.tint).toBe(0.5);
+    expect(h.debug.renders).toBe(2);
+    await h.update({ tint: 0.5 }); // no-op
+    expect(h.debug.renders).toBe(2);
+    h.destroy();
+    expect(target.style.backdropFilter).toBe('');
+    expect(target.style.boxShadow).toBe('none');
+    expect(target.children).toHaveLength(0);
+    expect(h.destroyed).toBe(true);
+    await h.update({ tint: 0.9 });
+    expect(h.debug.renders).toBe(2);
+  });
+});
+
+describe('attachLiquidGlass (reduced transparency)', () => {
+  it('overlays more tint and blur and no dispersion; follows the media query', async () => {
+    const { attach } = env();
+    const mql = new FakeMediaQueryList(true);
+    const h = attach({ dispersion: 2, tint: 0.1, matchMedia: () => mql as unknown as MediaQueryList });
+    await h.ready;
+    expect(h.params.tint).toBe(0.35);
+    expect(h.params.blur).toBe(1.5);
+    expect(h.params.dispersion).toBe(0);
+
+    await h.update({ tint: 0.2 }); // consumer values are kept under the overlay
+    expect(h.params.tint).toBe(0.35);
+
+    mql.set(false);
+    await h.update({});
+    expect(h.params.tint).toBe(0.2);
+    expect(h.params.dispersion).toBe(2);
+    expect(h.params.blur).toBe(0.2);
+
+    mql.set(true);
+    await h.update({});
+    expect(h.params.tint).toBe(0.35);
+    h.destroy();
+    expect(mql.listeners).toHaveLength(0);
+  });
+
+  it('a boolean overrides the media query, and the frost blur grows with it', async () => {
+    const { target, attach } = env();
+    const mql = new FakeMediaQueryList(false);
+    const h = attach({ support: 'frost', reducedTransparency: true, matchMedia: () => mql as unknown as MediaQueryList });
+    await h.ready;
+    expect(h.params.tint).toBe(0.35);
+    expect(target.style.backdropFilter).toBe('blur(25.2px) saturate(1)'); // 12 + 8 + (1.5 - 0.2) * 4
+    expect(mql.listeners).toHaveLength(0);
   });
 });

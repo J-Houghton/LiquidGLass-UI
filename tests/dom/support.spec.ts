@@ -1,0 +1,61 @@
+import { describe, it, expect } from 'vitest';
+import { detectGlassSupport, isChromiumEngine, isLiquidGlassSupported } from '../../src/dom/support';
+
+const yes = () => true;
+const no = () => false;
+const onlyWebkitPrefix = (p: string) => p === '-webkit-backdrop-filter';
+
+const UA = {
+  chrome: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36',
+  edge: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36 Edg/157.0.0.0',
+  edgeHtml: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.140 Safari/537.36 Edge/18.17763',
+  safari: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.2 Safari/605.1.15',
+  iosChrome: 'Mozilla/5.0 (iPhone; CPU iPhone OS 26_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/157.0.0.0 Mobile/15E148 Safari/604.1',
+  firefox: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:159.0) Gecko/20100101 Firefox/159.0',
+};
+
+describe('isChromiumEngine', () => {
+  it('prefers Client Hints brands when present', () => {
+    expect(isChromiumEngine({ brands: ['Not A;Brand', 'Chromium', 'Google Chrome'], userAgent: UA.firefox })).toBe(true);
+    expect(isChromiumEngine({ brands: ['Brave', 'Chromium'] })).toBe(true);
+    expect(isChromiumEngine({ brands: ['Firefox'] })).toBe(false);
+  });
+
+  it('falls back to the UA string: Chrome, Chromium Edge, Opera yes; Safari, Firefox, iOS Chrome, EdgeHTML no', () => {
+    expect(isChromiumEngine({ userAgent: UA.chrome })).toBe(true);
+    expect(isChromiumEngine({ userAgent: UA.edge })).toBe(true);
+    expect(isChromiumEngine({ userAgent: UA.chrome + ' OPR/120.0' })).toBe(true);
+    expect(isChromiumEngine({ userAgent: UA.safari })).toBe(false);
+    expect(isChromiumEngine({ userAgent: UA.firefox })).toBe(false);
+    expect(isChromiumEngine({ userAgent: UA.iosChrome })).toBe(false);
+    expect(isChromiumEngine({ userAgent: UA.edgeHtml })).toBe(false);
+    expect(isChromiumEngine({})).toBe(false);
+  });
+});
+
+describe('detectGlassSupport', () => {
+  it("'full' only for Chromium with backdrop-filter", () => {
+    expect(detectGlassSupport({ userAgent: UA.chrome, supports: yes })).toBe('full');
+    expect(detectGlassSupport({ brands: ['Chromium'], supports: yes })).toBe('full');
+  });
+
+  it("'frost' where backdrop-filter parses but the engine is not Chromium", () => {
+    expect(detectGlassSupport({ userAgent: UA.safari, supports: yes })).toBe('frost');
+    expect(detectGlassSupport({ userAgent: UA.safari, supports: onlyWebkitPrefix })).toBe('frost');
+    expect(detectGlassSupport({ userAgent: UA.firefox, supports: yes })).toBe('frost');
+    expect(detectGlassSupport({ userAgent: UA.iosChrome, supports: yes })).toBe('frost');
+  });
+
+  it("'none' without backdrop-filter or without CSS.supports, and when supports() throws", () => {
+    expect(detectGlassSupport({ userAgent: UA.chrome, supports: no })).toBe('none');
+    expect(detectGlassSupport({ userAgent: UA.chrome })).toBe('none');
+    expect(detectGlassSupport({ userAgent: UA.chrome, supports: () => { throw new Error('nope'); } })).toBe('none');
+  });
+
+  it('isLiquidGlassSupported is the boolean view; the default environment here (Node) is unsupported', () => {
+    expect(isLiquidGlassSupported({ userAgent: UA.chrome, supports: yes })).toBe(true);
+    expect(isLiquidGlassSupported({ userAgent: UA.safari, supports: yes })).toBe(false);
+    expect(isLiquidGlassSupported()).toBe(false);
+    expect(detectGlassSupport()).toBe('none');
+  });
+});
