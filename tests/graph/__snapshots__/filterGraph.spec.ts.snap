@@ -1,0 +1,4237 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`FilterGraph (characterization) > dispersion=0 blur=gauss specular=false: build then update > built 1`] = `
+{
+  "attrs": {
+    "color-interpolation-filters": "sRGB",
+    "filterUnits": "userSpaceOnUse",
+    "height": "120",
+    "id": "lg-test",
+    "primitiveUnits": "userSpaceOnUse",
+    "width": "300",
+    "x": "0",
+    "y": "0",
+  },
+  "children": [
+    {
+      "attrs": {
+        "height": "120",
+        "preserveAspectRatio": "none",
+        "result": "map",
+        "width": "300",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "refr",
+        "scale": "0",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "height": "100%",
+        "preserveAspectRatio": "none",
+        "result": "specSrc",
+        "width": "100%",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "blur",
+        "in": "refr",
+        "result": "blurred",
+        "stdDeviation": "0.20",
+      },
+      "tag": "feGaussianBlur",
+    },
+  ],
+  "tag": "filter",
+}
+`;
+
+exports[`FilterGraph (characterization) > dispersion=0 blur=gauss specular=false: build then update > updated 1`] = `
+{
+  "attrs": {
+    "color-interpolation-filters": "sRGB",
+    "filterUnits": "userSpaceOnUse",
+    "height": "120",
+    "id": "lg-test",
+    "primitiveUnits": "userSpaceOnUse",
+    "width": "300",
+    "x": "0",
+    "y": "0",
+  },
+  "children": [
+    {
+      "attrs": {
+        "height": "120",
+        "preserveAspectRatio": "none",
+        "result": "map",
+        "width": "300",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "refr",
+        "scale": "150",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "height": "100%",
+        "preserveAspectRatio": "none",
+        "result": "specSrc",
+        "width": "100%",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "blur",
+        "in": "refr",
+        "result": "blurred",
+        "stdDeviation": "0.50",
+      },
+      "tag": "feGaussianBlur",
+    },
+  ],
+  "tag": "filter",
+}
+`;
+
+exports[`FilterGraph (characterization) > dispersion=0 blur=gauss specular=true: build then update > built 1`] = `
+{
+  "attrs": {
+    "color-interpolation-filters": "sRGB",
+    "filterUnits": "userSpaceOnUse",
+    "height": "120",
+    "id": "lg-test",
+    "primitiveUnits": "userSpaceOnUse",
+    "width": "300",
+    "x": "0",
+    "y": "0",
+  },
+  "children": [
+    {
+      "attrs": {
+        "height": "120",
+        "preserveAspectRatio": "none",
+        "result": "map",
+        "width": "300",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "refr",
+        "scale": "0",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "height": "100%",
+        "preserveAspectRatio": "none",
+        "result": "specSrc",
+        "width": "100%",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "blur",
+        "in": "refr",
+        "result": "blurred",
+        "stdDeviation": "0.20",
+      },
+      "tag": "feGaussianBlur",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "specSrc",
+        "result": "specAdj",
+      },
+      "children": [
+        {
+          "attrs": {
+            "data-dyn": "1",
+            "data-role": "specGain",
+            "slope": "0.9",
+            "type": "linear",
+          },
+          "tag": "feFuncA",
+        },
+      ],
+      "tag": "feComponentTransfer",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "blurred",
+        "in2": "specAdj",
+        "mode": "screen",
+        "result": "final",
+      },
+      "tag": "feBlend",
+    },
+  ],
+  "tag": "filter",
+}
+`;
+
+exports[`FilterGraph (characterization) > dispersion=0 blur=gauss specular=true: build then update > updated 1`] = `
+{
+  "attrs": {
+    "color-interpolation-filters": "sRGB",
+    "filterUnits": "userSpaceOnUse",
+    "height": "120",
+    "id": "lg-test",
+    "primitiveUnits": "userSpaceOnUse",
+    "width": "300",
+    "x": "0",
+    "y": "0",
+  },
+  "children": [
+    {
+      "attrs": {
+        "height": "120",
+        "preserveAspectRatio": "none",
+        "result": "map",
+        "width": "300",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "refr",
+        "scale": "150",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "height": "100%",
+        "preserveAspectRatio": "none",
+        "result": "specSrc",
+        "width": "100%",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "blur",
+        "in": "refr",
+        "result": "blurred",
+        "stdDeviation": "0.50",
+      },
+      "tag": "feGaussianBlur",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "specSrc",
+        "result": "specAdj",
+      },
+      "children": [
+        {
+          "attrs": {
+            "data-dyn": "1",
+            "data-role": "specGain",
+            "slope": "1.1",
+            "type": "linear",
+          },
+          "tag": "feFuncA",
+        },
+      ],
+      "tag": "feComponentTransfer",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "blurred",
+        "in2": "specAdj",
+        "mode": "screen",
+        "result": "final",
+      },
+      "tag": "feBlend",
+    },
+  ],
+  "tag": "filter",
+}
+`;
+
+exports[`FilterGraph (characterization) > dispersion=0 blur=noise1 specular=false: build then update > built 1`] = `
+{
+  "attrs": {
+    "color-interpolation-filters": "sRGB",
+    "filterUnits": "userSpaceOnUse",
+    "height": "120",
+    "id": "lg-test",
+    "primitiveUnits": "userSpaceOnUse",
+    "width": "300",
+    "x": "0",
+    "y": "0",
+  },
+  "children": [
+    {
+      "attrs": {
+        "height": "120",
+        "preserveAspectRatio": "none",
+        "result": "map",
+        "width": "300",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "refr",
+        "scale": "0",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "height": "100%",
+        "preserveAspectRatio": "none",
+        "result": "specSrc",
+        "width": "100%",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "baseFrequency": "0.035",
+        "data-dyn": "1",
+        "numOctaves": "5",
+        "result": "noise_low",
+        "seed": "7",
+        "type": "fractalNoise",
+      },
+      "tag": "feTurbulence",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "noise_low",
+        "result": "quant_low",
+        "type": "matrix",
+        "values": "1.8 0 0 0 -0.4  0 1.8 0 0 -0.4  0 0 1.8 0 -0.4  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "noiseScale",
+        "in": "refr",
+        "in2": "quant_low",
+        "result": "refrNoise_low",
+        "scale": "20.00",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+  ],
+  "tag": "filter",
+}
+`;
+
+exports[`FilterGraph (characterization) > dispersion=0 blur=noise1 specular=false: build then update > updated 1`] = `
+{
+  "attrs": {
+    "color-interpolation-filters": "sRGB",
+    "filterUnits": "userSpaceOnUse",
+    "height": "120",
+    "id": "lg-test",
+    "primitiveUnits": "userSpaceOnUse",
+    "width": "300",
+    "x": "0",
+    "y": "0",
+  },
+  "children": [
+    {
+      "attrs": {
+        "height": "120",
+        "preserveAspectRatio": "none",
+        "result": "map",
+        "width": "300",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "refr",
+        "scale": "150",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "height": "100%",
+        "preserveAspectRatio": "none",
+        "result": "specSrc",
+        "width": "100%",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "baseFrequency": "0.035",
+        "data-dyn": "1",
+        "numOctaves": "5",
+        "result": "noise_low",
+        "seed": "7",
+        "type": "fractalNoise",
+      },
+      "tag": "feTurbulence",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "noise_low",
+        "result": "quant_low",
+        "type": "matrix",
+        "values": "1.8 0 0 0 -0.4  0 1.8 0 0 -0.4  0 0 1.8 0 -0.4  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "noiseScale",
+        "in": "refr",
+        "in2": "quant_low",
+        "result": "refrNoise_low",
+        "scale": "10.00",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+  ],
+  "tag": "filter",
+}
+`;
+
+exports[`FilterGraph (characterization) > dispersion=0 blur=noise1 specular=true: build then update > built 1`] = `
+{
+  "attrs": {
+    "color-interpolation-filters": "sRGB",
+    "filterUnits": "userSpaceOnUse",
+    "height": "120",
+    "id": "lg-test",
+    "primitiveUnits": "userSpaceOnUse",
+    "width": "300",
+    "x": "0",
+    "y": "0",
+  },
+  "children": [
+    {
+      "attrs": {
+        "height": "120",
+        "preserveAspectRatio": "none",
+        "result": "map",
+        "width": "300",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "refr",
+        "scale": "0",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "height": "100%",
+        "preserveAspectRatio": "none",
+        "result": "specSrc",
+        "width": "100%",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "baseFrequency": "0.035",
+        "data-dyn": "1",
+        "numOctaves": "5",
+        "result": "noise_low",
+        "seed": "7",
+        "type": "fractalNoise",
+      },
+      "tag": "feTurbulence",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "noise_low",
+        "result": "quant_low",
+        "type": "matrix",
+        "values": "1.8 0 0 0 -0.4  0 1.8 0 0 -0.4  0 0 1.8 0 -0.4  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "noiseScale",
+        "in": "refr",
+        "in2": "quant_low",
+        "result": "refrNoise_low",
+        "scale": "20.00",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "specSrc",
+        "result": "specAdj",
+      },
+      "children": [
+        {
+          "attrs": {
+            "data-dyn": "1",
+            "data-role": "specGain",
+            "slope": "0.9",
+            "type": "linear",
+          },
+          "tag": "feFuncA",
+        },
+      ],
+      "tag": "feComponentTransfer",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refrNoise_low",
+        "in2": "specAdj",
+        "mode": "screen",
+        "result": "final",
+      },
+      "tag": "feBlend",
+    },
+  ],
+  "tag": "filter",
+}
+`;
+
+exports[`FilterGraph (characterization) > dispersion=0 blur=noise1 specular=true: build then update > updated 1`] = `
+{
+  "attrs": {
+    "color-interpolation-filters": "sRGB",
+    "filterUnits": "userSpaceOnUse",
+    "height": "120",
+    "id": "lg-test",
+    "primitiveUnits": "userSpaceOnUse",
+    "width": "300",
+    "x": "0",
+    "y": "0",
+  },
+  "children": [
+    {
+      "attrs": {
+        "height": "120",
+        "preserveAspectRatio": "none",
+        "result": "map",
+        "width": "300",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "refr",
+        "scale": "150",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "height": "100%",
+        "preserveAspectRatio": "none",
+        "result": "specSrc",
+        "width": "100%",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "baseFrequency": "0.035",
+        "data-dyn": "1",
+        "numOctaves": "5",
+        "result": "noise_low",
+        "seed": "7",
+        "type": "fractalNoise",
+      },
+      "tag": "feTurbulence",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "noise_low",
+        "result": "quant_low",
+        "type": "matrix",
+        "values": "1.8 0 0 0 -0.4  0 1.8 0 0 -0.4  0 0 1.8 0 -0.4  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "noiseScale",
+        "in": "refr",
+        "in2": "quant_low",
+        "result": "refrNoise_low",
+        "scale": "10.00",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "specSrc",
+        "result": "specAdj",
+      },
+      "children": [
+        {
+          "attrs": {
+            "data-dyn": "1",
+            "data-role": "specGain",
+            "slope": "1.1",
+            "type": "linear",
+          },
+          "tag": "feFuncA",
+        },
+      ],
+      "tag": "feComponentTransfer",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refrNoise_low",
+        "in2": "specAdj",
+        "mode": "screen",
+        "result": "final",
+      },
+      "tag": "feBlend",
+    },
+  ],
+  "tag": "filter",
+}
+`;
+
+exports[`FilterGraph (characterization) > dispersion=0 blur=noise2 specular=false: build then update > built 1`] = `
+{
+  "attrs": {
+    "color-interpolation-filters": "sRGB",
+    "filterUnits": "userSpaceOnUse",
+    "height": "120",
+    "id": "lg-test",
+    "primitiveUnits": "userSpaceOnUse",
+    "width": "300",
+    "x": "0",
+    "y": "0",
+  },
+  "children": [
+    {
+      "attrs": {
+        "height": "120",
+        "preserveAspectRatio": "none",
+        "result": "map",
+        "width": "300",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "refr",
+        "scale": "0",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "height": "100%",
+        "preserveAspectRatio": "none",
+        "result": "specSrc",
+        "width": "100%",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "baseFrequency": "0.4",
+        "data-dyn": "1",
+        "numOctaves": "4",
+        "result": "noise_high",
+        "seed": "7",
+        "type": "fractalNoise",
+      },
+      "tag": "feTurbulence",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "noise_high",
+        "result": "quant_high",
+        "type": "matrix",
+        "values": "1.8 0 0 0 -0.4  0 1.8 0 0 -0.4  0 0 1.8 0 -0.4  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "noiseScale",
+        "in": "refr",
+        "in2": "quant_high",
+        "result": "refrNoise_high",
+        "scale": "20.00",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+  ],
+  "tag": "filter",
+}
+`;
+
+exports[`FilterGraph (characterization) > dispersion=0 blur=noise2 specular=false: build then update > updated 1`] = `
+{
+  "attrs": {
+    "color-interpolation-filters": "sRGB",
+    "filterUnits": "userSpaceOnUse",
+    "height": "120",
+    "id": "lg-test",
+    "primitiveUnits": "userSpaceOnUse",
+    "width": "300",
+    "x": "0",
+    "y": "0",
+  },
+  "children": [
+    {
+      "attrs": {
+        "height": "120",
+        "preserveAspectRatio": "none",
+        "result": "map",
+        "width": "300",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "refr",
+        "scale": "150",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "height": "100%",
+        "preserveAspectRatio": "none",
+        "result": "specSrc",
+        "width": "100%",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "baseFrequency": "0.4",
+        "data-dyn": "1",
+        "numOctaves": "4",
+        "result": "noise_high",
+        "seed": "7",
+        "type": "fractalNoise",
+      },
+      "tag": "feTurbulence",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "noise_high",
+        "result": "quant_high",
+        "type": "matrix",
+        "values": "1.8 0 0 0 -0.4  0 1.8 0 0 -0.4  0 0 1.8 0 -0.4  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "noiseScale",
+        "in": "refr",
+        "in2": "quant_high",
+        "result": "refrNoise_high",
+        "scale": "20.00",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+  ],
+  "tag": "filter",
+}
+`;
+
+exports[`FilterGraph (characterization) > dispersion=0 blur=noise2 specular=true: build then update > built 1`] = `
+{
+  "attrs": {
+    "color-interpolation-filters": "sRGB",
+    "filterUnits": "userSpaceOnUse",
+    "height": "120",
+    "id": "lg-test",
+    "primitiveUnits": "userSpaceOnUse",
+    "width": "300",
+    "x": "0",
+    "y": "0",
+  },
+  "children": [
+    {
+      "attrs": {
+        "height": "120",
+        "preserveAspectRatio": "none",
+        "result": "map",
+        "width": "300",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "refr",
+        "scale": "0",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "height": "100%",
+        "preserveAspectRatio": "none",
+        "result": "specSrc",
+        "width": "100%",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "baseFrequency": "0.4",
+        "data-dyn": "1",
+        "numOctaves": "4",
+        "result": "noise_high",
+        "seed": "7",
+        "type": "fractalNoise",
+      },
+      "tag": "feTurbulence",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "noise_high",
+        "result": "quant_high",
+        "type": "matrix",
+        "values": "1.8 0 0 0 -0.4  0 1.8 0 0 -0.4  0 0 1.8 0 -0.4  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "noiseScale",
+        "in": "refr",
+        "in2": "quant_high",
+        "result": "refrNoise_high",
+        "scale": "20.00",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "specSrc",
+        "result": "specAdj",
+      },
+      "children": [
+        {
+          "attrs": {
+            "data-dyn": "1",
+            "data-role": "specGain",
+            "slope": "0.9",
+            "type": "linear",
+          },
+          "tag": "feFuncA",
+        },
+      ],
+      "tag": "feComponentTransfer",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refrNoise_high",
+        "in2": "specAdj",
+        "mode": "screen",
+        "result": "final",
+      },
+      "tag": "feBlend",
+    },
+  ],
+  "tag": "filter",
+}
+`;
+
+exports[`FilterGraph (characterization) > dispersion=0 blur=noise2 specular=true: build then update > updated 1`] = `
+{
+  "attrs": {
+    "color-interpolation-filters": "sRGB",
+    "filterUnits": "userSpaceOnUse",
+    "height": "120",
+    "id": "lg-test",
+    "primitiveUnits": "userSpaceOnUse",
+    "width": "300",
+    "x": "0",
+    "y": "0",
+  },
+  "children": [
+    {
+      "attrs": {
+        "height": "120",
+        "preserveAspectRatio": "none",
+        "result": "map",
+        "width": "300",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "refr",
+        "scale": "150",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "height": "100%",
+        "preserveAspectRatio": "none",
+        "result": "specSrc",
+        "width": "100%",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "baseFrequency": "0.4",
+        "data-dyn": "1",
+        "numOctaves": "4",
+        "result": "noise_high",
+        "seed": "7",
+        "type": "fractalNoise",
+      },
+      "tag": "feTurbulence",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "noise_high",
+        "result": "quant_high",
+        "type": "matrix",
+        "values": "1.8 0 0 0 -0.4  0 1.8 0 0 -0.4  0 0 1.8 0 -0.4  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "noiseScale",
+        "in": "refr",
+        "in2": "quant_high",
+        "result": "refrNoise_high",
+        "scale": "20.00",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "specSrc",
+        "result": "specAdj",
+      },
+      "children": [
+        {
+          "attrs": {
+            "data-dyn": "1",
+            "data-role": "specGain",
+            "slope": "1.1",
+            "type": "linear",
+          },
+          "tag": "feFuncA",
+        },
+      ],
+      "tag": "feComponentTransfer",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refrNoise_high",
+        "in2": "specAdj",
+        "mode": "screen",
+        "result": "final",
+      },
+      "tag": "feBlend",
+    },
+  ],
+  "tag": "filter",
+}
+`;
+
+exports[`FilterGraph (characterization) > dispersion=1 blur=gauss specular=false: build then update > built 1`] = `
+{
+  "attrs": {
+    "color-interpolation-filters": "sRGB",
+    "filterUnits": "userSpaceOnUse",
+    "height": "120",
+    "id": "lg-test",
+    "primitiveUnits": "userSpaceOnUse",
+    "width": "300",
+    "x": "0",
+    "y": "0",
+  },
+  "children": [
+    {
+      "attrs": {
+        "height": "120",
+        "preserveAspectRatio": "none",
+        "result": "map",
+        "width": "300",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "refr",
+        "scale": "0",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "height": "100%",
+        "preserveAspectRatio": "none",
+        "result": "specSrc",
+        "width": "100%",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "map",
+        "result": "chromaticMask",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastR",
+        "type": "matrix",
+        "values": "1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastG",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastB",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "offR",
+        "dx": "0",
+        "dy": "0",
+        "in": "fastR",
+        "result": "offR_shifted",
+      },
+      "tag": "feOffset",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "offB",
+        "dx": "0",
+        "dy": "0",
+        "in": "fastB",
+        "result": "offB_shifted",
+      },
+      "tag": "feOffset",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "offR_shifted",
+        "in2": "chromaticMask",
+        "operator": "in",
+        "result": "rBezel",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "offB_shifted",
+        "in2": "chromaticMask",
+        "operator": "in",
+        "result": "bBezel",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastR",
+        "in2": "chromaticMask",
+        "operator": "out",
+        "result": "rCenter",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastB",
+        "in2": "chromaticMask",
+        "operator": "out",
+        "result": "bCenter",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "rBezel",
+        "in2": "rCenter",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "finalR",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "bBezel",
+        "in2": "bCenter",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "finalB",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "finalR",
+        "in2": "fastG",
+        "mode": "screen",
+        "result": "fastRG",
+      },
+      "tag": "feBlend",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastRG",
+        "in2": "finalB",
+        "mode": "screen",
+        "result": "fastRGB",
+      },
+      "tag": "feBlend",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastA",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastRGB",
+        "in2": "fastA",
+        "operator": "in",
+        "result": "chromaticFastOut",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "blur",
+        "in": "chromaticFastOut",
+        "result": "blurred",
+        "stdDeviation": "0.20",
+      },
+      "tag": "feGaussianBlur",
+    },
+  ],
+  "tag": "filter",
+}
+`;
+
+exports[`FilterGraph (characterization) > dispersion=1 blur=gauss specular=false: build then update > updated 1`] = `
+{
+  "attrs": {
+    "color-interpolation-filters": "sRGB",
+    "filterUnits": "userSpaceOnUse",
+    "height": "120",
+    "id": "lg-test",
+    "primitiveUnits": "userSpaceOnUse",
+    "width": "300",
+    "x": "0",
+    "y": "0",
+  },
+  "children": [
+    {
+      "attrs": {
+        "height": "120",
+        "preserveAspectRatio": "none",
+        "result": "map",
+        "width": "300",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "refr",
+        "scale": "150",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "height": "100%",
+        "preserveAspectRatio": "none",
+        "result": "specSrc",
+        "width": "100%",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "map",
+        "result": "chromaticMask",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastR",
+        "type": "matrix",
+        "values": "1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastG",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastB",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "offR",
+        "dx": "2.00",
+        "dy": "0",
+        "in": "fastR",
+        "result": "offR_shifted",
+      },
+      "tag": "feOffset",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "offB",
+        "dx": "-2.00",
+        "dy": "0",
+        "in": "fastB",
+        "result": "offB_shifted",
+      },
+      "tag": "feOffset",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "offR_shifted",
+        "in2": "chromaticMask",
+        "operator": "in",
+        "result": "rBezel",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "offB_shifted",
+        "in2": "chromaticMask",
+        "operator": "in",
+        "result": "bBezel",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastR",
+        "in2": "chromaticMask",
+        "operator": "out",
+        "result": "rCenter",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastB",
+        "in2": "chromaticMask",
+        "operator": "out",
+        "result": "bCenter",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "rBezel",
+        "in2": "rCenter",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "finalR",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "bBezel",
+        "in2": "bCenter",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "finalB",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "finalR",
+        "in2": "fastG",
+        "mode": "screen",
+        "result": "fastRG",
+      },
+      "tag": "feBlend",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastRG",
+        "in2": "finalB",
+        "mode": "screen",
+        "result": "fastRGB",
+      },
+      "tag": "feBlend",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastA",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastRGB",
+        "in2": "fastA",
+        "operator": "in",
+        "result": "chromaticFastOut",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "blur",
+        "in": "chromaticFastOut",
+        "result": "blurred",
+        "stdDeviation": "0.50",
+      },
+      "tag": "feGaussianBlur",
+    },
+  ],
+  "tag": "filter",
+}
+`;
+
+exports[`FilterGraph (characterization) > dispersion=1 blur=gauss specular=true: build then update > built 1`] = `
+{
+  "attrs": {
+    "color-interpolation-filters": "sRGB",
+    "filterUnits": "userSpaceOnUse",
+    "height": "120",
+    "id": "lg-test",
+    "primitiveUnits": "userSpaceOnUse",
+    "width": "300",
+    "x": "0",
+    "y": "0",
+  },
+  "children": [
+    {
+      "attrs": {
+        "height": "120",
+        "preserveAspectRatio": "none",
+        "result": "map",
+        "width": "300",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "refr",
+        "scale": "0",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "height": "100%",
+        "preserveAspectRatio": "none",
+        "result": "specSrc",
+        "width": "100%",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "map",
+        "result": "chromaticMask",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastR",
+        "type": "matrix",
+        "values": "1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastG",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastB",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "offR",
+        "dx": "0",
+        "dy": "0",
+        "in": "fastR",
+        "result": "offR_shifted",
+      },
+      "tag": "feOffset",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "offB",
+        "dx": "0",
+        "dy": "0",
+        "in": "fastB",
+        "result": "offB_shifted",
+      },
+      "tag": "feOffset",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "offR_shifted",
+        "in2": "chromaticMask",
+        "operator": "in",
+        "result": "rBezel",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "offB_shifted",
+        "in2": "chromaticMask",
+        "operator": "in",
+        "result": "bBezel",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastR",
+        "in2": "chromaticMask",
+        "operator": "out",
+        "result": "rCenter",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastB",
+        "in2": "chromaticMask",
+        "operator": "out",
+        "result": "bCenter",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "rBezel",
+        "in2": "rCenter",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "finalR",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "bBezel",
+        "in2": "bCenter",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "finalB",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "finalR",
+        "in2": "fastG",
+        "mode": "screen",
+        "result": "fastRG",
+      },
+      "tag": "feBlend",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastRG",
+        "in2": "finalB",
+        "mode": "screen",
+        "result": "fastRGB",
+      },
+      "tag": "feBlend",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastA",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastRGB",
+        "in2": "fastA",
+        "operator": "in",
+        "result": "chromaticFastOut",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "blur",
+        "in": "chromaticFastOut",
+        "result": "blurred",
+        "stdDeviation": "0.20",
+      },
+      "tag": "feGaussianBlur",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "specSrc",
+        "result": "specAdj",
+      },
+      "children": [
+        {
+          "attrs": {
+            "data-dyn": "1",
+            "data-role": "specGain",
+            "slope": "0.9",
+            "type": "linear",
+          },
+          "tag": "feFuncA",
+        },
+      ],
+      "tag": "feComponentTransfer",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "blurred",
+        "in2": "specAdj",
+        "mode": "screen",
+        "result": "final",
+      },
+      "tag": "feBlend",
+    },
+  ],
+  "tag": "filter",
+}
+`;
+
+exports[`FilterGraph (characterization) > dispersion=1 blur=gauss specular=true: build then update > updated 1`] = `
+{
+  "attrs": {
+    "color-interpolation-filters": "sRGB",
+    "filterUnits": "userSpaceOnUse",
+    "height": "120",
+    "id": "lg-test",
+    "primitiveUnits": "userSpaceOnUse",
+    "width": "300",
+    "x": "0",
+    "y": "0",
+  },
+  "children": [
+    {
+      "attrs": {
+        "height": "120",
+        "preserveAspectRatio": "none",
+        "result": "map",
+        "width": "300",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "refr",
+        "scale": "150",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "height": "100%",
+        "preserveAspectRatio": "none",
+        "result": "specSrc",
+        "width": "100%",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "map",
+        "result": "chromaticMask",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastR",
+        "type": "matrix",
+        "values": "1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastG",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastB",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "offR",
+        "dx": "2.00",
+        "dy": "0",
+        "in": "fastR",
+        "result": "offR_shifted",
+      },
+      "tag": "feOffset",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "offB",
+        "dx": "-2.00",
+        "dy": "0",
+        "in": "fastB",
+        "result": "offB_shifted",
+      },
+      "tag": "feOffset",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "offR_shifted",
+        "in2": "chromaticMask",
+        "operator": "in",
+        "result": "rBezel",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "offB_shifted",
+        "in2": "chromaticMask",
+        "operator": "in",
+        "result": "bBezel",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastR",
+        "in2": "chromaticMask",
+        "operator": "out",
+        "result": "rCenter",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastB",
+        "in2": "chromaticMask",
+        "operator": "out",
+        "result": "bCenter",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "rBezel",
+        "in2": "rCenter",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "finalR",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "bBezel",
+        "in2": "bCenter",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "finalB",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "finalR",
+        "in2": "fastG",
+        "mode": "screen",
+        "result": "fastRG",
+      },
+      "tag": "feBlend",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastRG",
+        "in2": "finalB",
+        "mode": "screen",
+        "result": "fastRGB",
+      },
+      "tag": "feBlend",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastA",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastRGB",
+        "in2": "fastA",
+        "operator": "in",
+        "result": "chromaticFastOut",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "blur",
+        "in": "chromaticFastOut",
+        "result": "blurred",
+        "stdDeviation": "0.50",
+      },
+      "tag": "feGaussianBlur",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "specSrc",
+        "result": "specAdj",
+      },
+      "children": [
+        {
+          "attrs": {
+            "data-dyn": "1",
+            "data-role": "specGain",
+            "slope": "1.1",
+            "type": "linear",
+          },
+          "tag": "feFuncA",
+        },
+      ],
+      "tag": "feComponentTransfer",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "blurred",
+        "in2": "specAdj",
+        "mode": "screen",
+        "result": "final",
+      },
+      "tag": "feBlend",
+    },
+  ],
+  "tag": "filter",
+}
+`;
+
+exports[`FilterGraph (characterization) > dispersion=1 blur=noise1 specular=false: build then update > built 1`] = `
+{
+  "attrs": {
+    "color-interpolation-filters": "sRGB",
+    "filterUnits": "userSpaceOnUse",
+    "height": "120",
+    "id": "lg-test",
+    "primitiveUnits": "userSpaceOnUse",
+    "width": "300",
+    "x": "0",
+    "y": "0",
+  },
+  "children": [
+    {
+      "attrs": {
+        "height": "120",
+        "preserveAspectRatio": "none",
+        "result": "map",
+        "width": "300",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "refr",
+        "scale": "0",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "height": "100%",
+        "preserveAspectRatio": "none",
+        "result": "specSrc",
+        "width": "100%",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "map",
+        "result": "chromaticMask",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastR",
+        "type": "matrix",
+        "values": "1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastG",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastB",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "offR",
+        "dx": "0",
+        "dy": "0",
+        "in": "fastR",
+        "result": "offR_shifted",
+      },
+      "tag": "feOffset",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "offB",
+        "dx": "0",
+        "dy": "0",
+        "in": "fastB",
+        "result": "offB_shifted",
+      },
+      "tag": "feOffset",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "offR_shifted",
+        "in2": "chromaticMask",
+        "operator": "in",
+        "result": "rBezel",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "offB_shifted",
+        "in2": "chromaticMask",
+        "operator": "in",
+        "result": "bBezel",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastR",
+        "in2": "chromaticMask",
+        "operator": "out",
+        "result": "rCenter",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastB",
+        "in2": "chromaticMask",
+        "operator": "out",
+        "result": "bCenter",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "rBezel",
+        "in2": "rCenter",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "finalR",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "bBezel",
+        "in2": "bCenter",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "finalB",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "finalR",
+        "in2": "fastG",
+        "mode": "screen",
+        "result": "fastRG",
+      },
+      "tag": "feBlend",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastRG",
+        "in2": "finalB",
+        "mode": "screen",
+        "result": "fastRGB",
+      },
+      "tag": "feBlend",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastA",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastRGB",
+        "in2": "fastA",
+        "operator": "in",
+        "result": "chromaticFastOut",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "baseFrequency": "0.035",
+        "data-dyn": "1",
+        "numOctaves": "5",
+        "result": "noise_low",
+        "seed": "7",
+        "type": "fractalNoise",
+      },
+      "tag": "feTurbulence",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "noise_low",
+        "result": "quant_low",
+        "type": "matrix",
+        "values": "1.8 0 0 0 -0.4  0 1.8 0 0 -0.4  0 0 1.8 0 -0.4  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "noiseScale",
+        "in": "chromaticFastOut",
+        "in2": "quant_low",
+        "result": "refrNoise_low",
+        "scale": "20.00",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+  ],
+  "tag": "filter",
+}
+`;
+
+exports[`FilterGraph (characterization) > dispersion=1 blur=noise1 specular=false: build then update > updated 1`] = `
+{
+  "attrs": {
+    "color-interpolation-filters": "sRGB",
+    "filterUnits": "userSpaceOnUse",
+    "height": "120",
+    "id": "lg-test",
+    "primitiveUnits": "userSpaceOnUse",
+    "width": "300",
+    "x": "0",
+    "y": "0",
+  },
+  "children": [
+    {
+      "attrs": {
+        "height": "120",
+        "preserveAspectRatio": "none",
+        "result": "map",
+        "width": "300",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "refr",
+        "scale": "150",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "height": "100%",
+        "preserveAspectRatio": "none",
+        "result": "specSrc",
+        "width": "100%",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "map",
+        "result": "chromaticMask",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastR",
+        "type": "matrix",
+        "values": "1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastG",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastB",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "offR",
+        "dx": "2.00",
+        "dy": "0",
+        "in": "fastR",
+        "result": "offR_shifted",
+      },
+      "tag": "feOffset",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "offB",
+        "dx": "-2.00",
+        "dy": "0",
+        "in": "fastB",
+        "result": "offB_shifted",
+      },
+      "tag": "feOffset",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "offR_shifted",
+        "in2": "chromaticMask",
+        "operator": "in",
+        "result": "rBezel",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "offB_shifted",
+        "in2": "chromaticMask",
+        "operator": "in",
+        "result": "bBezel",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastR",
+        "in2": "chromaticMask",
+        "operator": "out",
+        "result": "rCenter",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastB",
+        "in2": "chromaticMask",
+        "operator": "out",
+        "result": "bCenter",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "rBezel",
+        "in2": "rCenter",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "finalR",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "bBezel",
+        "in2": "bCenter",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "finalB",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "finalR",
+        "in2": "fastG",
+        "mode": "screen",
+        "result": "fastRG",
+      },
+      "tag": "feBlend",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastRG",
+        "in2": "finalB",
+        "mode": "screen",
+        "result": "fastRGB",
+      },
+      "tag": "feBlend",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastA",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastRGB",
+        "in2": "fastA",
+        "operator": "in",
+        "result": "chromaticFastOut",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "baseFrequency": "0.035",
+        "data-dyn": "1",
+        "numOctaves": "5",
+        "result": "noise_low",
+        "seed": "7",
+        "type": "fractalNoise",
+      },
+      "tag": "feTurbulence",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "noise_low",
+        "result": "quant_low",
+        "type": "matrix",
+        "values": "1.8 0 0 0 -0.4  0 1.8 0 0 -0.4  0 0 1.8 0 -0.4  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "noiseScale",
+        "in": "chromaticFastOut",
+        "in2": "quant_low",
+        "result": "refrNoise_low",
+        "scale": "10.00",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+  ],
+  "tag": "filter",
+}
+`;
+
+exports[`FilterGraph (characterization) > dispersion=1 blur=noise1 specular=true: build then update > built 1`] = `
+{
+  "attrs": {
+    "color-interpolation-filters": "sRGB",
+    "filterUnits": "userSpaceOnUse",
+    "height": "120",
+    "id": "lg-test",
+    "primitiveUnits": "userSpaceOnUse",
+    "width": "300",
+    "x": "0",
+    "y": "0",
+  },
+  "children": [
+    {
+      "attrs": {
+        "height": "120",
+        "preserveAspectRatio": "none",
+        "result": "map",
+        "width": "300",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "refr",
+        "scale": "0",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "height": "100%",
+        "preserveAspectRatio": "none",
+        "result": "specSrc",
+        "width": "100%",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "map",
+        "result": "chromaticMask",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastR",
+        "type": "matrix",
+        "values": "1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastG",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastB",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "offR",
+        "dx": "0",
+        "dy": "0",
+        "in": "fastR",
+        "result": "offR_shifted",
+      },
+      "tag": "feOffset",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "offB",
+        "dx": "0",
+        "dy": "0",
+        "in": "fastB",
+        "result": "offB_shifted",
+      },
+      "tag": "feOffset",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "offR_shifted",
+        "in2": "chromaticMask",
+        "operator": "in",
+        "result": "rBezel",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "offB_shifted",
+        "in2": "chromaticMask",
+        "operator": "in",
+        "result": "bBezel",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastR",
+        "in2": "chromaticMask",
+        "operator": "out",
+        "result": "rCenter",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastB",
+        "in2": "chromaticMask",
+        "operator": "out",
+        "result": "bCenter",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "rBezel",
+        "in2": "rCenter",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "finalR",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "bBezel",
+        "in2": "bCenter",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "finalB",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "finalR",
+        "in2": "fastG",
+        "mode": "screen",
+        "result": "fastRG",
+      },
+      "tag": "feBlend",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastRG",
+        "in2": "finalB",
+        "mode": "screen",
+        "result": "fastRGB",
+      },
+      "tag": "feBlend",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastA",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastRGB",
+        "in2": "fastA",
+        "operator": "in",
+        "result": "chromaticFastOut",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "baseFrequency": "0.035",
+        "data-dyn": "1",
+        "numOctaves": "5",
+        "result": "noise_low",
+        "seed": "7",
+        "type": "fractalNoise",
+      },
+      "tag": "feTurbulence",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "noise_low",
+        "result": "quant_low",
+        "type": "matrix",
+        "values": "1.8 0 0 0 -0.4  0 1.8 0 0 -0.4  0 0 1.8 0 -0.4  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "noiseScale",
+        "in": "chromaticFastOut",
+        "in2": "quant_low",
+        "result": "refrNoise_low",
+        "scale": "20.00",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "specSrc",
+        "result": "specAdj",
+      },
+      "children": [
+        {
+          "attrs": {
+            "data-dyn": "1",
+            "data-role": "specGain",
+            "slope": "0.9",
+            "type": "linear",
+          },
+          "tag": "feFuncA",
+        },
+      ],
+      "tag": "feComponentTransfer",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refrNoise_low",
+        "in2": "specAdj",
+        "mode": "screen",
+        "result": "final",
+      },
+      "tag": "feBlend",
+    },
+  ],
+  "tag": "filter",
+}
+`;
+
+exports[`FilterGraph (characterization) > dispersion=1 blur=noise1 specular=true: build then update > updated 1`] = `
+{
+  "attrs": {
+    "color-interpolation-filters": "sRGB",
+    "filterUnits": "userSpaceOnUse",
+    "height": "120",
+    "id": "lg-test",
+    "primitiveUnits": "userSpaceOnUse",
+    "width": "300",
+    "x": "0",
+    "y": "0",
+  },
+  "children": [
+    {
+      "attrs": {
+        "height": "120",
+        "preserveAspectRatio": "none",
+        "result": "map",
+        "width": "300",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "refr",
+        "scale": "150",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "height": "100%",
+        "preserveAspectRatio": "none",
+        "result": "specSrc",
+        "width": "100%",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "map",
+        "result": "chromaticMask",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastR",
+        "type": "matrix",
+        "values": "1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastG",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastB",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "offR",
+        "dx": "2.00",
+        "dy": "0",
+        "in": "fastR",
+        "result": "offR_shifted",
+      },
+      "tag": "feOffset",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "offB",
+        "dx": "-2.00",
+        "dy": "0",
+        "in": "fastB",
+        "result": "offB_shifted",
+      },
+      "tag": "feOffset",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "offR_shifted",
+        "in2": "chromaticMask",
+        "operator": "in",
+        "result": "rBezel",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "offB_shifted",
+        "in2": "chromaticMask",
+        "operator": "in",
+        "result": "bBezel",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastR",
+        "in2": "chromaticMask",
+        "operator": "out",
+        "result": "rCenter",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastB",
+        "in2": "chromaticMask",
+        "operator": "out",
+        "result": "bCenter",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "rBezel",
+        "in2": "rCenter",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "finalR",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "bBezel",
+        "in2": "bCenter",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "finalB",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "finalR",
+        "in2": "fastG",
+        "mode": "screen",
+        "result": "fastRG",
+      },
+      "tag": "feBlend",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastRG",
+        "in2": "finalB",
+        "mode": "screen",
+        "result": "fastRGB",
+      },
+      "tag": "feBlend",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastA",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastRGB",
+        "in2": "fastA",
+        "operator": "in",
+        "result": "chromaticFastOut",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "baseFrequency": "0.035",
+        "data-dyn": "1",
+        "numOctaves": "5",
+        "result": "noise_low",
+        "seed": "7",
+        "type": "fractalNoise",
+      },
+      "tag": "feTurbulence",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "noise_low",
+        "result": "quant_low",
+        "type": "matrix",
+        "values": "1.8 0 0 0 -0.4  0 1.8 0 0 -0.4  0 0 1.8 0 -0.4  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "noiseScale",
+        "in": "chromaticFastOut",
+        "in2": "quant_low",
+        "result": "refrNoise_low",
+        "scale": "10.00",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "specSrc",
+        "result": "specAdj",
+      },
+      "children": [
+        {
+          "attrs": {
+            "data-dyn": "1",
+            "data-role": "specGain",
+            "slope": "1.1",
+            "type": "linear",
+          },
+          "tag": "feFuncA",
+        },
+      ],
+      "tag": "feComponentTransfer",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refrNoise_low",
+        "in2": "specAdj",
+        "mode": "screen",
+        "result": "final",
+      },
+      "tag": "feBlend",
+    },
+  ],
+  "tag": "filter",
+}
+`;
+
+exports[`FilterGraph (characterization) > dispersion=1 blur=noise2 specular=false: build then update > built 1`] = `
+{
+  "attrs": {
+    "color-interpolation-filters": "sRGB",
+    "filterUnits": "userSpaceOnUse",
+    "height": "120",
+    "id": "lg-test",
+    "primitiveUnits": "userSpaceOnUse",
+    "width": "300",
+    "x": "0",
+    "y": "0",
+  },
+  "children": [
+    {
+      "attrs": {
+        "height": "120",
+        "preserveAspectRatio": "none",
+        "result": "map",
+        "width": "300",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "refr",
+        "scale": "0",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "height": "100%",
+        "preserveAspectRatio": "none",
+        "result": "specSrc",
+        "width": "100%",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "map",
+        "result": "chromaticMask",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastR",
+        "type": "matrix",
+        "values": "1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastG",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastB",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "offR",
+        "dx": "0",
+        "dy": "0",
+        "in": "fastR",
+        "result": "offR_shifted",
+      },
+      "tag": "feOffset",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "offB",
+        "dx": "0",
+        "dy": "0",
+        "in": "fastB",
+        "result": "offB_shifted",
+      },
+      "tag": "feOffset",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "offR_shifted",
+        "in2": "chromaticMask",
+        "operator": "in",
+        "result": "rBezel",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "offB_shifted",
+        "in2": "chromaticMask",
+        "operator": "in",
+        "result": "bBezel",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastR",
+        "in2": "chromaticMask",
+        "operator": "out",
+        "result": "rCenter",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastB",
+        "in2": "chromaticMask",
+        "operator": "out",
+        "result": "bCenter",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "rBezel",
+        "in2": "rCenter",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "finalR",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "bBezel",
+        "in2": "bCenter",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "finalB",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "finalR",
+        "in2": "fastG",
+        "mode": "screen",
+        "result": "fastRG",
+      },
+      "tag": "feBlend",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastRG",
+        "in2": "finalB",
+        "mode": "screen",
+        "result": "fastRGB",
+      },
+      "tag": "feBlend",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastA",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastRGB",
+        "in2": "fastA",
+        "operator": "in",
+        "result": "chromaticFastOut",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "baseFrequency": "0.4",
+        "data-dyn": "1",
+        "numOctaves": "4",
+        "result": "noise_high",
+        "seed": "7",
+        "type": "fractalNoise",
+      },
+      "tag": "feTurbulence",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "noise_high",
+        "result": "quant_high",
+        "type": "matrix",
+        "values": "1.8 0 0 0 -0.4  0 1.8 0 0 -0.4  0 0 1.8 0 -0.4  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "noiseScale",
+        "in": "chromaticFastOut",
+        "in2": "quant_high",
+        "result": "refrNoise_high",
+        "scale": "20.00",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+  ],
+  "tag": "filter",
+}
+`;
+
+exports[`FilterGraph (characterization) > dispersion=1 blur=noise2 specular=false: build then update > updated 1`] = `
+{
+  "attrs": {
+    "color-interpolation-filters": "sRGB",
+    "filterUnits": "userSpaceOnUse",
+    "height": "120",
+    "id": "lg-test",
+    "primitiveUnits": "userSpaceOnUse",
+    "width": "300",
+    "x": "0",
+    "y": "0",
+  },
+  "children": [
+    {
+      "attrs": {
+        "height": "120",
+        "preserveAspectRatio": "none",
+        "result": "map",
+        "width": "300",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "refr",
+        "scale": "150",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "height": "100%",
+        "preserveAspectRatio": "none",
+        "result": "specSrc",
+        "width": "100%",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "map",
+        "result": "chromaticMask",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastR",
+        "type": "matrix",
+        "values": "1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastG",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastB",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "offR",
+        "dx": "2.00",
+        "dy": "0",
+        "in": "fastR",
+        "result": "offR_shifted",
+      },
+      "tag": "feOffset",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "offB",
+        "dx": "-2.00",
+        "dy": "0",
+        "in": "fastB",
+        "result": "offB_shifted",
+      },
+      "tag": "feOffset",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "offR_shifted",
+        "in2": "chromaticMask",
+        "operator": "in",
+        "result": "rBezel",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "offB_shifted",
+        "in2": "chromaticMask",
+        "operator": "in",
+        "result": "bBezel",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastR",
+        "in2": "chromaticMask",
+        "operator": "out",
+        "result": "rCenter",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastB",
+        "in2": "chromaticMask",
+        "operator": "out",
+        "result": "bCenter",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "rBezel",
+        "in2": "rCenter",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "finalR",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "bBezel",
+        "in2": "bCenter",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "finalB",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "finalR",
+        "in2": "fastG",
+        "mode": "screen",
+        "result": "fastRG",
+      },
+      "tag": "feBlend",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastRG",
+        "in2": "finalB",
+        "mode": "screen",
+        "result": "fastRGB",
+      },
+      "tag": "feBlend",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastA",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastRGB",
+        "in2": "fastA",
+        "operator": "in",
+        "result": "chromaticFastOut",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "baseFrequency": "0.4",
+        "data-dyn": "1",
+        "numOctaves": "4",
+        "result": "noise_high",
+        "seed": "7",
+        "type": "fractalNoise",
+      },
+      "tag": "feTurbulence",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "noise_high",
+        "result": "quant_high",
+        "type": "matrix",
+        "values": "1.8 0 0 0 -0.4  0 1.8 0 0 -0.4  0 0 1.8 0 -0.4  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "noiseScale",
+        "in": "chromaticFastOut",
+        "in2": "quant_high",
+        "result": "refrNoise_high",
+        "scale": "20.00",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+  ],
+  "tag": "filter",
+}
+`;
+
+exports[`FilterGraph (characterization) > dispersion=1 blur=noise2 specular=true: build then update > built 1`] = `
+{
+  "attrs": {
+    "color-interpolation-filters": "sRGB",
+    "filterUnits": "userSpaceOnUse",
+    "height": "120",
+    "id": "lg-test",
+    "primitiveUnits": "userSpaceOnUse",
+    "width": "300",
+    "x": "0",
+    "y": "0",
+  },
+  "children": [
+    {
+      "attrs": {
+        "height": "120",
+        "preserveAspectRatio": "none",
+        "result": "map",
+        "width": "300",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "refr",
+        "scale": "0",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "height": "100%",
+        "preserveAspectRatio": "none",
+        "result": "specSrc",
+        "width": "100%",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "map",
+        "result": "chromaticMask",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastR",
+        "type": "matrix",
+        "values": "1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastG",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastB",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "offR",
+        "dx": "0",
+        "dy": "0",
+        "in": "fastR",
+        "result": "offR_shifted",
+      },
+      "tag": "feOffset",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "offB",
+        "dx": "0",
+        "dy": "0",
+        "in": "fastB",
+        "result": "offB_shifted",
+      },
+      "tag": "feOffset",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "offR_shifted",
+        "in2": "chromaticMask",
+        "operator": "in",
+        "result": "rBezel",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "offB_shifted",
+        "in2": "chromaticMask",
+        "operator": "in",
+        "result": "bBezel",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastR",
+        "in2": "chromaticMask",
+        "operator": "out",
+        "result": "rCenter",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastB",
+        "in2": "chromaticMask",
+        "operator": "out",
+        "result": "bCenter",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "rBezel",
+        "in2": "rCenter",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "finalR",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "bBezel",
+        "in2": "bCenter",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "finalB",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "finalR",
+        "in2": "fastG",
+        "mode": "screen",
+        "result": "fastRG",
+      },
+      "tag": "feBlend",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastRG",
+        "in2": "finalB",
+        "mode": "screen",
+        "result": "fastRGB",
+      },
+      "tag": "feBlend",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastA",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastRGB",
+        "in2": "fastA",
+        "operator": "in",
+        "result": "chromaticFastOut",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "baseFrequency": "0.4",
+        "data-dyn": "1",
+        "numOctaves": "4",
+        "result": "noise_high",
+        "seed": "7",
+        "type": "fractalNoise",
+      },
+      "tag": "feTurbulence",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "noise_high",
+        "result": "quant_high",
+        "type": "matrix",
+        "values": "1.8 0 0 0 -0.4  0 1.8 0 0 -0.4  0 0 1.8 0 -0.4  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "noiseScale",
+        "in": "chromaticFastOut",
+        "in2": "quant_high",
+        "result": "refrNoise_high",
+        "scale": "20.00",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "specSrc",
+        "result": "specAdj",
+      },
+      "children": [
+        {
+          "attrs": {
+            "data-dyn": "1",
+            "data-role": "specGain",
+            "slope": "0.9",
+            "type": "linear",
+          },
+          "tag": "feFuncA",
+        },
+      ],
+      "tag": "feComponentTransfer",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refrNoise_high",
+        "in2": "specAdj",
+        "mode": "screen",
+        "result": "final",
+      },
+      "tag": "feBlend",
+    },
+  ],
+  "tag": "filter",
+}
+`;
+
+exports[`FilterGraph (characterization) > dispersion=1 blur=noise2 specular=true: build then update > updated 1`] = `
+{
+  "attrs": {
+    "color-interpolation-filters": "sRGB",
+    "filterUnits": "userSpaceOnUse",
+    "height": "120",
+    "id": "lg-test",
+    "primitiveUnits": "userSpaceOnUse",
+    "width": "300",
+    "x": "0",
+    "y": "0",
+  },
+  "children": [
+    {
+      "attrs": {
+        "height": "120",
+        "preserveAspectRatio": "none",
+        "result": "map",
+        "width": "300",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "refr",
+        "scale": "150",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "height": "100%",
+        "preserveAspectRatio": "none",
+        "result": "specSrc",
+        "width": "100%",
+        "x": "0",
+        "y": "0",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "map",
+        "result": "chromaticMask",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastR",
+        "type": "matrix",
+        "values": "1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastG",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastB",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "offR",
+        "dx": "2.00",
+        "dy": "0",
+        "in": "fastR",
+        "result": "offR_shifted",
+      },
+      "tag": "feOffset",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "offB",
+        "dx": "-2.00",
+        "dy": "0",
+        "in": "fastB",
+        "result": "offB_shifted",
+      },
+      "tag": "feOffset",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "offR_shifted",
+        "in2": "chromaticMask",
+        "operator": "in",
+        "result": "rBezel",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "offB_shifted",
+        "in2": "chromaticMask",
+        "operator": "in",
+        "result": "bBezel",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastR",
+        "in2": "chromaticMask",
+        "operator": "out",
+        "result": "rCenter",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastB",
+        "in2": "chromaticMask",
+        "operator": "out",
+        "result": "bCenter",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "rBezel",
+        "in2": "rCenter",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "finalR",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "bBezel",
+        "in2": "bCenter",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "finalB",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "finalR",
+        "in2": "fastG",
+        "mode": "screen",
+        "result": "fastRG",
+      },
+      "tag": "feBlend",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastRG",
+        "in2": "finalB",
+        "mode": "screen",
+        "result": "fastRGB",
+      },
+      "tag": "feBlend",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refr",
+        "result": "fastA",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "fastRGB",
+        "in2": "fastA",
+        "operator": "in",
+        "result": "chromaticFastOut",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "baseFrequency": "0.4",
+        "data-dyn": "1",
+        "numOctaves": "4",
+        "result": "noise_high",
+        "seed": "7",
+        "type": "fractalNoise",
+      },
+      "tag": "feTurbulence",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "noise_high",
+        "result": "quant_high",
+        "type": "matrix",
+        "values": "1.8 0 0 0 -0.4  0 1.8 0 0 -0.4  0 0 1.8 0 -0.4  0 0 0 1 0",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "data-role": "noiseScale",
+        "in": "chromaticFastOut",
+        "in2": "quant_high",
+        "result": "refrNoise_high",
+        "scale": "20.00",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "specSrc",
+        "result": "specAdj",
+      },
+      "children": [
+        {
+          "attrs": {
+            "data-dyn": "1",
+            "data-role": "specGain",
+            "slope": "1.1",
+            "type": "linear",
+          },
+          "tag": "feFuncA",
+        },
+      ],
+      "tag": "feComponentTransfer",
+    },
+    {
+      "attrs": {
+        "data-dyn": "1",
+        "in": "refrNoise_high",
+        "in2": "specAdj",
+        "mode": "screen",
+        "result": "final",
+      },
+      "tag": "feBlend",
+    },
+  ],
+  "tag": "filter",
+}
+`;
