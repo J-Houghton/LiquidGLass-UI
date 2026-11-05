@@ -1,10 +1,13 @@
 import { el, append } from './core.js';
 import type { Stage } from './core.js';
 
+/** Displacement scale per unit of blur for the two noise profiles (matches updateParams). */
+export const NOISE_SCALE_FACTOR = { low: 20, high: 40 } as const;
+
 /**
- * Create a noise‑based blur stage.  This stage uses SVG turbulence and
+ * Create a noise-based blur stage.  This stage uses SVG turbulence and
  * displacement maps to produce a grainier, more organic blur.  The `kind`
- * selects between a low‑frequency (soft) and high‑frequency (harsh) noise
+ * selects between a low-frequency (soft) and high-frequency (harsh) noise
  * profile.  The strength of the blur is controlled by `stdDev`.
  */
 export function noiseBlur(kind: 'low' | 'high', stdDev: number): Stage {
@@ -32,7 +35,7 @@ export function noiseBlur(kind: 'low' | 'high', stdDev: number): Stage {
       in2: `quant_${suffix}`,
       xChannelSelector: 'R',
       yChannelSelector: 'G',
-      scale: (stdDev * 100).toFixed(2),
+      scale: (stdDev * NOISE_SCALE_FACTOR[kind]).toFixed(2),
       result: `refrNoise_${suffix}`,
       'data-dyn': '1',
       // mark this displacement node for noise blur so it can be updated
