@@ -99,7 +99,7 @@ describe('buildFilterSpec', () => {
     const spec = buildFilterSpec(resolveGlassParams({ dispersion: 1, blurKind: 'noise2', specular: true }), REFS);
     const d = spec.dynamic;
     expect(d[1].attrs.in).toBe('refr');
-    expect(d[d.length - 4].attrs.in).toBe('chromaticFastOut'); // noise feDisplacementMap
+    expect(d[d.length - 3].attrs.in).toBe('chromaticFastOut'); // noise feDisplacementMap
     expect(d[d.length - 1].attrs.in).toBe('refrNoise_high'); // final blend
     expect(d[d.length - 1].attrs.result).toBe('final');
   });
