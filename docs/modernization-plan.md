@@ -24,7 +24,7 @@ per the recommendations in §4 (OQ-13: not on npm, so 2.0.0 with no deprecation 
 | 3 Headless API | done | `createGlassFilter`, `attachLiquidGlass`, ESM-only package with `.`/`./core` entries. Demo dogfoods the API (3.6). |
 | 4 Elements, Lit removal | done | `./elements` entry; lifecycle tests run under `happy-dom` (dev-only, the addition OQ-4 reserved). 4.3 landed early to fix a real break: `sideEffects:false` made Rollup drop the demo's side-effect-only imports, so the demo now has an explicit entry (`demo/main.ts`). `blur` is exposed as the `blurAmount` element property because `HTMLElement.blur()` exists. |
 | 5 Research-dependent | **waiting** | Nothing started. Inputs expected in `docs/research/`. |
-| 6 Release | 6.1 done, 6.2 see commit log | README, CHANGELOG, 2.0.0. Dependency bumps are their own commit if they pass. |
+| 6 Release | done (6.3 publish workflow not added) | README, CHANGELOG, 2.0.0. 6.2 bumped to TypeScript 6.0, Vite 8.3, Vitest 5.1, happy-dom 21, Node 22 in both workflows. TypeScript 7 (native compiler) and vite-plugin-dts 5 (rewrite over unplugin-dts, `rollupTypes` → `bundleTypes`) were tried and deliberately not taken yet. |
 
 Not yet done by anyone: a visual check of the demo in a real browser after Phase 3.6/4.3 (this
 session had no browser). Run `npm run dev`, load each preset, toggle the debug map, drag, resize.

@@ -5,8 +5,8 @@
 export interface RGBAImage {
   readonly width: number;
   readonly height: number;
-  /** Row-major RGBA, length = width * height * 4. */
-  readonly data: Uint8ClampedArray;
+  /** Row-major RGBA, length = width * height * 4. Backed by a plain ArrayBuffer so it can feed `ImageData`. */
+  readonly data: Uint8ClampedArray<ArrayBuffer>;
 }
 
 export function createRGBAImage(width: number, height: number): RGBAImage {
