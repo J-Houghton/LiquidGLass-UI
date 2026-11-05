@@ -118,9 +118,11 @@ describe('createGlassFilter', () => {
       encodeImage,
       revokeImage: (u) => revoked.push(u),
     });
+    // Resolve whatever encode is pending, then give the scheduler room to start the next render.
     const flush = async () => {
+      for (let i = 0; i < 50 && pending.length === 0; i++) await Promise.resolve();
       while (pending.length) pending.shift()!(`blob:${++n}`);
-      await Promise.resolve();
+      for (let i = 0; i < 50 && pending.length === 0 && h.debug.renders < 2; i++) await Promise.resolve();
     };
     await Promise.resolve();
     expect(pending).toHaveLength(1);

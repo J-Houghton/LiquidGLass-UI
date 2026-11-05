@@ -10,7 +10,7 @@ import { displacementMap, maxAbs } from '../core/optics/disp2d.js';
 import { buildFilterSpec, type FilterSpec } from '../core/filters/spec.js';
 import { createFilterSvg, applyFilterSpec, type ElementFactory } from './mountFilter.js';
 import { encodeImageToBlobUrl, revokeBlobUrl, type ImageEncoder, type UrlRevoker } from './encodeImage.js';
-import { UrlSlot } from './mapCache.js';
+import { MapRegistry, UrlSlot, defaultMapRegistry } from './mapCache.js';
 
 export interface GlassFilterOptions extends Partial<GlassParams> {
   /** Filter id. Default: auto-generated, unique per page. */
@@ -33,6 +33,11 @@ export interface GlassFilterOptions extends Partial<GlassParams> {
   encodeImage?: ImageEncoder;
   /** Releases URLs from `encodeImage`. Default: `URL.revokeObjectURL` for blob URLs. */
   revokeImage?: UrlRevoker;
+  /**
+   * Registry that shares identical maps between handles. Default: the page-wide registry when
+   * the default encoder is used, otherwise a private one (a custom encoder's URLs are its own).
+   */
+  registry?: MapRegistry;
   /** Element factory. Default: `host.ownerDocument`. */
   document?: ElementFactory;
   /** Called after every completed render. */
@@ -123,7 +128,9 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
   const { svg, filter } = createFilterSvg(doc, id);
   mount.appendChild(svg);
 
-  const mapSlot = new UrlSlot(revoke);
+  const registry =
+    options.registry ?? (options.encodeImage || options.revokeImage ? new MapRegistry(revoke) : defaultMapRegistry);
+  const mapSlot = new UrlSlot(registry);
   let spec: FilterSpec | null = null;
   let destroyed = false;
   const debug: GlassFilterDebug = { mapUrl: null, physicalMaxDisplacementPx: 0, displacementPx: 0, renders: 0 };
@@ -194,23 +201,23 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
         surface: p.surface,
       });
       const physical = maxAbs(curve);
-      const img = displacementMap({
-        width: p.width,
-        height: p.height,
-        radius: p.radius,
-        bezelWidth: p.bezelWidth,
-        dpr: d,
-        curve,
-        maxDisplacement: physical,
-        rim: { angleDeg: p.specularAngleDeg, rimPx },
-      });
-      const url = await encode(img);
-      if (destroyed) {
-        revoke(url);
-        return;
-      }
+      // The pixel work runs only if no other handle already holds this exact map.
+      await mapSlot.acquire(mapKey, () =>
+        encode(
+          displacementMap({
+            width: p.width,
+            height: p.height,
+            radius: p.radius,
+            bezelWidth: p.bezelWidth,
+            dpr: d,
+            curve,
+            maxDisplacement: physical,
+            rim: { angleDeg: p.specularAngleDeg, rimPx },
+          }),
+        ),
+      );
+      if (destroyed) return;
       debug.physicalMaxDisplacementPx = physical;
-      mapSlot.set(mapKey, url);
     }
 
     const scale = p.physicalScale ? debug.physicalMaxDisplacementPx : p.displacementScale;
