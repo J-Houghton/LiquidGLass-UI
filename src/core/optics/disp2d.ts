@@ -1,22 +1,85 @@
+import { createRGBAImage, type RGBAImage } from '../image.js';
+import { forEachBandPixel } from './band.js';
+
+export interface DisplacementMapOptions {
+  /** Effect size in CSS px. */
+  width: number;
+  height: number;
+  /** Corner radius, CSS px. */
+  radius: number;
+  /** Bezel band width, CSS px. */
+  bezelWidth: number;
+  /** Device pixel ratio. Required: core never reads `window`. */
+  dpr: number;
+  /** 1D displacement curve across the bezel (see displacementCurve), indexed 0 = rim. */
+  curve: ArrayLike<number>;
+  /** Share of the bezel, from the rim inward, that carries the chromatic mask (0..1). */
+  chromaticBezelFraction: number;
+  /**
+   * Value the curve is normalized by so the map fits 8 bits. Defaults to max(1, max|curve|).
+   * The map therefore encodes the *shape* of the displacement; the magnitude in px is set
+   * by the filter's `scale` attribute.
+   */
+  maxDisplacement?: number;
+}
+
 /**
- * Construct a two‑dimensional displacement map for refraction inside a rounded rectangle.
- * Each pixel in the returned `ImageData` stores a unit displacement vector pointing
- * opposite the outward normal of the bezel band (packed into the red and green channels
- * with a 128 bias and 127 scale), and a magnitude proportional to a precomputed 1D
- * displacement curve.
+ * Rasterize the 1D curve into a rounded-rectangle bezel band.
  *
- * The resulting map is used by an SVG filter to offset sampling coordinates when
- * rendering the glass effect.  Pixels outside the bezel band are left unchanged.
- * The `maximumDisplacement` parameter normalizes the precomputed values so that the
- * map fits within the 8‑bit colour range.
- *
- * @param canvasWidth                 Width of the effect in CSS pixels
- * @param canvasHeight                Height of the effect in CSS pixels
- * @param radius                      Corner radius of the rounded rectangle
- * @param bezelWidth                  Width of the outer bezel band in pixels
- * @param maximumDisplacement         Maximum absolute displacement from the 1D map
- * @param precomputedDisplacementMap  Array of scalar displacements indexed by relative position [0..1] across the bezel
- * @param dpr                         Optional device pixel ratio override; defaults to `window.devicePixelRatio` when available
+ * Per pixel: R,G = displacement vector pointing inward (128 bias, 127 scale), B = chromatic
+ * edge mask with quadratic falloff over the outer `chromaticBezelFraction` of the band,
+ * A = 255. Pixels outside the band (the flat center and outside the shape) stay neutral
+ * (128,128,0,255), so the map never introduces transparency.
+ */
+export function displacementMap(opts: DisplacementMapOptions): RGBAImage {
+  const { dpr, curve } = opts;
+  const W = Math.round(opts.width * dpr);
+  const H = Math.round(opts.height * dpr);
+  const R = Math.round(opts.radius * dpr);
+  const B = Math.max(1, Math.round(opts.bezelWidth * dpr));
+  const maxDisp = opts.maxDisplacement ?? maxAbs(curve);
+  const maskScale = 1 / opts.chromaticBezelFraction;
+  const n = curve.length;
+
+  const img = createRGBAImage(W, H);
+  // R=128, G=128 (zero vector), B=0 (no chromatic mask), A=255. Little-endian ABGR.
+  new Uint32Array(img.data.buffer).fill(0xff008080);
+  const data = img.data;
+
+  forEachBandPixel(W, H, R, B, (p) => {
+    const u = Math.max(0, Math.min(1, p.t / B)); // [0..1] across the bezel
+
+    // linear interpolation into the curve
+    const f = u * (n - 1);
+    const i0 = Math.max(0, Math.floor(f));
+    const i1 = Math.min(n - 1, i0 + 1);
+    const w1 = f - i0;
+    const w0 = 1 - w1;
+    const disp = (curve[i0] ?? 0) * w0 + (curve[i1] ?? 0) * w1;
+
+    // outward normal -> use -n for the inward refraction feel
+    const dX = (-p.nx * disp) / maxDisp;
+    const dY = (-p.ny * disp) / maxDisp;
+    data[p.idx] = 128 + dX * 127;
+    data[p.idx + 1] = 128 + dY * 127;
+
+    const maskVal = Math.max(0, 1 - u * maskScale);
+    data[p.idx + 2] = Math.floor(maskVal * maskVal * 255);
+    data[p.idx + 3] = 255;
+  });
+  return img;
+}
+
+/** max(1, max |v|): the normalization the engine applies to a curve. */
+export function maxAbs(curve: ArrayLike<number>): number {
+  let m = 1;
+  for (let i = 0; i < curve.length; i++) m = Math.max(m, Math.abs(curve[i]));
+  return m;
+}
+
+/**
+ * @deprecated Positional form kept for the legacy components and the benchmark.
+ * Use {@link displacementMap}. `chromaticBezelFactor` is the inverse of the fraction.
  */
 export function calculateDisplacementMap2(
   canvasWidth: number,
@@ -24,99 +87,18 @@ export function calculateDisplacementMap2(
   radius: number,
   bezelWidth: number,
   maximumDisplacement: number,
-  precomputedDisplacementMap: number[] = [],
-  dpr?: number,
-  chromaticBezelFactor: number = 4
-): ImageData {
-  const DPR = dpr ?? (typeof window !== 'undefined' ? (window.devicePixelRatio ?? 1) : 1);
-  const W = Math.round(canvasWidth * DPR);
-  const H = Math.round(canvasHeight * DPR);
-  const imageData = new ImageData(W, H);
-  // Initialize: R=128 (0 vector), G=128 (0 vector), B=0 (No Chromatic Mask), A=255 (Opaque)
-  new Uint32Array(imageData.data.buffer).fill(0xff008080);
-
-  const R = Math.round(radius * DPR);
-  const B = Math.max(1, Math.round(bezelWidth * DPR));
-  const Rin = Math.max(0, R - B);
-  const W2 = Math.max(0, W - 2 * B);
-  const H2 = Math.max(0, H - 2 * B);
-
-  const inRR = (x: number, y: number, w: number, h: number, r: number) => {
-    const onL = x < r;
-    const onR = x >= w - r;
-    const onT = y < r;
-    const onB = y >= h - r;
-    if ((onL || onR) && (onT || onB)) {
-      const flatW = w - 2 * r;
-      const flatH = h - 2 * r;
-      const cx = onL ? x - r : x - r - flatW;
-      const cy = onT ? y - r : y - r - flatH;
-      return (cx * cx + cy * cy) <= r * r + 1e-6;
-    }
-    return x >= 0 && x < w && y >= 0 && y < h;
-  };
-
-  for (let y = 0; y < H; y++) {
-    for (let x = 0; x < W; x++) {
-      const idx = (y * W + x) * 4;
-
-      const outer = inRR(x, y, W, H, R);
-      if (!outer) continue;
-      const inner = W2 > 0 && H2 > 0 && inRR(x - B, y - B, W2, H2, Rin);
-      if (inner) continue;
-
-      // distance into the band [0..B] and outward normal
-      let nx = 0;
-      let ny = 0;
-      let t = 0;
-
-      // corner sector
-      const onL = x < R, onR = x >= W - R;
-      const onT = y < R, onB = y >= H - R;
-      if ((onL || onR) && (onT || onB)) {
-        const flatW = W - 2 * R;
-        const flatH = H - 2 * R;
-        const cx = onL ? x - R : x - R - flatW;
-        const cy = onT ? y - R : y - R - flatH;
-        const dist = Math.max(1e-6, Math.hypot(cx, cy));
-        nx = cx / dist;
-        ny = cy / dist;
-        t = R - dist; // 0 at rim → B at inner edge
-      } else {
-        const dL = x, dR = W - 1 - x, dT = y, dB = H - 1 - y;
-        const m = Math.min(dL, dR, dT, dB);
-        if (m === dT) { nx = 0; ny = -1; t = dT; }
-        else if (m === dB) { nx = 0; ny = +1; t = dB; }
-        else if (m === dL) { nx = -1; ny = 0; t = dL; }
-        else { nx = +1; ny = 0; t = dR; }
-      }
-
-      const u = Math.max(0, Math.min(1, t / B)); // [0..1] across bezel
-      
-      const f = u * (precomputedDisplacementMap.length - 1);
-      const i0 = Math.max(0, Math.floor(f));
-      const i1 = Math.min(precomputedDisplacementMap.length - 1, i0 + 1);
-      const w1 = f - i0;
-      const w0 = 1 - w1;
-      const disp = (precomputedDisplacementMap[i0] ?? 0) * w0 + (precomputedDisplacementMap[i1] ?? 0) * w1;
-
-
-      // outward normal → use -n for inward refraction feel
-      const dX = (-nx * disp) / maximumDisplacement;
-      const dY = (-ny * disp) / maximumDisplacement;
-
-      imageData.data[idx + 0] = 128 + dX * 127;
-      imageData.data[idx + 1] = 128 + dY * 127;
-      
-      // Blue Channel: Chromatic Bezel Mask
-      // Limit the chromatic effect to the outer chromaticBezelFactor% of the bezel 
-      const maskVal = Math.max(0, 1 - u * chromaticBezelFactor);
-      
-      // Apply quadratic falloff for smoother fade
-      imageData.data[idx + 2] = Math.floor(maskVal * maskVal * 255);
-      
-      imageData.data[idx + 3] = 255;
-    }
-  }
-  return imageData;
+  precomputedDisplacementMap: ArrayLike<number>,
+  dpr: number,
+  chromaticBezelFactor: number = 4,
+): RGBAImage {
+  return displacementMap({
+    width: canvasWidth,
+    height: canvasHeight,
+    radius,
+    bezelWidth,
+    dpr,
+    curve: precomputedDisplacementMap,
+    chromaticBezelFraction: 1 / chromaticBezelFactor,
+    maxDisplacement: maximumDisplacement,
+  });
 }

@@ -1,8 +1,8 @@
 import { LitElement, html } from 'lit';
 import { customElement, property, query } from 'lit/decorators.js';
 import { FilterGraph } from './filterGraph.js'; 
-import { rebuildDisplacementIfNeeded, rebuildSpecularIfNeeded } from '../core/images.js';
-import { cache } from '../core/fx/filterCache.js';
+import { rebuildDisplacementIfNeeded, rebuildSpecularIfNeeded } from '../dom/images.js';
+import { cache } from '../dom/filterCache.js';
 import { asSurfaceKind } from '../core/optics/surfaces.js';
 import { validate, type Validated } from '../core/validation/geometry.js';
 import type { PropertyValues } from 'lit';
