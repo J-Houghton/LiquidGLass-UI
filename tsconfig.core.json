@@ -6,5 +6,11 @@
     "noEmit": true
   },
   "include": ["src/core"],
-  "exclude": ["src/core/filters"]
+  "exclude": [
+    "src/core/filters/core.ts",
+    "src/core/filters/blur.ts",
+    "src/core/filters/chromatic.ts",
+    "src/core/filters/noiseBlur.ts",
+    "src/core/filters/specularFilter.ts"
+  ]
 }
