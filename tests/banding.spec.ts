@@ -7,8 +7,8 @@ import { calculateDisplacementMap2 as newDisp2D } from '../src/core/optics/disp2
 import { SURFACE_FNS as NEW_SURFACES } from '../src/core/optics/surfaces';
 
 // Original implementation (kept under tests/)
-import { calculateDisplacementMap as origDisp1D } from './orig_displacement_funcs/displacementmap';
-import { calculateDisplacementMap2 as origDisp2D } from './orig_displacement_funcs/displacementmap';
+import { calculateDisplacementMap as origDisp1D } from './orig_displacement_funcs/displacementMap';
+import { calculateDisplacementMap2 as origDisp2D } from './orig_displacement_funcs/displacementMap';
 import { fns as ORIG_SURFACES } from './orig_displacement_funcs/surfaceEquations';
 
 // ---------- shared helpers ----------

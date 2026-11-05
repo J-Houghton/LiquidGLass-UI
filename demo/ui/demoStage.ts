@@ -1,11 +1,6 @@
 import type { LiquidGlassContainer } from '../../src/components/liquid-glass-container.js';
-import {
-  CONTAINERS_CHANGED_EVENT,
-  DEFAULT_GLASS_CONTAINER_PARAMS,
-  REMOVE_CONTAINER_EVENT,
-  SELECT_CONTAINER_EVENT,
-  type GlassContainerParams,
-} from '../../src/core/defaults.js';
+import { DEFAULT_GLASS_CONTAINER_PARAMS, type GlassContainerParams } from '../../src/core/defaults.js';
+import { CONTAINERS_CHANGED_EVENT, REMOVE_CONTAINER_EVENT, SELECT_CONTAINER_EVENT } from './events.js';
 import { PRESETS, BACKGROUNDS, type Preset } from './presets.js';
 
 type StageEntry = {
@@ -21,7 +16,6 @@ const REMOVE_REQUEST_EVENT = REMOVE_CONTAINER_EVENT;
 const SELECT_EVENT = SELECT_CONTAINER_EVENT;
 
 export class DemoStageController {
-  private readonly stage: HTMLElement;
   private readonly containers = new Map<string, StageEntry>();
   private activeId: string | undefined;
   private idCounter = 0;
@@ -30,8 +24,7 @@ export class DemoStageController {
   private ghostWrapper: HTMLDivElement | null = null;
   private ghostContainer: LiquidGlassContainer | null = null;
 
-  constructor(stage: HTMLElement) {
-    this.stage = stage;
+  constructor(_stage: HTMLElement) {
     this.handleRemoveRequest = this.handleRemoveRequest.bind(this);
     this.handleSelectionRequest = this.handleSelectionRequest.bind(this);
   }

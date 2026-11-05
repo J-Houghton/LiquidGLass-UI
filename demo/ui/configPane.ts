@@ -2,6 +2,7 @@ import { Pane, type FolderApi, type ListBladeApi, type TpChangeEvent } from 'twe
 import type { LiquidGlassContainer } from '../../src/components/liquid-glass-container.js';
 import { SURFACE_FNS, type SurfaceKind } from '../../src/core/optics/surfaces.js';
 import { DEFAULT_GLASS_CONTAINER_PARAMS, type GlassContainerParams } from '../../src/core/defaults.js';
+import { CONTAINERS_CHANGED_EVENT, REMOVE_CONTAINER_EVENT, SELECT_CONTAINER_EVENT } from './events.js';
 
 type BlurKind = 'gauss' | 'noise1' | 'noise2';
 
@@ -21,9 +22,6 @@ type BindingTarget = Pick<FolderApi, 'addBinding'>;
 type ContainerListOption = { text: string; value: string };
 type PaneBindings = { refresh: () => void }[];
 
-const CONTAINERS_CHANGED_EVENT = 'demo-stage:containers-changed';
-const REMOVE_CONTAINER_EVENT = 'demo-stage:remove-container';
-const SELECT_CONTAINER_EVENT = 'demo-stage:select-container';
 
 type ContainersChangedEvent = WindowEventMap[typeof CONTAINERS_CHANGED_EVENT];
 

@@ -1,16 +1,6 @@
-// Node test environment bootstrap.
-// 1) Provide a structural ImageData compatible class with colorSpace to satisfy TS lib.dom.d.ts
-// 2) Ensure Uint8ClampedArray exists in older Node runtimes
-
-declare global {
-  interface ImageDataLike {
-    readonly width: number;
-    readonly height: number;
-    readonly data: Uint8ClampedArray;
-    readonly colorSpace?: string;
-  }
-}
-
+// Node test environment bootstrap: provide a structural ImageData so core code that
+// constructs DOM ImageData runs under Node. Removed in plan step 1.2 once core returns
+// plain RGBAImage buffers.
 if (typeof (globalThis as any).ImageData === 'undefined') {
   class ImageDataPolyfill {
     readonly data: Uint8ClampedArray;

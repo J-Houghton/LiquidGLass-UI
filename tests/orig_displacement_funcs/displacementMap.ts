@@ -1,4 +1,7 @@
-import { createImageData } from "canvas";
+// Plain-object stand-in for canvas.createImageData so the baseline needs no native module.
+function createImageData(width: number, height: number) {
+  return { width, height, data: new Uint8ClampedArray(width * height * 4) };
+}
 
 export function calculateDisplacementMap(
   glassThickness: number = 200,
