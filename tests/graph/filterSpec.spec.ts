@@ -1,14 +1,11 @@
 /**
- * The pure filter spec (Phase 2) must reproduce the legacy FilterGraph primitive by primitive.
- * The equivalence test compares against the live legacy builder; the snapshots pin the spec
- * on its own so the pin survives the legacy code's deletion in Phase 4.
+ * Pins the pure filter spec. (The port from the Lit-era FilterGraph was proven primitive-for-
+ * primitive by an equivalence test that lived here until the legacy code was deleted in
+ * Phase 4.2; see git history, commit "Phase 2.1 + 2.3".)
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import type { LitElement } from 'lit';
-import { FilterGraph } from '../../src/components/filterGraph';
-import { buildFilterSpec, filterSpecToSvg, TRANSPARENT_PIXEL, type FilterPrimitive } from '../../src/core/filters/spec';
+import { describe, it, expect } from 'vitest';
+import { buildFilterSpec, filterSpecToSvg, TRANSPARENT_PIXEL } from '../../src/core/filters/spec';
 import { resolveGlassParams, type BlurKind } from '../../src/core/params';
-import { installFakeDom, SVG_NS, type FakeDocument, type FakeJson } from '../helpers/fakeDom';
 
 const COMBOS: { dispersion: number; blurKind: BlurKind; specular: boolean }[] = [];
 for (const dispersion of [0, 1]) {
@@ -19,72 +16,24 @@ for (const dispersion of [0, 1]) {
 
 const REFS = { id: 'lg-test', mapHref: 'blob:map', specularHref: TRANSPARENT_PIXEL };
 
-/** Legacy static template, as in liquid-glass-filter.ts render(). */
-function legacyHost(doc: FakeDocument, width: number, height: number) {
-  const root = doc.createElement('div');
-  const filter = doc.createElementNS(SVG_NS, 'filter');
-  const set = (el: ReturnType<FakeDocument['createElementNS']>, attrs: Record<string, string>) => {
-    for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
-    return el;
-  };
-  filter.append(
-    set(doc.createElementNS(SVG_NS, 'feImage'), { x: '0', y: '0', width: String(width), height: String(height), preserveAspectRatio: 'none', result: 'map' }),
-    set(doc.createElementNS(SVG_NS, 'feDisplacementMap'), { in: 'SourceGraphic', in2: 'map', xChannelSelector: 'R', yChannelSelector: 'G', scale: '0', result: 'refr' }),
-    set(doc.createElementNS(SVG_NS, 'feImage'), { x: '0', y: '0', width: '100%', height: '100%', preserveAspectRatio: 'none', result: 'specSrc' }),
-  );
-  root.appendChild(filter);
-  return { host: { renderRoot: root } as unknown as LitElement, filter };
-}
-
-const stripData = (j: FakeJson): FakeJson => ({
-  tag: j.tag,
-  attrs: Object.fromEntries(Object.entries(j.attrs).filter(([k]) => !k.startsWith('data-'))),
-  ...(j.children ? { children: j.children.map(stripData) } : {}),
-});
-const primToJson = (p: FilterPrimitive, drop: string[] = []): FakeJson => ({
-  tag: p.tag,
-  attrs: Object.fromEntries(
-    Object.entries(p.attrs)
-      .filter(([k]) => !drop.includes(k))
-      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
-  ),
-  ...(p.children ? { children: p.children.map((c) => primToJson(c, drop)) } : {}),
-});
-
 describe('buildFilterSpec', () => {
-  let doc: FakeDocument;
-  let restore: () => void;
-  beforeEach(() => {
-    ({ document: doc, restore } = installFakeDom());
-  });
-  afterEach(() => restore());
-
   for (const combo of COMBOS) {
     const label = `dispersion=${combo.dispersion} blur=${combo.blurKind} specular=${combo.specular}`;
-
-    it(`${label}: matches the legacy FilterGraph after build + update`, () => {
-      const { host, filter } = legacyHost(doc, 300, 120);
-      const graph = new FilterGraph(host);
-      graph.hydrateRefs();
-      graph.buildIfNeeded({ dispersion: combo.dispersion, blurKind: combo.blurKind, showSpecular: combo.specular, blurStdDev: 0.2, specularStrength: 0.9 });
-      graph.updateParams({ blurStdDev: 0.5, blurKind: combo.blurKind, specularStrength: 1.1, scale_px: 150, dispersion: combo.dispersion });
-      const legacy = filter.toJSON().children!.map(stripData);
-
-      const spec = buildFilterSpec(
-        resolveGlassParams({ ...combo, blur: 0.5, specularStrength: 1.1, displacementScale: 150, width: 300, height: 120 }),
-        REFS,
-      );
-      const staticJson = spec.static.map((p) => primToJson(p, ['href']));
-      const dynamicJson = spec.dynamic.map((p) => primToJson(p));
-      expect(staticJson).toEqual(legacy.slice(0, 3));
-      expect(dynamicJson).toEqual(legacy.slice(3));
-    });
-
     it(`${label}: spec is pinned`, () => {
       const spec = buildFilterSpec(resolveGlassParams({ ...combo, blur: 0.5, specularStrength: 1.1, displacementScale: 150 }), REFS);
       expect(spec).toMatchSnapshot();
     });
   }
+
+  it('static primitives carry the hrefs, size and displacement scale', () => {
+    const spec = buildFilterSpec(resolveGlassParams({ width: 320, height: 200, displacementScale: 77 }), { ...REFS, mapHref: 'blob:m', specularHref: 'blob:s' });
+    expect(spec.static.map((p) => p.tag)).toEqual(['feImage', 'feDisplacementMap', 'feImage']);
+    expect(spec.static[0].attrs).toMatchObject({ href: 'blob:m', width: '320', height: '200', result: 'map' });
+    expect(spec.static[1].attrs).toMatchObject({ in: 'SourceGraphic', in2: 'map', scale: '77', result: 'refr' });
+    expect(spec.static[2].attrs).toMatchObject({ href: 'blob:s', result: 'specSrc' });
+    expect(spec.width).toBe(320);
+    expect(spec.height).toBe(200);
+  });
 
   it('structureKey depends only on the enabled stages', () => {
     const a = buildFilterSpec(resolveGlassParams({ dispersion: 1, blur: 0.1 }), REFS);
@@ -102,6 +51,14 @@ describe('buildFilterSpec', () => {
     expect(d[d.length - 3].attrs.in).toBe('chromaticFastOut'); // noise feDisplacementMap
     expect(d[d.length - 1].attrs.in).toBe('refrNoise_high'); // final blend
     expect(d[d.length - 1].attrs.result).toBe('final');
+  });
+
+  it('chromatic offsets scale with dispersion and noise scale with blur', () => {
+    const spec = buildFilterSpec(resolveGlassParams({ dispersion: 1.5, blurKind: 'noise1', blur: 0.8 }), REFS);
+    const offsets = spec.dynamic.filter((p) => p.tag === 'feOffset').map((p) => p.attrs.dx);
+    expect(offsets).toEqual(['3.00', '-3.00']);
+    const noise = spec.dynamic.find((p) => p.tag === 'feDisplacementMap')!;
+    expect(noise.attrs.scale).toBe('16.00');
   });
 
   it('serializes to well-formed, escaped SVG markup', () => {

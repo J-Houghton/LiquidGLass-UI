@@ -63,17 +63,3 @@ export function displacementCurve(opts: DisplacementCurveOptions): Float64Array 
   }
   return out;
 }
-
-/**
- * @deprecated Positional form kept for the legacy components and the benchmark.
- * Use {@link displacementCurve}.
- */
-export function calculateDisplacementMap(
-  glassThickness: number = 200,
-  bezelWidth: number = 50,
-  bezelHeightFn: (x: number) => number = (x) => x,
-  refractiveIndex: number = 1.5,
-  samples: number = 128,
-): number[] {
-  return Array.from(displacementCurve({ glassThickness, bezelWidth, refractiveIndex, surface: bezelHeightFn, samples }));
-}

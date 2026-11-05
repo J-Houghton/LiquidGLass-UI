@@ -76,29 +76,3 @@ export function maxAbs(curve: ArrayLike<number>): number {
   for (let i = 0; i < curve.length; i++) m = Math.max(m, Math.abs(curve[i]));
   return m;
 }
-
-/**
- * @deprecated Positional form kept for the legacy components and the benchmark.
- * Use {@link displacementMap}. `chromaticBezelFactor` is the inverse of the fraction.
- */
-export function calculateDisplacementMap2(
-  canvasWidth: number,
-  canvasHeight: number,
-  radius: number,
-  bezelWidth: number,
-  maximumDisplacement: number,
-  precomputedDisplacementMap: ArrayLike<number>,
-  dpr: number,
-  chromaticBezelFactor: number = 4,
-): RGBAImage {
-  return displacementMap({
-    width: canvasWidth,
-    height: canvasHeight,
-    radius,
-    bezelWidth,
-    dpr,
-    curve: precomputedDisplacementMap,
-    chromaticBezelFraction: 1 / chromaticBezelFactor,
-    maxDisplacement: maximumDisplacement,
-  });
-}

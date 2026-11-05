@@ -7,8 +7,8 @@ import { describe, it, expect } from 'vitest';
 import { scoreDisplacement, type Score } from './metrics';
 
 // New implementation
-import { calculateDisplacementMap as newDisp1D } from '../../src/core/optics/disp1d';
-import { calculateDisplacementMap2 as newDisp2D } from '../../src/core/optics/disp2d';
+import { displacementCurve } from '../../src/core/optics/disp1d';
+import { displacementMap } from '../../src/core/optics/disp2d';
 import { SURFACE_FNS as NEW_SURFACES } from '../../src/core/optics/surfaces';
 
 // Original implementation (kept under tests/)
@@ -31,9 +31,8 @@ type OrigParams = {
 function buildMapNew({
   W, H, radius, bezel, glass, ior, samples, dpr = 1, surface = 'convex_squircle'
 }: NewParams) {
-  const disp1D = newDisp1D(glass, bezel, NEW_SURFACES[surface].fn, ior, samples);
-  const maxAbs = disp1D.reduce((m, v) => Math.max(m, Math.abs(v)), 1);
-  return newDisp2D(W, H, radius, bezel, maxAbs, disp1D, dpr) as unknown as ImageData;
+  const curve = displacementCurve({ glassThickness: glass, bezelWidth: bezel, refractiveIndex: ior, surface: NEW_SURFACES[surface].fn, samples });
+  return displacementMap({ width: W, height: H, radius, bezelWidth: bezel, dpr, curve, chromaticBezelFraction: 0.25 }) as unknown as ImageData;
 }
 
 const pickSurface = (title: string) =>

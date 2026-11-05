@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildSpecularImage } from '../../src/core/optics/specularLight';
+import { specularMap } from '../../src/core/optics/specularLight';
 import { expectToMatchFixture } from '../helpers/fixtures';
 import { blockMeans, pixel, everyPixel, type ImageLike } from '../helpers/image';
 
@@ -12,7 +12,7 @@ const CASES: Case[] = [
 ];
 
 const build = (c: Case, angle = c.angle): ImageLike =>
-  buildSpecularImage(c.w, c.h, c.r, c.b, angle, c.strength, c.dpr) as unknown as ImageLike;
+  specularMap({ width: c.w, height: c.h, radius: c.r, bezelWidth: c.b, dpr: c.dpr, angleDeg: angle, strength: c.strength });
 
 describe('specularLight: rim highlight image', () => {
   for (const c of CASES) {

@@ -5,7 +5,27 @@ import {
   resolveGlassParams,
   fromLegacyParams,
 } from '../../src/core/params';
-import { DEFAULT_GLASS_CONTAINER_PARAMS } from '../../src/core/defaults';
+
+/** The 1.x <liquid-glass-container> defaults, verbatim. */
+const DEFAULT_GLASS_CONTAINER_PARAMS = {
+  width: 300,
+  height: 120,
+  radius: 60,
+  bezelWidth: 60,
+  glassThickness: 50,
+  surface: 'convex_squircle',
+  refractiveIndex: 1.5,
+  scalePx: 180,
+  blurKind: 'gauss',
+  blurStdDev: 0.2,
+  showSpecular: true,
+  specularAngleDeg: 60,
+  specularStrength: 0.9,
+  dispersion: 0,
+  chromaticBezelFactor: 4,
+  frost: 0.05,
+  saturation: 1,
+} as const;
 
 describe('resolveGlassParams', () => {
   it('defaults resolve cleanly: no notes, rectangle', () => {

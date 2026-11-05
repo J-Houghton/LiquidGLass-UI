@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { calculateDisplacementMap } from '../../src/core/optics/disp1d';
-import { calculateDisplacementMap2 } from '../../src/core/optics/disp2d';
-import { SURFACE_FNS, type SurfaceKind } from '../../src/core/optics/surfaces';
+import { displacementCurve } from '../../src/core/optics/disp1d';
+import { displacementMap } from '../../src/core/optics/disp2d';
+import type { SurfaceKind } from '../../src/core/optics/surfaces';
 import { expectToMatchFixture } from '../helpers/fixtures';
 import { blockMeans, pixel, everyPixel, channelMean, type ImageLike } from '../helpers/image';
 
@@ -27,10 +27,21 @@ const CASES: Case[] = [
 ];
 
 function build(c: Case): ImageLike {
-  const surface = c.surface ?? 'convex_squircle';
-  const curve = calculateDisplacementMap(c.glass ?? 31.25, c.b, SURFACE_FNS[surface].fn, c.ior ?? 1.5, 512);
-  const maxAbs = curve.reduce((m, v) => Math.max(m, Math.abs(v)), 1);
-  return calculateDisplacementMap2(c.w, c.h, c.r, c.b, maxAbs, curve, c.dpr, c.cbf ?? 4) as unknown as ImageLike;
+  const curve = displacementCurve({
+    glassThickness: c.glass ?? 31.25,
+    bezelWidth: c.b,
+    refractiveIndex: c.ior ?? 1.5,
+    surface: c.surface ?? 'convex_squircle',
+  });
+  return displacementMap({
+    width: c.w,
+    height: c.h,
+    radius: c.r,
+    bezelWidth: c.b,
+    dpr: c.dpr,
+    curve,
+    chromaticBezelFraction: 1 / (c.cbf ?? 4),
+  });
 }
 
 const NEUTRAL = [128, 128, 0, 255];

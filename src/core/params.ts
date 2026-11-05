@@ -1,6 +1,26 @@
 import { isSurfaceKind, type SurfaceKind } from './optics/surfaces.js';
 import { mapGlassThickness } from './validation/geometry.js';
-import type { GlassContainerParams } from './defaults.js';
+
+/** The 1.x parameter names (`GlassContainerParams`), kept only for `fromLegacyParams`. */
+export interface LegacyGlassParams {
+  width: number;
+  height: number;
+  radius: number;
+  bezelWidth: number;
+  glassThickness: number;
+  surface: SurfaceKind;
+  refractiveIndex: number;
+  scalePx: number;
+  blurKind: BlurKind;
+  blurStdDev: number;
+  showSpecular: boolean;
+  specularAngleDeg: number;
+  specularStrength: number;
+  dispersion: number;
+  chromaticBezelFactor: number;
+  frost: number;
+  saturation: number;
+}
 
 export type BlurKind = 'gauss' | 'noise1' | 'noise2';
 export const BLUR_KINDS: readonly BlurKind[] = ['gauss', 'noise1', 'noise2'];
@@ -170,7 +190,7 @@ export const SPECULAR_KEYS: readonly (keyof GlassParams)[] = [
  * passes it through literally).
  */
 export function fromLegacyParams(
-  legacy: Partial<GlassContainerParams>,
+  legacy: Partial<LegacyGlassParams>,
   opts: { thicknessCurve?: boolean } = {},
 ): Partial<GlassParams> {
   const curve = opts.thicknessCurve ?? true;

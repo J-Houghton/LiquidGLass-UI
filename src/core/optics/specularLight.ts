@@ -57,28 +57,3 @@ export function specularMap(opts: SpecularMapOptions): RGBAImage {
   });
   return img;
 }
-
-/**
- * @deprecated Positional form kept for the legacy components. Use {@link specularMap}.
- */
-export function buildSpecularImage(
-  objectWidth: number,
-  objectHeight: number,
-  radius: number,
-  bezelWidth: number,
-  angleDeg: number,
-  strength: number = 1,
-  dpr: number = 1,
-  outerSpecThicknessPx: number = 2,
-): RGBAImage {
-  return specularMap({
-    width: objectWidth,
-    height: objectHeight,
-    radius,
-    bezelWidth,
-    dpr,
-    angleDeg,
-    strength,
-    rimPx: outerSpecThicknessPx,
-  });
-}
