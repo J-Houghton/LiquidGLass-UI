@@ -5,7 +5,8 @@
  *
  * Every pixel is evaluated at its center (x + 0.5, y + 0.5). That makes the corner sectors
  * and the straight edges agree on distance, and makes the band an exact mirror image across
- * both axes (pixel x ↔ W-1-x, y ↔ H-1-y).
+ * both axes (pixel x ↔ W-1-x, y ↔ H-1-y). The walk exploits that symmetry: geometry is
+ * computed for the top-left quadrant only and emitted four times with mirrored normals.
  */
 
 export interface BandPixel {
@@ -38,8 +39,8 @@ export function inRoundedRect(x: number, y: number, w: number, h: number, r: num
 
 /**
  * Visit every pixel of the band: inside the outer rounded rectangle (W×H, radius R) and
- * outside the inner one inset by B. The visitor receives one reused object; copy fields
- * out if you need to keep them.
+ * outside the inner one inset by B. Visiting order is not row-major (quadrants are emitted
+ * together); the visitor receives one reused object, so copy fields out to keep them.
  */
 export function forEachBandPixel(
   W: number,
@@ -52,56 +53,57 @@ export function forEachBandPixel(
   const W2 = Math.max(0, W - 2 * B);
   const H2 = Math.max(0, H - 2 * B);
   const p: BandPixel = { x: 0, y: 0, idx: 0, nx: 0, ny: 0, t: 0, corner: false };
+  const halfW = Math.ceil(W / 2);
+  const halfH = Math.ceil(H / 2);
 
-  for (let y = 0; y < H; y++) {
+  const emit = (x: number, y: number, nx: number, ny: number) => {
+    p.x = x;
+    p.y = y;
+    p.idx = (y * W + x) * 4;
+    p.nx = nx;
+    p.ny = ny;
+    visit(p);
+  };
+
+  for (let y = 0; y < halfH; y++) {
     const py = y + 0.5;
-    for (let x = 0; x < W; x++) {
+    const my = H - 1 - y;
+    for (let x = 0; x < halfW; x++) {
       const px = x + 0.5;
+      const mx = W - 1 - x;
+
+      // Geometry for the top-left representative; its three mirrors share t and |normal|.
       if (!inRoundedRect(px, py, W, H, R)) continue;
       if (W2 > 0 && H2 > 0 && inRoundedRect(px - B, py - B, W2, H2, Rin)) continue;
 
-      p.x = x;
-      p.y = y;
-      p.idx = (y * W + x) * 4;
-
-      const onL = px < R;
-      const onR = px > W - R;
-      const onT = py < R;
-      const onB = py > H - R;
-      if ((onL || onR) && (onT || onB)) {
-        const cx = onL ? px - R : px - (W - R);
-        const cy = onT ? py - R : py - (H - R);
+      let nx: number;
+      let ny: number;
+      if (px < R && py < R) {
+        const cx = px - R;
+        const cy = py - R;
         const dist = Math.max(1e-6, Math.hypot(cx, cy));
-        p.nx = cx / dist;
-        p.ny = cy / dist;
+        nx = cx / dist;
+        ny = cy / dist;
         p.t = R - dist;
         p.corner = true;
       } else {
-        const dL = px;
-        const dR = W - px;
-        const dT = py;
-        const dB = H - py;
-        const m = Math.min(dL, dR, dT, dB);
+        // In the top-left quadrant the nearest edge is the top or the left one; ties go to the top.
         p.corner = false;
-        if (m === dT) {
-          p.nx = 0;
-          p.ny = -1;
-          p.t = dT;
-        } else if (m === dB) {
-          p.nx = 0;
-          p.ny = 1;
-          p.t = dB;
-        } else if (m === dL) {
-          p.nx = -1;
-          p.ny = 0;
-          p.t = dL;
+        if (py <= px) {
+          nx = 0;
+          ny = -1;
+          p.t = py;
         } else {
-          p.nx = 1;
-          p.ny = 0;
-          p.t = dR;
+          nx = -1;
+          ny = 0;
+          p.t = px;
         }
       }
-      visit(p);
+
+      emit(x, y, nx, ny);
+      if (mx !== x) emit(mx, y, -nx, ny);
+      if (my !== y) emit(x, my, nx, -ny);
+      if (mx !== x && my !== y) emit(mx, my, -nx, -ny);
     }
   }
 }
