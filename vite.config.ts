@@ -1,27 +1,25 @@
 import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 
+// Library build: ESM only, one chunk set per public entry, no runtime dependencies.
 export default defineConfig({
   plugins: [
-    dts({ 
-      // merge all declarations into one file for cleaner consumption
-      rollupTypes: true 
-    })
+    dts({
+      rollupTypes: true,
+      include: ['src'],
+      exclude: ['src/components/**'],
+    }),
   ],
   build: {
     lib: {
-      entry: 'src/index.ts',
-      name: 'LiquidGlass',
-      fileName: (format) => `liquid-glass.${format}.js`,
-      formats: ['es', 'cjs']
+      entry: {
+        index: 'src/index.ts',
+        core: 'src/core/index.ts',
+      },
+      formats: ['es'],
+      fileName: (_format, name) => `${name}.js`,
     },
-    rollupOptions: {
-      external: ['lit'],
-      output: {
-        globals: {
-          lit: 'Lit'
-        }
-      }
-    }
-  }
+    sourcemap: true,
+    minify: false,
+  },
 });
