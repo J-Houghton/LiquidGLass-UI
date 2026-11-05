@@ -363,3 +363,16 @@ body.show-grid::before {
   height: 24px;
   background: var(--border);
 }
+/* Glass surfaces driven by the headless API (demoStage.ts) */
+.demo-glass {
+  position: relative;
+  display: block;
+}
+.demo-glass__debug {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-size: cover;
+  border-radius: inherit;
+  z-index: 100;
+}

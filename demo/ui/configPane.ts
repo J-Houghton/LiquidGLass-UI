@@ -1,17 +1,20 @@
 import { Pane, type FolderApi, type ListBladeApi, type TpChangeEvent } from 'tweakpane';
-import type { LiquidGlassContainer } from '../../src/components/liquid-glass-container.js';
-import { SURFACE_FNS, type SurfaceKind } from '../../src/core/optics/surfaces.js';
-import { DEFAULT_GLASS_CONTAINER_PARAMS, type GlassContainerParams } from '../../src/core/defaults.js';
+import {
+  DEFAULT_GLASS_PARAMS,
+  GLASS_PARAM_KEYS,
+  SURFACE_FNS,
+  SURFACE_KINDS,
+  type BlurKind,
+  type GlassParams,
+} from '../../src/index.js';
 import { CONTAINERS_CHANGED_EVENT, REMOVE_CONTAINER_EVENT, SELECT_CONTAINER_EVENT } from './events.js';
+import { stage, updateGlass, setGlassDebug, type StageEntry } from './demoStage.js';
 
-type BlurKind = 'gauss' | 'noise1' | 'noise2';
-
-type PaneParams = GlassContainerParams & {
+type PaneParams = GlassParams & {
   target: string;
   debug: boolean;
 };
 
-const SURFACES: SurfaceKind[] = ['convex_circle', 'convex_squircle', 'concave', 'lip'];
 const BLUR_OPTIONS: { text: string; value: BlurKind }[] = [
   { text: 'Gauss', value: 'gauss' },
   { text: 'Noise 1', value: 'noise1' },
@@ -21,67 +24,33 @@ const BLUR_OPTIONS: { text: string; value: BlurKind }[] = [
 type BindingTarget = Pick<FolderApi, 'addBinding'>;
 type ContainerListOption = { text: string; value: string };
 type PaneBindings = { refresh: () => void }[];
-
-
 type ContainersChangedEvent = WindowEventMap[typeof CONTAINERS_CHANGED_EVENT];
 
-function collectContainers(): { map: Map<string, LiquidGlassContainer>; options: ContainerListOption[] } {
-  const nodes = Array.from(document.querySelectorAll<LiquidGlassContainer>('liquid-glass-container'));
-  const map: Map<string, LiquidGlassContainer> = new Map();
-  const options = nodes.map((node, index) => {
-    const label = node.getAttribute('aria-label') || node.id || `Container ${index + 1}`;
-    const key = node.id || `container-${index + 1}`;
-    if (!node.id) node.id = key;
-    map.set(key, node);
-    return { text: label, value: key };
-  });
-  return { map, options };
+function containerOptions(): ContainerListOption[] {
+  return Array.from(stage.entries.values(), (e) => ({ text: e.label, value: e.id }));
 }
 
-function syncParamsFromContainer(
-  container: LiquidGlassContainer,
-  params: PaneParams,
-  bindings: PaneBindings,
-) {
-  // Sync all properties from the active container to the pane state
-  params.width = container.width;
-  params.height = container.height;
-  params.radius = container.radius;
-  params.bezelWidth = container.bezelWidth;
-  params.glassThickness = container.glassThickness;
-  params.surface = (container.surface as SurfaceKind) ?? DEFAULT_GLASS_CONTAINER_PARAMS.surface;
-  params.refractiveIndex = container.refractiveIndex;
-  params.scalePx = container.scalePx;
-  params.blurKind = (container.blurKind as BlurKind) ?? DEFAULT_GLASS_CONTAINER_PARAMS.blurKind;
-  params.blurStdDev = container.blurStdDev;
-  params.showSpecular = container.showSpecular;
-  params.specularAngleDeg = container.specularAngleDeg;
-  params.specularStrength = container.specularStrength;
-  params.dispersion = container.dispersion; 
-  params.chromaticBezelFactor = container.chromaticBezelFactor;
-  params.frost = container.frost;
-  params.saturation = container.saturation;
-  params.debug = container.debug || false;
-
+function syncParamsFromEntry(entry: StageEntry, params: PaneParams, bindings: PaneBindings) {
+  const p = entry.handle.params;
+  for (const k of GLASS_PARAM_KEYS) (params as unknown as Record<string, unknown>)[k] = p[k];
+  params.debug = entry.debug;
   bindings.forEach((binding) => binding.refresh());
 }
 
 function init() {
-  let { map: containerMap, options } = collectContainers();
+  let options = containerOptions();
   if (!options.length) {
     const waitForContainers = (event: ContainersChangedEvent) => {
-      if (event.detail?.containers?.length) {
-        init();
-      }
+      if (event.detail?.containers?.length) init();
     };
     window.addEventListener(CONTAINERS_CHANGED_EVENT, waitForContainers, { once: true });
     return;
   }
 
   const params: PaneParams = {
-    ...DEFAULT_GLASS_CONTAINER_PARAMS,
+    ...DEFAULT_GLASS_PARAMS,
     target: options[0]?.value ?? '',
-    debug: false
+    debug: false,
   };
 
   const host = document.createElement('div');
@@ -96,26 +65,21 @@ function init() {
 
   const pane = new Pane({ title: 'Liquid Glass Controls', container: wrapper });
   const bindings: PaneBindings = [];
+  let activeEntry: StageEntry | undefined = stage.entries.get(params.target) ?? stage.entries.values().next().value;
+  let isSyncing = false;
 
-  const bind = <K extends keyof PaneParams>(
-    target: BindingTarget,
-    key: K,
-    config: Record<string, unknown>,
-    onChange: () => void,
-  ) => {
-    const binding = target.addBinding(params, key, config as any);
+  /** Bind a GlassParams key: the change goes to the active entry as a one-key patch. */
+  const bindParam = <K extends keyof GlassParams>(target: BindingTarget, key: K, config: Record<string, unknown>) => {
+    const binding = target.addBinding(params, key, config as never);
     binding.on('change', () => {
-      if (isSyncing) return;
-      onChange();
+      if (isSyncing || !activeEntry) return;
+      void updateGlass(activeEntry, { [key]: params[key] } as Partial<GlassParams>);
     });
     bindings.push(binding);
     return binding;
   };
 
-  let activeContainer: LiquidGlassContainer | undefined = containerMap.get(params.target) ?? containerMap.values().next().value;
-  let isSyncing = false;
-
-  // --- Controls Setup ---
+  // --- Container selection ---
 
   let selectedId = params.target;
   const selectBlade = pane.addBlade({
@@ -124,34 +88,28 @@ function init() {
     options,
     value: selectedId,
   }) as ListBladeApi<string>;
-  
+
   selectBlade.on('change', (event: TpChangeEvent<string>) => {
-    const value = event.value;
-    selectedId = value;
-    params.target = value;
-    updateActiveContainer(value);
-    if (value) {
-      window.dispatchEvent(new CustomEvent(SELECT_CONTAINER_EVENT, { detail: { id: value } }));
-    }
+    selectedId = event.value;
+    params.target = event.value;
+    updateActiveEntry(event.value);
+    if (event.value) window.dispatchEvent(new CustomEvent(SELECT_CONTAINER_EVENT, { detail: { id: event.value } }));
   });
 
   const deleteButton = pane.addButton({ title: 'Delete container' });
   deleteButton.on('click', () => {
-    if (!selectedId) return;
-    window.dispatchEvent(new CustomEvent(REMOVE_CONTAINER_EVENT, { detail: { id: selectedId } }));
+    if (selectedId) window.dispatchEvent(new CustomEvent(REMOVE_CONTAINER_EVENT, { detail: { id: selectedId } }));
   });
 
   const refreshContainerList = (requestedTarget?: string) => {
-    const snapshot = collectContainers();
-    containerMap = snapshot.map;
-    options = snapshot.options;
+    options = containerOptions();
     deleteButton.disabled = !options.length;
     selectBlade.disabled = !options.length;
 
     if (!options.length) {
       selectedId = '';
       params.target = '';
-      activeContainer = undefined;
+      activeEntry = undefined;
       selectBlade.options = [];
       selectBlade.value = '' as string;
       bindings.forEach((binding) => binding.refresh());
@@ -159,119 +117,122 @@ function init() {
     }
 
     selectBlade.options = options;
-    const preferred = requestedTarget && containerMap.has(requestedTarget)
-      ? requestedTarget
-      : selectedId && containerMap.has(selectedId)
-        ? selectedId
-        : options[0].value;
+    const preferred =
+      requestedTarget && stage.entries.has(requestedTarget)
+        ? requestedTarget
+        : selectedId && stage.entries.has(selectedId)
+          ? selectedId
+          : options[0].value;
     selectedId = preferred;
     params.target = preferred;
     selectBlade.value = preferred;
-    updateActiveContainer(preferred);
+    updateActiveEntry(preferred);
   };
 
-  deleteButton.disabled = !containerMap.size;
-  selectBlade.disabled = !containerMap.size;
-  const handleContainersChanged = (event: ContainersChangedEvent) => {
+  deleteButton.disabled = !stage.entries.size;
+  selectBlade.disabled = !stage.entries.size;
+  window.addEventListener(CONTAINERS_CHANGED_EVENT, (event: ContainersChangedEvent) => {
     refreshContainerList(event.detail?.activeId);
-  };
-  window.addEventListener(CONTAINERS_CHANGED_EVENT, handleContainersChanged);
+  });
 
-  // --- Bindings ---
+  // --- Bindings (2.0 parameter names; see docs/modernization-plan.md OQ-5) ---
 
   const geometry = pane.addFolder({ title: 'Geometry' });
-  bind(geometry, 'width', { min: 50, max: 900, step: 1 }, () => activeContainer && (activeContainer.width = params.width));
-  bind(geometry, 'height', { min: 50, max: 600, step: 1 }, () => activeContainer && (activeContainer.height = params.height));
-  bind(geometry, 'radius', { min: 0, max: 240, step: 1 }, () => activeContainer && (activeContainer.radius = params.radius));
-  bind(geometry, 'bezelWidth', { min: 1, max: 220, step: 1, label: 'Bezel' }, () => activeContainer && (activeContainer.bezelWidth = params.bezelWidth));
-  bind(geometry, 'surface', {
-      label: 'Surface',
-      options: SURFACES.map((kind) => ({ text: SURFACE_FNS[kind].title, value: kind })),
-    }, () => activeContainer && (activeContainer.surface = params.surface));
+  bindParam(geometry, 'width', { min: 50, max: 900, step: 1 });
+  bindParam(geometry, 'height', { min: 50, max: 600, step: 1 });
+  bindParam(geometry, 'radius', { min: 0, max: 240, step: 1 });
+  bindParam(geometry, 'bezelWidth', { min: 1, max: 220, step: 1, label: 'Bezel' });
+  bindParam(geometry, 'surface', {
+    label: 'Surface',
+    options: SURFACE_KINDS.map((kind) => ({ text: SURFACE_FNS[kind].title, value: kind })),
+  });
 
   const optics = pane.addFolder({ title: 'Optics' });
-  bind(optics, 'refractiveIndex', { min: 1, max: 2.2, step: 0.01, label: 'IOR' }, () => activeContainer && (activeContainer.refractiveIndex = params.refractiveIndex));
-  bind(optics, 'glassThickness', { min: 1, max: 200, step: 1, label: 'Glass thickness' }, () => activeContainer && (activeContainer.glassThickness = params.glassThickness));
-  bind(optics, 'scalePx', { min: 0, max: 400, step: 1, label: 'Scale px' }, () => activeContainer && (activeContainer.scalePx = params.scalePx));
-  bind(optics, 'blurKind', { label: 'Blur kind', options: BLUR_OPTIONS }, () => activeContainer && (activeContainer.blurKind = params.blurKind));
-  bind(optics, 'blurStdDev', { min: 0, max: 3, step: 0.01, label: 'Blur σ' }, () => activeContainer && (activeContainer.blurStdDev = params.blurStdDev));
-  bind(optics, 'debug', { label: 'Show Map (Debug)' }, () => activeContainer && (activeContainer.debug = params.debug));
+  bindParam(optics, 'refractiveIndex', { min: 1, max: 2.2, step: 0.01, label: 'IOR' });
+  bindParam(optics, 'glassThickness', { min: 0, max: 200, step: 1, label: 'Glass thickness (px)' });
+  bindParam(optics, 'displacementScale', { min: 0, max: 400, step: 1, label: 'Displacement px' });
+  bindParam(optics, 'blurKind', { label: 'Blur kind', options: BLUR_OPTIONS });
+  bindParam(optics, 'blur', { min: 0, max: 3, step: 0.01, label: 'Blur' });
+  const debugBinding = optics.addBinding(params, 'debug', { label: 'Show Map (Debug)' });
+  debugBinding.on('change', () => {
+    if (isSyncing || !activeEntry) return;
+    setGlassDebug(activeEntry, params.debug);
+  });
+  bindings.push(debugBinding);
 
   const chromatic = pane.addFolder({ title: 'Chromatic' });
-  bind(chromatic, 'dispersion', { min: 0, max: 5, step: 0.05 }, () => activeContainer && (activeContainer.dispersion = params.dispersion));
-  // Default range adjusted to match your new defaults (1 to 10 is usually safe for this factor)
-  bind(chromatic, 'chromaticBezelFactor', { min: 1, max: 10, step: 0.1, label: 'Edge Tightness' }, () => activeContainer && (activeContainer.chromaticBezelFactor = params.chromaticBezelFactor));
+  bindParam(chromatic, 'dispersion', { min: 0, max: 5, step: 0.05 });
+  bindParam(chromatic, 'chromaticBezelFraction', { min: 0.05, max: 1, step: 0.01, label: 'Edge share' });
 
   const specular = pane.addFolder({ title: 'Specular' });
-  bind(specular, 'showSpecular', { label: 'Enable' }, () => activeContainer && (activeContainer.showSpecular = params.showSpecular));
-  bind(specular, 'specularAngleDeg', { min: 0, max: 180, step: 1, label: 'Angle°' }, () => activeContainer && (activeContainer.specularAngleDeg = params.specularAngleDeg));
-  bind(specular, 'specularStrength', { min: 0, max: 2, step: 0.01, label: 'Strength' }, () => activeContainer && (activeContainer.specularStrength = params.specularStrength));
+  bindParam(specular, 'specular', { label: 'Enable' });
+  bindParam(specular, 'specularAngleDeg', { min: 0, max: 180, step: 1, label: 'Angle°' });
+  bindParam(specular, 'specularStrength', { min: 0, max: 2, step: 0.01, label: 'Strength' });
 
-  const frosting = pane.addFolder({ title: 'Frost & Saturation' });
-  bind(frosting, 'frost', { min: 0, max: 1, step: 0.01 }, () => activeContainer && (activeContainer.frost = params.frost));
-  bind(frosting, 'saturation', { min: 0, max: 3, step: 0.05 }, () => activeContainer && (activeContainer.saturation = params.saturation));
+  const look = pane.addFolder({ title: 'Tint & Saturation' });
+  bindParam(look, 'tint', { min: 0, max: 1, step: 0.01 });
+  bindParam(look, 'saturation', { min: 0, max: 3, step: 0.05 });
 
-  function updateActiveContainer(newTarget: string) {
+  function updateActiveEntry(newTarget: string) {
     if (!newTarget) {
-      activeContainer = undefined;
+      activeEntry = undefined;
       bindings.forEach((binding) => binding.refresh());
       return;
     }
-    const next = containerMap.get(newTarget);
+    const next = stage.entries.get(newTarget);
     if (!next) return;
-    activeContainer = next;
+    activeEntry = next;
     isSyncing = true;
-    syncParamsFromContainer(next, params, bindings);
+    syncParamsFromEntry(next, params, bindings);
     isSyncing = false;
   }
 
-  // Initial Sync
-  if (activeContainer) {
+  if (activeEntry) {
     isSyncing = true;
-    syncParamsFromContainer(activeContainer, params, bindings);
+    syncParamsFromEntry(activeEntry, params, bindings);
     isSyncing = false;
   } else {
     bindings.forEach((binding) => binding.refresh());
   }
 
-  // --- Drag Handling (unchanged) ---
+  // --- Drag handling for the pane itself ---
   let pointerId: number | null = null;
-  let startX = 0, startY = 0, startLeft = 0, startTop = 0;
+  let startX = 0;
+  let startY = 0;
+  let startLeft = 0;
+  let startTop = 0;
 
-  const startDrag = (event: PointerEvent) => {
+  handle.addEventListener('pointerdown', (event: PointerEvent) => {
     if (pointerId !== null || event.button !== 0) return;
     pointerId = event.pointerId;
     const rect = host.getBoundingClientRect();
-    startX = event.clientX; startY = event.clientY;
-    startLeft = rect.left; startTop = rect.top;
-    host.style.left = `${rect.left}px`; host.style.top = `${rect.top}px`;
-    host.style.right = 'auto'; host.style.bottom = 'auto';
+    startX = event.clientX;
+    startY = event.clientY;
+    startLeft = rect.left;
+    startTop = rect.top;
+    host.style.left = `${rect.left}px`;
+    host.style.top = `${rect.top}px`;
+    host.style.right = 'auto';
+    host.style.bottom = 'auto';
     host.style.transform = 'none';
     handle.setPointerCapture(pointerId);
     host.classList.add('is-dragging');
     event.preventDefault();
-  };
-
-  const moveDrag = (event: PointerEvent) => {
+  });
+  handle.addEventListener('pointermove', (event: PointerEvent) => {
     if (pointerId !== event.pointerId) return;
-    const dx = event.clientX - startX;
-    const dy = event.clientY - startY;
     const margin = 12;
     const maxLeft = Math.max(margin, window.innerWidth - host.offsetWidth - margin);
     const maxTop = Math.max(margin, window.innerHeight - host.offsetHeight - margin);
-    host.style.left = `${Math.min(Math.max(startLeft + dx, margin), maxLeft)}px`;
-    host.style.top = `${Math.min(Math.max(startTop + dy, margin), maxTop)}px`;
-  };
-
+    host.style.left = `${Math.min(Math.max(startLeft + event.clientX - startX, margin), maxLeft)}px`;
+    host.style.top = `${Math.min(Math.max(startTop + event.clientY - startY, margin), maxTop)}px`;
+  });
   const endDrag = (event: PointerEvent) => {
     if (pointerId !== event.pointerId) return;
     handle.releasePointerCapture(pointerId);
     pointerId = null;
     host.classList.remove('is-dragging');
   };
-
-  handle.addEventListener('pointerdown', startDrag);
-  handle.addEventListener('pointermove', moveDrag);
   handle.addEventListener('pointerup', endDrag);
   handle.addEventListener('pointercancel', endDrag);
 }

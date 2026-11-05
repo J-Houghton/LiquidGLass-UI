@@ -1,14 +1,16 @@
-import type { GlassContainerParams } from '../../src/core/defaults.js';
+import type { GlassParams } from '../../src/index.js';
 
 export type Preset = {
   id: string;
   name: string;
   description: string;
-  config: Partial<GlassContainerParams>;
+  config: Partial<GlassParams>;
 };
 
+// glassThickness is literal px in 2.0. The 1.x presets went through a smoothstep
+// (mapGlassThickness): 50 -> 31.25, 60 -> 43.2, 40 -> 20.8, 80 -> 70.4, 100 -> 100.
+// The values below are those outputs, so every preset renders as it did in 1.x.
 export const PRESETS: Preset[] = [
-  // 1. Surface: Squircle (Standard)
   {
     id: 'surface-squircle',
     name: 'Standard Glass',
@@ -17,15 +19,14 @@ export const PRESETS: Preset[] = [
       surface: 'convex_squircle',
       radius: 60,
       bezelWidth: 60,
-      glassThickness: 50,
+      glassThickness: 31.25,
       refractiveIndex: 1.5,
-      scalePx: 180,
-      chromaticBezelFactor: 4,
-      frost: 0.05,
+      displacementScale: 180,
+      chromaticBezelFraction: 0.25,
+      tint: 0.05,
       specularStrength: 0.9,
     },
   },
-  // 2. Surface: Circle (Lens)
   {
     id: 'surface-circle',
     name: 'Optical Lens',
@@ -33,18 +34,17 @@ export const PRESETS: Preset[] = [
     config: {
       surface: 'convex_circle',
       width: 200,
-      height: 200, // Circle shape
+      height: 200,
       radius: 100,
-      bezelWidth: 100, // Full dome
+      bezelWidth: 100,
       glassThickness: 100,
       refractiveIndex: 1.6,
-      scalePx: 100,
-      showSpecular: true,
+      displacementScale: 100,
+      specular: true,
       specularStrength: 1.2,
-      frost: 0,
+      tint: 0,
     },
   },
-  // 3. Surface: Concave
   {
     id: 'surface-concave',
     name: 'Concave Dish',
@@ -53,14 +53,13 @@ export const PRESETS: Preset[] = [
       surface: 'concave',
       radius: 60,
       bezelWidth: 60,
-      glassThickness: 60,
+      glassThickness: 43.2,
       refractiveIndex: 1.4,
-      scalePx: 122,
+      displacementScale: 122,
       specularStrength: 0.5,
-      frost: 0.1,
+      tint: 0.1,
     },
   },
-  // 4. Surface: Lip
   {
     id: 'surface-lip',
     name: 'Sculpted Lip',
@@ -69,14 +68,13 @@ export const PRESETS: Preset[] = [
       surface: 'lip',
       radius: 60,
       bezelWidth: 50,
-      glassThickness: 40,
+      glassThickness: 20.8,
       refractiveIndex: 1.5,
-      scalePx: 180,
+      displacementScale: 180,
       specularStrength: 1.0,
-      frost: 0.05,
+      tint: 0.05,
     },
   },
-  // 5. Blur: Noise 1 (Coarse)
   {
     id: 'blur-noise-1',
     name: 'School Glass',
@@ -85,16 +83,14 @@ export const PRESETS: Preset[] = [
       surface: 'convex_squircle',
       radius: 30,
       bezelWidth: 30,
-      glassThickness: 80,
+      glassThickness: 70.4,
       refractiveIndex: 1.5,
       blurKind: 'noise1',
-      blurStdDev: 0.8,
-      frost: 0.1,
-      scalePx: 100, // Higher displacement for the "wet" look
+      blur: 0.8,
+      tint: 0.1,
+      displacementScale: 100,
     },
   },
-  
-  // 6. Blur: Noise 2 (Fine)
   {
     id: 'blur-noise-2',
     name: 'Privacy Glass',
@@ -103,17 +99,15 @@ export const PRESETS: Preset[] = [
       surface: 'convex_squircle',
       radius: 40,
       bezelWidth: 40,
-      glassThickness: 50,
+      glassThickness: 31.25,
       refractiveIndex: 1.45,
       blurKind: 'noise2',
-      blurStdDev: 0.33,
-      frost: 0.1,
-      scalePx: 60,
+      blur: 0.33,
+      tint: 0.1,
+      displacementScale: 60,
     },
-  }
+  },
 ];
-
-
 
 export const BACKGROUNDS = [
   { id: 'grid', name: 'Animated Grid', type: 'css', value: '' }, // Handled by CSS class removal
@@ -121,4 +115,4 @@ export const BACKGROUNDS = [
   { id: 'nature', name: 'Ferns', type: 'img', value: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?q=80&w=1600&auto=format&fit=crop' },
   { id: 'geo', name: 'Geometry', type: 'img', value: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=1600&auto=format&fit=crop' },
   { id: 'text', name: 'Typography', type: 'img', value: 'https://images.unsplash.com/photo-1618411533504-7fabc00a113a?q=80&w=1600&auto=format&fit=crop' },
-]; 
+];
