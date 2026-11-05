@@ -5,8 +5,8 @@ displacement and specular maps and assembles an SVG filter, applied through `bac
 Published as `liquid-glass-filter` (2.x, headless).
 
 The design, audit, status and open decisions are in `docs/modernization-plan.md`. Read its
-"Status" section before starting work; Phase 5 steps wait on the implementation survey in
-`docs/research/`.
+"Status" section before starting work. The verified survey of the field that drove Phase 5 is
+`docs/research-liquid-glass-2026.md`; cite it rather than re-deriving browser-support claims.
 
 ## Commands
 
@@ -25,10 +25,12 @@ The design, audit, status and open decisions are in `docs/modernization-plan.md`
 ## Layout and import rules
 
 ```
-src/core/       Pure engine. Parameters (params.ts), optics (optics/), filter description as data
-                (filters/spec.ts). Returns RGBAImage / Float64Array / FilterSpec. No DOM, no globals.
-src/dom/        Browser glue, framework-free: createGlassFilter, attachLiquidGlass, mountFilter,
-                encodeImage, mapCache. Touches document/canvas/URL/ResizeObserver only inside functions.
+src/core/       Pure engine. Parameters (params.ts), optics (optics/: band walk, 1D curve, map with
+                rim in B, standalone specular), filter description as data (filters/spec.ts).
+                Returns RGBAImage / Float64Array / FilterSpec. No DOM, no globals.
+src/dom/        Browser glue, framework-free: createGlassFilter, attachLiquidGlass (support detection,
+                frost fallback, reduced transparency), mountFilter, encodeImage, mapCache (shared
+                refcounted registry), support. Touches document/canvas/URL/ResizeObserver only inside functions.
 src/elements/   Hand-rolled custom elements over src/dom. Separate entry; registers nothing on import.
 demo/           Playground (Tweakpane). Entry is demo/main.ts; it calls exported init functions.
 tests/          Vitest. tests/fixtures = golden data; tests/helpers/fakeDom.ts = tiny DOM stand-in;
@@ -80,15 +82,18 @@ it belongs in `src/dom`; core takes numbers and returns data.
 - Blob URLs for the maps belong to the handle that made them; `destroy()` revokes them. Never share
   them across handles.
 - `HTMLElement.prototype.blur()` exists, so the elements expose the `blur` parameter as `blurAmount`.
-- Known, pinned geometry quirks (plan OQ-17): corner pixels on the right/bottom sit one pixel
-  deeper in the band than left/top, and the specular corner normal is flipped relative to the
-  edges. Changing either is a visual change: fixtures, own commit, say so.
-- Safari's support for `backdrop-filter: url(#svg)` is unverified. Do not claim cross-browser
-  support until plan step 5.1 is done.
+- The band is sampled at pixel centers and computed for one quadrant, then mirrored. Tests assert
+  exact mirror symmetry and equivalence with a naive walk; keep both properties.
+- One map image carries everything: R,G displacement, B rim light (baked at strength 1; the filter
+  applies `specularStrength` once). Changing `specularAngleDeg` regenerates the map on purpose.
+- Browser support is settled, not a guess: the lens renders only in Chromium; WebKit and Gecko parse
+  `backdrop-filter: url()` but render nothing, so `detectGlassSupport()` is an engine sniff by
+  necessity and `attachLiquidGlass` falls back to CSS frost. Tests that want the glass path in
+  happy-dom or the fake DOM must pass `support: 'full'`.
 
 ## Workflow
 
 - Branch from `main`, PR back to `main`. Pushing to `main` deploys the demo to GitHub Pages.
 - One plan step per commit, step number in the message (for example `Phase 5.1`).
-- Research findings from the survey go in `docs/research/` and are referenced from the
-  `[RESEARCH]` steps in the plan, not pasted into code comments.
+- Research findings live in `docs/research-liquid-glass-2026.md` and are referenced from the plan,
+  not pasted into code comments. Cite the item number ("research item 2") in commits that act on it.

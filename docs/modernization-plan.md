@@ -23,11 +23,14 @@ per the recommendations in §4 (OQ-13: not on npm, so 2.0.0 with no deprecation 
 | 2 Filter graph as data | done | Equivalence against the Lit-era graph was proven for all 12 structures before that code was deleted (commit "Phase 2.1 + 2.3"). |
 | 3 Headless API | done | `createGlassFilter`, `attachLiquidGlass`, ESM-only package with `.`/`./core` entries. Demo dogfoods the API (3.6). |
 | 4 Elements, Lit removal | done | `./elements` entry; lifecycle tests run under `happy-dom` (dev-only, the addition OQ-4 reserved). 4.3 landed early to fix a real break: `sideEffects:false` made Rollup drop the demo's side-effect-only imports, so the demo now has an explicit entry (`demo/main.ts`). `blur` is exposed as the `blurAmount` element property because `HTMLElement.blur()` exists. |
-| 5 Research-dependent | **waiting** | Nothing started. Inputs expected in `docs/research/`. |
+| 5 Research-dependent | done for the "clear win" items; the rest are decisions (below) | Driven by `docs/research-liquid-glass-2026.md` (its §5 ranks 14 items). Landed: item 1 real support detection + item 4(i) frost fallback + item 7 reduced transparency (5.1); item 2 three-pass dispersion + item 8 rim-in-blue-channel and region padding + item 6 `physicalScale` (5.3); item 3 quadrant-mirrored band walk + item 10 shared refcounted map registry (5.5). OQ-17 and OQ-18 were fixed on the way. Decision for 5.2 (renderer): stay SVG-only, handle remains renderer-neutral (research items 11, 14 are "not worth it now"). 5.4 (shapes) and 5.6 (vocabulary) are deferred/settled: see OQ-19 to OQ-23. |
 | 6 Release | done (6.3 publish workflow not added) | README, CHANGELOG, 2.0.0. 6.2 bumped to TypeScript 6.0, Vite 8.3, Vitest 5.1, happy-dom 21, Node 22 in both workflows. TypeScript 7 (native compiler) and vite-plugin-dts 5 (rewrite over unplugin-dts, `rollupTypes` → `bundleTypes`) were tried and deliberately not taken yet. |
 
-Not yet done by anyone: a visual check of the demo in a real browser after Phase 3.6/4.3 (this
-session had no browser). Run `npm run dev`, load each preset, toggle the debug map, drag, resize.
+Not yet done by anyone: a visual check of the demo in a real browser (this session had no browser),
+now covering the Phase 3.6/4.3 rewrite, the pixel-center geometry (OQ-17), the three-pass dispersion
+and the blue-channel rim (5.3). Run `npm run dev` in Chrome, load each preset, slide dispersion to
+2–5, toggle the debug map (B channel is the rim now), drag, resize; then load it in Safari or Firefox
+and confirm the frost fallback and `data-liquid-glass="frost"`.
 
 New findings while executing (added as OQ-17 and OQ-18 in §4):
 
@@ -532,8 +535,13 @@ Dependencies: 0 → 1 → 2 → 3 → 4 → 6. Phase 5 items slot in after 3 (5.
 | OQ-14 | Keep the "circle-only surface" coercion? | Drop it in 2.0 unless you remember why it exists; the 1D profile is shape-independent. |
 | OQ-15 | Demo: drive it with the headless API or the elements? | Stage through the headless API (proves what you ship), one elements example on the page. |
 | OQ-16 | The banding benchmark's thresholds: delete, keep as reporting, or re-tune after research? | Keep as reporting only (0.5). Re-tune only if 5.3 changes the map encoding; otherwise they measure a trade-off you already accepted. |
-| OQ-17 | Fix the two pinned geometry quirks found during Phase 1 (one-pixel corner offset in `band.ts`; flipped corner normal in `specularLight.ts`)? | Yes, both, in one commit with regenerated fixtures, after eyeballing before/after in the demo. Each is a one-line change (`R - dist` → `R - 1 - dist` or the edge formula → `W - x`; drop the `p.corner ? -p.ny : p.ny`). The highlight notches at corner/edge junctions are a visible defect. |
-| OQ-18 | `specularStrength` applied twice (image clamp × filter slope)? | Leave for 2.0 (presets were tuned against it). Fold into 5.3 when the lighting model is revisited: bake the image at strength 1 and let the slope carry it, then re-tune the six presets' strengths. |
+| OQ-17 | Fix the two pinned geometry quirks found during Phase 1 (one-pixel corner offset in `band.ts`; flipped corner normal in `specularLight.ts`)? | **Done** (commit "OQ-17: sample the band at pixel centers"). The fix went further than the one-liners: pixel-center sampling makes corners and edges agree and the map an exact mirror image, which tests now assert. Not yet eyeballed in a browser. |
+| OQ-18 | `specularStrength` applied twice (image clamp × filter slope)? | **Done** in 5.3: the rim is baked at strength 1 into the map's blue channel and the filter applies the strength once. Default 0.9 → 0.81 and presets re-tuned so the look is unchanged. |
+| OQ-19 | Motion module (closed-form spring + velocity squash, pure, caller supplies time): research item 5, tagged "trade-off, my call". | Not now. It is what makes 2026 libraries read as "liquid", but it is scope beyond a filter engine and consumers often have Motion or react-spring already. If wanted: a separate `./motion` entry, additive, with reduced-motion snapping; reference constants are in research §4.5. |
+| OQ-20 | A content-side `filter: url()` mode so Safari and Firefox refract owned content (research item 4(ii)). | Later, opt-in, only if a product needs refraction outside Chromium. The core is ready (graph is data); the cost is API shape (the call must receive the content), the 4096² WebKit clamp, no `<video>` on Safari, and Firefox's CPU path. Frost suffices for 2.0. |
+| OQ-21 | SDF-driven geometry for per-corner radii, superellipse corners matching `corner-shape`, and merging (research items 9, 13, 14). | Defer until a shape need exists. `corner-shape: squircle` alone would make the CSS clip disagree with the circular-corner map, so it needs item 9 first. |
+| OQ-22 | HTML-in-Canvas / WebGPU renderer for lensing beyond the box (research item 11). | No. Chromium-only like the SVG path, young reference libraries, read-back gaps. The handle stays renderer-neutral in case WebKit changes the picture. |
+| OQ-23 | Where the research doc lives and when it is committed. | The other session wrote it to `docs/research-liquid-glass-2026.md` (untracked at the end of this pass because it was still being finalized). Commit it as-is once that session is done; CLAUDE.md and README already point at that path. |
 
 ---
 
