@@ -2,13 +2,12 @@
  * Pure engine: parameters, maps, filter description. No DOM, no globals.
  * Everything here is safe to import and run on a server or in a worker.
  */
-export type { GlassParams, ResolvedGlassParams, BlurKind } from './params.js';
+export type { GlassParams, ResolvedGlassParams, BlurKind, LegacyGlassParams } from './params.js';
 export {
   DEFAULT_GLASS_PARAMS,
   GLASS_PARAM_KEYS,
   BLUR_KINDS,
-  DISPLACEMENT_KEYS,
-  SPECULAR_KEYS,
+  MAP_KEYS,
   resolveGlassParams,
   fromLegacyParams,
 } from './params.js';
@@ -25,10 +24,11 @@ export type { DisplacementMapOptions } from './optics/disp2d.js';
 export { displacementMap, maxAbs } from './optics/disp2d.js';
 export type { SpecularMapOptions } from './optics/specularLight.js';
 export { specularMap } from './optics/specularLight.js';
+export { lightVector, rimCoefficient, rimThickness } from './optics/rim.js';
 export type { BandPixel } from './optics/band.js';
 export { forEachBandPixel, inRoundedRect } from './optics/band.js';
 
 export { mapGlassThickness } from './validation/geometry.js';
 
-export type { FilterPrimitive, FilterSpec, FilterRefs } from './filters/spec.js';
-export { buildFilterSpec, filterSpecToSvg, filterElementAttrs, TRANSPARENT_PIXEL, NOISE_SCALE_FACTOR } from './filters/spec.js';
+export type { FilterPrimitive, FilterSpec, FilterRefs, FilterSpecOptions } from './filters/spec.js';
+export { buildFilterSpec, filterSpecToSvg, filterElementAttrs, NOISE_SCALE_FACTOR, DISPERSION_SPREAD } from './filters/spec.js';

@@ -1,10 +1,9 @@
 /**
- * Pins the pure filter spec. (The port from the Lit-era FilterGraph was proven primitive-for-
- * primitive by an equivalence test that lived here until the legacy code was deleted in
- * Phase 4.2; see git history, commit "Phase 2.1 + 2.3".)
+ * Pins the pure filter spec. One map image (R,G displacement, B rim) feeds a displacement stage
+ * (single pass, or three channel-isolated passes for dispersion), a blur stage and a rim stage.
  */
 import { describe, it, expect } from 'vitest';
-import { buildFilterSpec, filterSpecToSvg, TRANSPARENT_PIXEL } from '../../src/core/filters/spec';
+import { buildFilterSpec, filterSpecToSvg, filterElementAttrs, DISPERSION_SPREAD } from '../../src/core/filters/spec';
 import { resolveGlassParams, type BlurKind } from '../../src/core/params';
 
 const COMBOS: { dispersion: number; blurKind: BlurKind; specular: boolean }[] = [];
@@ -14,7 +13,7 @@ for (const dispersion of [0, 1]) {
   }
 }
 
-const REFS = { id: 'lg-test', mapHref: 'blob:map', specularHref: TRANSPARENT_PIXEL };
+const REFS = { id: 'lg-test', mapHref: 'blob:map' };
 
 describe('buildFilterSpec', () => {
   for (const combo of COMBOS) {
@@ -25,14 +24,35 @@ describe('buildFilterSpec', () => {
     });
   }
 
-  it('static primitives carry the hrefs, size and displacement scale', () => {
-    const spec = buildFilterSpec(resolveGlassParams({ width: 320, height: 200, displacementScale: 77 }), { ...REFS, mapHref: 'blob:m', specularHref: 'blob:s' });
-    expect(spec.static.map((p) => p.tag)).toEqual(['feImage', 'feDisplacementMap', 'feImage']);
+  it('the only static primitive is the map image', () => {
+    const spec = buildFilterSpec(resolveGlassParams({ width: 320, height: 200 }), { ...REFS, mapHref: 'blob:m' });
+    expect(spec.static.map((p) => p.tag)).toEqual(['feImage']);
     expect(spec.static[0].attrs).toMatchObject({ href: 'blob:m', width: '320', height: '200', result: 'map' });
-    expect(spec.static[1].attrs).toMatchObject({ in: 'SourceGraphic', in2: 'map', scale: '77', result: 'refr' });
-    expect(spec.static[2].attrs).toMatchObject({ href: 'blob:s', result: 'specSrc' });
     expect(spec.width).toBe(320);
     expect(spec.height).toBe(200);
+    expect(spec.padding).toBe(0);
+  });
+
+  it('single displacement pass reads SourceGraphic through the map at displacementScale', () => {
+    const spec = buildFilterSpec(resolveGlassParams({ displacementScale: 77 }), REFS);
+    expect(spec.dynamic[0].tag).toBe('feDisplacementMap');
+    expect(spec.dynamic[0].attrs).toMatchObject({ in: 'SourceGraphic', in2: 'map', xChannelSelector: 'R', yChannelSelector: 'G', scale: '77', result: 'refr' });
+  });
+
+  it('dispersion = three passes at 1-k, 1, 1+k times the scale, channel-isolated and summed', () => {
+    const spec = buildFilterSpec(resolveGlassParams({ displacementScale: 100, dispersion: 2.5 }), REFS);
+    const passes = spec.dynamic.filter((p) => p.tag === 'feDisplacementMap' && p.attrs.in === 'SourceGraphic');
+    const k = DISPERSION_SPREAD * 2.5;
+    expect(passes.map((p) => p.attrs.scale)).toEqual([String(100 * (1 - k)), '100', String(100 * (1 + k))]);
+    expect(passes.map((p) => p.attrs.result)).toEqual(['dispR', 'dispG', 'dispB']);
+    const matrices = spec.dynamic.filter((p) => p.tag === 'feColorMatrix' && /^disp[RGB]$/.test(p.attrs.in));
+    expect(matrices).toHaveLength(3);
+    const sums = spec.dynamic.filter((p) => p.tag === 'feComposite');
+    expect(sums.map((p) => [p.attrs.in, p.attrs.in2, p.attrs.result])).toEqual([
+      ['chR', 'chG', 'chRG'],
+      ['chRG', 'chB', 'refr'],
+    ]);
+    for (const s of sums) expect(s.attrs).toMatchObject({ operator: 'arithmetic', k1: '0', k2: '1', k3: '1', k4: '0' });
   });
 
   it('structureKey depends only on the enabled stages', () => {
@@ -42,23 +62,38 @@ describe('buildFilterSpec', () => {
     expect(a.structureKey).toBe(b.structureKey);
     expect(a.structureKey).not.toBe(c.structureKey);
     expect(a.dynamic.length).toBe(b.dynamic.length);
+    expect(buildFilterSpec(resolveGlassParams({ specular: false }), REFS).structureKey).not.toBe(c.structureKey);
   });
 
-  it('threads results: each dynamic stage consumes the previous output', () => {
+  it('threads results: blur consumes the displacement output, the rim blend consumes the blur', () => {
     const spec = buildFilterSpec(resolveGlassParams({ dispersion: 1, blurKind: 'noise2', specular: true }), REFS);
     const d = spec.dynamic;
-    expect(d[1].attrs.in).toBe('refr');
-    expect(d[d.length - 3].attrs.in).toBe('chromaticFastOut'); // noise feDisplacementMap
-    expect(d[d.length - 1].attrs.in).toBe('refrNoise_high'); // final blend
-    expect(d[d.length - 1].attrs.result).toBe('final');
+    const noise = d.find((p) => p.tag === 'feDisplacementMap' && p.attrs.in2 === 'quant_high')!;
+    expect(noise.attrs.in).toBe('refr');
+    expect(d[d.length - 1].attrs).toMatchObject({ in: 'refrNoise_high', in2: 'rim', mode: 'screen', result: 'final' });
+    const gauss = buildFilterSpec(resolveGlassParams({ blurKind: 'gauss' }), REFS).dynamic;
+    expect(gauss[1].attrs).toMatchObject({ in: 'refr', result: 'blurred' });
+    expect(gauss[3].attrs.in).toBe('blurred');
   });
 
-  it('chromatic offsets scale with dispersion and noise scale with blur', () => {
-    const spec = buildFilterSpec(resolveGlassParams({ dispersion: 1.5, blurKind: 'noise1', blur: 0.8 }), REFS);
-    const offsets = spec.dynamic.filter((p) => p.tag === 'feOffset').map((p) => p.attrs.dx);
-    expect(offsets).toEqual(['3.00', '-3.00']);
-    const noise = spec.dynamic.find((p) => p.tag === 'feDisplacementMap')!;
-    expect(noise.attrs.scale).toBe('16.00');
+  it('rim stage lifts the map blue channel to white with alpha = strength x B, once', () => {
+    const spec = buildFilterSpec(resolveGlassParams({ specularStrength: 0.81 }), REFS);
+    const rim = spec.dynamic.find((p) => p.tag === 'feColorMatrix' && p.attrs.in === 'map')!;
+    expect(rim.attrs.values).toBe('0 0 1 0 0  0 0 1 0 0  0 0 1 0 0  0 0 0.81 0 0');
+    expect(rim.attrs.result).toBe('rim');
+    expect(spec.dynamic.some((p) => p.tag === 'feComponentTransfer')).toBe(false);
+  });
+
+  it('noise scale follows blur x 20/40', () => {
+    const spec = buildFilterSpec(resolveGlassParams({ blurKind: 'noise1', blur: 0.8 }), REFS);
+    expect(spec.dynamic.find((p) => p.tag === 'feDisplacementMap' && p.attrs.in2 === 'quant_low')!.attrs.scale).toBe('16.00');
+  });
+
+  it('padding enlarges the filter region around the box but not the map image', () => {
+    const spec = buildFilterSpec(resolveGlassParams({ width: 300, height: 120 }), REFS, { padding: 24 });
+    expect(filterElementAttrs(spec)).toMatchObject({ x: '-24', y: '-24', width: '348', height: '168' });
+    expect(spec.static[0].attrs).toMatchObject({ x: '0', y: '0', width: '300', height: '120' });
+    expect(buildFilterSpec(resolveGlassParams(), REFS, { padding: -5 }).padding).toBe(0);
   });
 
   it('serializes to well-formed, escaped SVG markup', () => {
@@ -67,7 +102,7 @@ describe('buildFilterSpec', () => {
     expect(svg.startsWith('<svg xmlns="http://www.w3.org/2000/svg"')).toBe(true);
     expect(svg).toContain('<filter id="lg-test" filterUnits="userSpaceOnUse"');
     expect(svg).toContain('href="data:x/y;base64,AA==&amp;&quot;&lt;"');
-    expect(svg).toContain('<feComponentTransfer in="specSrc" result="specAdj"><feFuncA type="linear" slope="0.9"/></feComponentTransfer>');
+    expect(svg).toContain('<feBlend in="blurred" in2="rim" mode="screen" result="final"/>');
     expect((svg.match(/<filter/g) ?? []).length).toBe(1);
     expect(svg.endsWith('</filter></defs></svg>')).toBe(true);
     expect(svg).toMatchSnapshot();

@@ -29,14 +29,14 @@ describe('<liquid-glass-container>', () => {
 
   it('attaches on connect, reads attributes (including 1.x aliases), styles itself', async () => {
     document.body.innerHTML = `<liquid-glass-container id="a" width="200" height="100" radius="20" tint="0.1"
-      scale-px="90" chromatic-bezel-factor="4" show-specular blur-std-dev="0.4"></liquid-glass-container>`;
+      scale-px="90" physical-scale show-specular blur-std-dev="0.4"></liquid-glass-container>`;
     const el = document.getElementById('a') as LiquidGlassElement;
     expect(el.glass).not.toBeNull();
     await el.glass!.ready;
     const p = el.glass!.params;
     expect([p.width, p.height, p.radius, p.tint]).toEqual([200, 100, 20, 0.1]);
     expect(p.displacementScale).toBe(90);
-    expect(p.chromaticBezelFraction).toBe(0.25);
+    expect(p.physicalScale).toBe(true);
     expect(p.specular).toBe(true);
     expect(p.blur).toBe(0.4);
     expect(el.style.width).toBe('200px');

@@ -1,5 +1,6 @@
 import { createRGBAImage, type RGBAImage } from '../image.js';
 import { forEachBandPixel } from './band.js';
+import { lightVector, rimCoefficient, rimThickness } from './rim.js';
 
 export interface DisplacementMapOptions {
   /** Effect size in CSS px. */
@@ -13,23 +14,24 @@ export interface DisplacementMapOptions {
   dpr: number;
   /** 1D displacement curve across the bezel (see displacementCurve), indexed 0 = rim. */
   curve: ArrayLike<number>;
-  /** Share of the bezel, from the rim inward, that carries the chromatic mask (0..1). */
-  chromaticBezelFraction: number;
   /**
    * Value the curve is normalized by so the map fits 8 bits. Defaults to max(1, max|curve|).
    * The map therefore encodes the *shape* of the displacement; the magnitude in px is set
    * by the filter's `scale` attribute.
    */
   maxDisplacement?: number;
+  /**
+   * Bake a rim light into the blue channel (full strength; the filter scales it). Omit for B = 0.
+   */
+  rim?: { angleDeg: number; rimPx?: number };
 }
 
 /**
  * Rasterize the 1D curve into a rounded-rectangle bezel band.
  *
- * Per pixel: R,G = displacement vector pointing inward (128 bias, 127 scale), B = chromatic
- * edge mask with quadratic falloff over the outer `chromaticBezelFraction` of the band,
- * A = 255. Pixels outside the band (the flat center and outside the shape) stay neutral
- * (128,128,0,255), so the map never introduces transparency.
+ * Per pixel: R,G = displacement vector pointing inward (128 bias, 127 scale), B = rim light
+ * (0 when `rim` is omitted), A = 255. Pixels outside the band (the flat center and outside the
+ * shape) stay neutral (128,128,0,255), so the map never introduces transparency.
  */
 export function displacementMap(opts: DisplacementMapOptions): RGBAImage {
   const { dpr, curve } = opts;
@@ -38,11 +40,13 @@ export function displacementMap(opts: DisplacementMapOptions): RGBAImage {
   const R = Math.round(opts.radius * dpr);
   const B = Math.max(1, Math.round(opts.bezelWidth * dpr));
   const maxDisp = opts.maxDisplacement ?? maxAbs(curve);
-  const maskScale = 1 / opts.chromaticBezelFraction;
   const n = curve.length;
+  const rim = opts.rim;
+  const T = rim ? rimThickness(rim.rimPx, dpr) : 0;
+  const [vx, vy] = rim ? lightVector(rim.angleDeg) : [0, 0];
 
   const img = createRGBAImage(W, H);
-  // R=128, G=128 (zero vector), B=0 (no chromatic mask), A=255. Little-endian ABGR.
+  // R=128, G=128 (zero vector), B=0 (no rim), A=255. Little-endian ABGR.
   new Uint32Array(img.data.buffer).fill(0xff008080);
   const data = img.data;
 
@@ -62,9 +66,7 @@ export function displacementMap(opts: DisplacementMapOptions): RGBAImage {
     const dY = (-p.ny * disp) / maxDisp;
     data[p.idx] = 128 + dX * 127;
     data[p.idx + 1] = 128 + dY * 127;
-
-    const maskVal = Math.max(0, 1 - u * maskScale);
-    data[p.idx + 2] = Math.floor(maskVal * maskVal * 255);
+    data[p.idx + 2] = rim ? Math.floor(255 * rimCoefficient(p.nx, p.ny, p.t, vx, vy, T)) : 0;
     data[p.idx + 3] = 255;
   });
   return img;

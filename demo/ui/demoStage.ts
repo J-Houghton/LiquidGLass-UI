@@ -49,7 +49,7 @@ function createGlass(config: GlassParams, parent: HTMLElement, id: string): Glas
     id: `${id}-filter`,
     radius: config.radius,
     onRender: (h) => {
-      const url = h.debug.displacementMapUrl;
+      const url = h.debug.mapUrl;
       debugEl.style.backgroundImage = url ? `url(${url})` : '';
     },
   });

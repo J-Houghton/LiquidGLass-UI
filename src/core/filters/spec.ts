@@ -3,6 +3,10 @@ import type { BlurKind, ResolvedGlassParams } from '../params.js';
 /**
  * Pure description of the SVG filter graph. The DOM layer materializes it into elements;
  * `filterSpecToSvg` serializes it to markup. No DOM types in here.
+ *
+ * One image feeds everything: R,G = displacement, B = rim light. Stages, in order:
+ *   displacement (1 pass, or 3 channel-isolated passes at staggered scales for dispersion)
+ *   → blur (Gaussian or noise) → rim light (B lifted to white-with-alpha, screen-blended).
  */
 
 export interface FilterPrimitive {
@@ -15,9 +19,11 @@ export interface FilterSpec {
   id: string;
   width: number;
   height: number;
-  /** Map image, main displacement, specular image: always present, in this order. */
+  /** Filter region padding around the element box, px (output is still clipped to the box). */
+  padding: number;
+  /** The map image: always present, always first. */
   static: readonly FilterPrimitive[];
-  /** Chromatic → blur → specular stages, only those enabled. */
+  /** Displacement → blur → rim stages, only those enabled. */
   dynamic: readonly FilterPrimitive[];
   /** Same key ⇒ same primitive sequence; only attribute values may differ. */
   structureKey: string;
@@ -26,72 +32,103 @@ export interface FilterSpec {
 export interface FilterRefs {
   id: string;
   mapHref: string;
-  specularHref: string;
 }
 
-/** 1×1 transparent GIF used for the specular source when the stage is off. */
-export const TRANSPARENT_PIXEL = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+export interface FilterSpecOptions {
+  /** Extra filter region around the element box, px. Default 0. */
+  padding?: number;
+}
 
 /** Displacement scale per unit of blur for the two noise profiles. */
 export const NOISE_SCALE_FACTOR = { noise1: 20, noise2: 40 } as const;
 
+/** Relative scale spread between red and blue per unit of `dispersion`. */
+export const DISPERSION_SPREAD = 0.02;
+
 const prim = (tag: string, attrs: Record<string, string>, children?: FilterPrimitive[]): FilterPrimitive =>
   children ? { tag, attrs, children } : { tag, attrs };
 
-export function buildFilterSpec(p: ResolvedGlassParams, refs: FilterRefs): FilterSpec {
+const num = (v: number): string => String(Math.round(v * 1000) / 1000);
+
+export function buildFilterSpec(p: ResolvedGlassParams, refs: FilterRefs, opts: FilterSpecOptions = {}): FilterSpec {
   const w = String(p.width);
   const h = String(p.height);
   const staticPrims: FilterPrimitive[] = [
     prim('feImage', { x: '0', y: '0', width: w, height: h, preserveAspectRatio: 'none', href: refs.mapHref, result: 'map' }),
-    prim('feDisplacementMap', {
-      in: 'SourceGraphic',
-      in2: 'map',
-      xChannelSelector: 'R',
-      yChannelSelector: 'G',
-      scale: String(p.displacementScale),
-      result: 'refr',
-    }),
-    prim('feImage', { x: '0', y: '0', width: '100%', height: '100%', preserveAspectRatio: 'none', href: refs.specularHref, result: 'specSrc' }),
   ];
 
   const dynamic: FilterPrimitive[] = [];
-  let input = 'refr';
   const chromatic = p.dispersion > 0;
-  if (chromatic) {
-    dynamic.push(...chromaticStage(input, p.dispersion));
-    input = 'chromaticFastOut';
-  }
+  dynamic.push(...(chromatic ? dispersionStage(p.displacementScale, p.dispersion) : displacementStage(p.displacementScale)));
+  let input = 'refr';
   dynamic.push(...blurStage(input, p.blurKind, p.blur));
   input = p.blurKind === 'gauss' ? 'blurred' : `refrNoise_${noiseSuffix(p.blurKind)}`;
-  if (p.specular) {
-    dynamic.push(...specularStage(input, p.specularStrength));
-  }
+  if (p.specular) dynamic.push(...rimStage(input, p.specularStrength));
 
   return {
     id: refs.id,
     width: p.width,
     height: p.height,
+    padding: Math.max(0, opts.padding ?? 0),
     static: staticPrims,
     dynamic,
-    structureKey: `${chromatic ? 'chromatic' : '-'}|${p.blurKind}|${p.specular ? 'specular' : '-'}`,
+    structureKey: `${chromatic ? 'dispersion' : 'single'}|${p.blurKind}|${p.specular ? 'rim' : '-'}`,
   };
 }
 
 /** Attributes of the <filter> element itself. */
 export function filterElementAttrs(spec: FilterSpec): Record<string, string> {
+  const pad = spec.padding;
   return {
     id: spec.id,
     filterUnits: 'userSpaceOnUse',
     primitiveUnits: 'userSpaceOnUse',
-    x: '0',
-    y: '0',
-    width: String(spec.width),
-    height: String(spec.height),
+    x: num(-pad),
+    y: num(-pad),
+    width: num(spec.width + 2 * pad),
+    height: num(spec.height + 2 * pad),
     'color-interpolation-filters': 'sRGB',
   };
 }
 
 // ---- stages -------------------------------------------------------------------------------
+
+const displace = (scale: number, result: string): FilterPrimitive =>
+  prim('feDisplacementMap', {
+    in: 'SourceGraphic',
+    in2: 'map',
+    xChannelSelector: 'R',
+    yChannelSelector: 'G',
+    scale: num(scale),
+    result,
+  });
+
+function displacementStage(scale: number): FilterPrimitive[] {
+  return [displace(scale, 'refr')];
+}
+
+const KEEP_R = '1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0';
+const KEEP_G = '0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0';
+const KEEP_B = '0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0';
+
+/**
+ * Chromatic dispersion as three displacement passes: red at a slightly smaller scale, blue at
+ * a slightly larger one, each channel isolated and the three summed (valid because the backdrop
+ * is opaque). The fringe is radial and scales with the lens.
+ */
+function dispersionStage(scale: number, dispersion: number): FilterPrimitive[] {
+  const k = DISPERSION_SPREAD * dispersion;
+  return [
+    displace(scale * (1 - k), 'dispR'),
+    prim('feColorMatrix', { in: 'dispR', type: 'matrix', values: KEEP_R, result: 'chR' }),
+    displace(scale, 'dispG'),
+    prim('feColorMatrix', { in: 'dispG', type: 'matrix', values: KEEP_G, result: 'chG' }),
+    displace(scale * (1 + k), 'dispB'),
+    prim('feColorMatrix', { in: 'dispB', type: 'matrix', values: KEEP_B, result: 'chB' }),
+    prim('feComposite', { in: 'chR', in2: 'chG', operator: 'arithmetic', k1: '0', k2: '1', k3: '1', k4: '0', result: 'chRG' }),
+    prim('feComposite', { in: 'chRG', in2: 'chB', operator: 'arithmetic', k1: '0', k2: '1', k3: '1', k4: '0', result: 'refr' }),
+  ];
+}
 
 const noiseSuffix = (kind: BlurKind): 'low' | 'high' => (kind === 'noise1' ? 'low' : 'high');
 
@@ -127,39 +164,15 @@ function blurStage(input: string, kind: BlurKind, blur: number): FilterPrimitive
   ];
 }
 
-function specularStage(input: string, strength: number): FilterPrimitive[] {
-  return [
-    prim('feComponentTransfer', { in: 'specSrc', result: 'specAdj' }, [
-      prim('feFuncA', { type: 'linear', slope: String(strength) }),
-    ]),
-    prim('feBlend', { in: input, in2: 'specAdj', mode: 'screen', result: 'final' }),
-  ];
-}
-
 /**
- * Chromatic aberration by lateral channel offsets, masked to the bezel by the displacement
- * map's blue channel (result `map`). Red shifts right, blue shifts left, green anchors.
+ * Rim light: lift the map's blue channel to white with alpha = strength × B and screen it over
+ * the refracted image. Strength is applied here only.
  */
-function chromaticStage(input: string, dispersion: number): FilterPrimitive[] {
-  const offsetPx = dispersion * 2.0;
-  const ALPHA = '0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0';
+function rimStage(input: string, strength: number): FilterPrimitive[] {
+  const s = num(strength);
   return [
-    prim('feColorMatrix', { in: 'map', type: 'matrix', values: '0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0', result: 'chromaticMask' }),
-    prim('feColorMatrix', { in: input, type: 'matrix', values: '1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0', result: 'fastR' }),
-    prim('feColorMatrix', { in: input, type: 'matrix', values: '0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0', result: 'fastG' }),
-    prim('feColorMatrix', { in: input, type: 'matrix', values: '0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0', result: 'fastB' }),
-    prim('feOffset', { in: 'fastR', dx: offsetPx.toFixed(2), dy: '0', result: 'offR_shifted' }),
-    prim('feOffset', { in: 'fastB', dx: (-offsetPx).toFixed(2), dy: '0', result: 'offB_shifted' }),
-    prim('feComposite', { in: 'offR_shifted', in2: 'chromaticMask', operator: 'in', result: 'rBezel' }),
-    prim('feComposite', { in: 'offB_shifted', in2: 'chromaticMask', operator: 'in', result: 'bBezel' }),
-    prim('feComposite', { in: 'fastR', in2: 'chromaticMask', operator: 'out', result: 'rCenter' }),
-    prim('feComposite', { in: 'fastB', in2: 'chromaticMask', operator: 'out', result: 'bCenter' }),
-    prim('feComposite', { in: 'rBezel', in2: 'rCenter', operator: 'arithmetic', k1: '0', k2: '1', k3: '1', k4: '0', result: 'finalR' }),
-    prim('feComposite', { in: 'bBezel', in2: 'bCenter', operator: 'arithmetic', k1: '0', k2: '1', k3: '1', k4: '0', result: 'finalB' }),
-    prim('feBlend', { in: 'finalR', in2: 'fastG', mode: 'screen', result: 'fastRG' }),
-    prim('feBlend', { in: 'fastRG', in2: 'finalB', mode: 'screen', result: 'fastRGB' }),
-    prim('feColorMatrix', { in: input, type: 'matrix', values: ALPHA, result: 'fastA' }),
-    prim('feComposite', { in: 'fastRGB', in2: 'fastA', operator: 'in', result: 'chromaticFastOut' }),
+    prim('feColorMatrix', { in: 'map', type: 'matrix', values: `0 0 1 0 0  0 0 1 0 0  0 0 1 0 0  0 0 ${s} 0 0`, result: 'rim' }),
+    prim('feBlend', { in: input, in2: 'rim', mode: 'screen', result: 'final' }),
   ];
 }
 
@@ -178,7 +191,7 @@ function primToSvg(p: FilterPrimitive): string {
 
 /**
  * Serialize the spec to an inline `<svg>` carrying the `<filter>`. Useful for server-rendered
- * markup; the image hrefs must then be data URLs or real URLs.
+ * markup; the image href must then be a data URL or a real URL.
  */
 export function filterSpecToSvg(spec: FilterSpec): string {
   const fa = Object.entries(filterElementAttrs(spec))

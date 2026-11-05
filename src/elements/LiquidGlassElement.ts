@@ -53,7 +53,7 @@ export class LiquidGlassElement extends ElementBase {
       size: 'observe',
       radius: props.radius ?? defaults.radius ?? 'css',
       onRender: (h) => {
-        if (this._debugEl) this._debugEl.style.backgroundImage = h.debug.displacementMapUrl ? `url(${h.debug.displacementMapUrl})` : '';
+        if (this._debugEl) this._debugEl.style.backgroundImage = h.debug.mapUrl ? `url(${h.debug.mapUrl})` : '';
         this.dispatchEvent(new CustomEvent('liquid-glass:render', { detail: { handle: h }, bubbles: false }));
       },
     });
@@ -114,7 +114,7 @@ export class LiquidGlassElement extends ElementBase {
         self.appendChild(el);
         this._debugEl = el;
       }
-      this._debugEl.style.backgroundImage = this._glass.debug.displacementMapUrl ? `url(${this._glass.debug.displacementMapUrl})` : '';
+      this._debugEl.style.backgroundImage = this._glass.debug.mapUrl ? `url(${this._glass.debug.mapUrl})` : '';
     } else if (this._debugEl) {
       this._debugEl.remove();
       this._debugEl = null;

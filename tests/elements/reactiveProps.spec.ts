@@ -17,8 +17,8 @@ describe('reactiveProps schema', () => {
 
   it('observes canonical attributes and 1.x aliases', () => {
     const attrs = observedAttributesOf(GLASS_PROP_SCHEMA);
-    for (const a of ['width', 'bezel-width', 'refractive-index', 'displacement-scale', 'blur', 'specular', 'tint']) expect(attrs).toContain(a);
-    for (const a of ['scale-px', 'blur-std-dev', 'show-specular', 'frost', 'chromatic-bezel-factor']) expect(attrs).toContain(a);
+    for (const a of ['width', 'bezel-width', 'refractive-index', 'displacement-scale', 'physical-scale', 'blur', 'specular', 'tint']) expect(attrs).toContain(a);
+    for (const a of ['scale-px', 'blur-std-dev', 'show-specular', 'frost']) expect(attrs).toContain(a);
     expect(new Set(attrs).size).toBe(attrs.length);
   });
 
@@ -40,8 +40,8 @@ describe('reactiveProps schema', () => {
     expect(attrPatch(GLASS_PROP_SCHEMA, 'blur-std-dev', '0.4')).toEqual({ key: 'blur', value: 0.4 });
     expect(attrPatch(GLASS_PROP_SCHEMA, 'show-specular', '')).toEqual({ key: 'specular', value: true });
     expect(attrPatch(GLASS_PROP_SCHEMA, 'frost', '0.2')).toEqual({ key: 'tint', value: 0.2 });
-    expect(attrPatch(GLASS_PROP_SCHEMA, 'chromatic-bezel-factor', '4')).toEqual({ key: 'chromaticBezelFraction', value: 0.25 });
-    expect(attrPatch(GLASS_PROP_SCHEMA, 'chromatic-bezel-factor', null)).toEqual({ key: 'chromaticBezelFraction', value: undefined });
+    expect(attrPatch(GLASS_PROP_SCHEMA, 'physical-scale', '')).toEqual({ key: 'physicalScale', value: true });
+    expect(attrPatch(GLASS_PROP_SCHEMA, 'chromatic-bezel-factor', '4')).toBeNull(); // 1.x mask factor: gone
     expect(attrPatch(GLASS_PROP_SCHEMA, 'not-a-thing', '1')).toBeNull();
   });
 

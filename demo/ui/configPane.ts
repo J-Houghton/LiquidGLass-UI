@@ -151,6 +151,7 @@ function init() {
   bindParam(optics, 'refractiveIndex', { min: 1, max: 2.2, step: 0.01, label: 'IOR' });
   bindParam(optics, 'glassThickness', { min: 0, max: 200, step: 1, label: 'Glass thickness (px)' });
   bindParam(optics, 'displacementScale', { min: 0, max: 400, step: 1, label: 'Displacement px' });
+  bindParam(optics, 'physicalScale', { label: 'Physical scale' });
   bindParam(optics, 'blurKind', { label: 'Blur kind', options: BLUR_OPTIONS });
   bindParam(optics, 'blur', { min: 0, max: 3, step: 0.01, label: 'Blur' });
   const debugBinding = optics.addBinding(params, 'debug', { label: 'Show Map (Debug)' });
@@ -161,8 +162,7 @@ function init() {
   bindings.push(debugBinding);
 
   const chromatic = pane.addFolder({ title: 'Chromatic' });
-  bindParam(chromatic, 'dispersion', { min: 0, max: 5, step: 0.05 });
-  bindParam(chromatic, 'chromaticBezelFraction', { min: 0.05, max: 1, step: 0.01, label: 'Edge share' });
+  bindParam(chromatic, 'dispersion', { min: 0, max: 10, step: 0.1, label: 'Dispersion' });
 
   const specular = pane.addFolder({ title: 'Specular' });
   bindParam(specular, 'specular', { label: 'Enable' });

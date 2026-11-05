@@ -66,7 +66,7 @@ describe('resolveGlassParams', () => {
   it('clamps optics and look values', () => {
     const r = resolveGlassParams({
       refractiveIndex: 0.5,
-      chromaticBezelFraction: 0,
+      dispersion: 99,
       tint: 2,
       saturation: -1,
       displacementScale: -5,
@@ -74,13 +74,18 @@ describe('resolveGlassParams', () => {
       specularStrength: -0.5,
     });
     expect(r.refractiveIndex).toBe(1);
-    expect(r.chromaticBezelFraction).toBe(0.001);
+    expect(r.dispersion).toBe(50);
     expect(r.tint).toBe(1);
     expect(r.saturation).toBe(0);
     expect(r.displacementScale).toBe(0);
     expect(r.blur).toBe(0);
     expect(r.specularStrength).toBe(0);
     expect(r.notes).toHaveLength(7);
+  });
+
+  it('coerces physicalScale to boolean', () => {
+    expect(resolveGlassParams().physicalScale).toBe(false);
+    expect(resolveGlassParams({ physicalScale: 1 as unknown as boolean }).physicalScale).toBe(true);
   });
 
   it('replaces non-finite numbers with the base value', () => {
@@ -111,7 +116,7 @@ describe('resolveGlassParams', () => {
 });
 
 describe('fromLegacyParams', () => {
-  it('renames 1.x keys and converts factor to fraction', () => {
+  it('renames 1.x keys, drops the chromatic mask factor, squares sub-1 specular strength', () => {
     const out = fromLegacyParams({
       scalePx: 180,
       blurStdDev: 0.33,
@@ -119,15 +124,18 @@ describe('fromLegacyParams', () => {
       frost: 0.1,
       chromaticBezelFactor: 4,
       saturation: 1.2,
+      specularStrength: 0.5,
     });
     expect(out).toEqual({
       displacementScale: 180,
       blur: 0.33,
       specular: false,
       tint: 0.1,
-      chromaticBezelFraction: 0.25,
       saturation: 1.2,
+      specularStrength: 0.25,
     });
+    expect(fromLegacyParams({ specularStrength: 1.2 }).specularStrength).toBe(1.2);
+    expect(fromLegacyParams({ specularStrength: 1 }).specularStrength).toBe(1);
   });
 
   it('applies the 1.x thickness curve by default and passes through when disabled', () => {

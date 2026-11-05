@@ -1,27 +1,6 @@
 import { isSurfaceKind, type SurfaceKind } from './optics/surfaces.js';
 import { mapGlassThickness } from './validation/geometry.js';
 
-/** The 1.x parameter names (`GlassContainerParams`), kept only for `fromLegacyParams`. */
-export interface LegacyGlassParams {
-  width: number;
-  height: number;
-  radius: number;
-  bezelWidth: number;
-  glassThickness: number;
-  surface: SurfaceKind;
-  refractiveIndex: number;
-  scalePx: number;
-  blurKind: BlurKind;
-  blurStdDev: number;
-  showSpecular: boolean;
-  specularAngleDeg: number;
-  specularStrength: number;
-  dispersion: number;
-  chromaticBezelFactor: number;
-  frost: number;
-  saturation: number;
-}
-
 export type BlurKind = 'gauss' | 'noise1' | 'noise2';
 export const BLUR_KINDS: readonly BlurKind[] = ['gauss', 'noise1', 'noise2'];
 
@@ -39,9 +18,15 @@ export interface GlassParams {
   glassThickness: number;
   /** Maximum displacement in px. The map encodes the shape; this sets the magnitude. */
   displacementScale: number;
-  /** Share of the bezel, from the rim inward, that disperses colour (0..1). */
-  chromaticBezelFraction: number;
-  /** Chromatic aberration strength; 0 disables the stage. */
+  /**
+   * Use the physical maximum displacement the optics produce instead of `displacementScale`,
+   * so IOR and thickness set the on-screen strength (kube.io's convention).
+   */
+  physicalScale: boolean;
+  /**
+   * Chromatic dispersion: red and blue are displaced at `1 ∓ 0.02·dispersion` times the
+   * green scale (three displacement passes). 0 disables the stage.
+   */
   dispersion: number;
   // look
   blurKind: BlurKind;
@@ -49,6 +34,7 @@ export interface GlassParams {
   blur: number;
   specular: boolean;
   specularAngleDeg: number;
+  /** Rim-light brightness; applied once, in the filter. */
   specularStrength: number;
   /** Black tint over the glass, 0..1 alpha. */
   tint: number;
@@ -64,13 +50,13 @@ export const DEFAULT_GLASS_PARAMS: Readonly<GlassParams> = Object.freeze({
   refractiveIndex: 1.5,
   glassThickness: 31.25, // the 1.x default of 50 after its smoothstep curve
   displacementScale: 180,
-  chromaticBezelFraction: 0.25,
+  physicalScale: false,
   dispersion: 0,
   blurKind: 'gauss',
   blur: 0.2,
   specular: true,
   specularAngleDeg: 60,
-  specularStrength: 0.9,
+  specularStrength: 0.81, // the 1.x 0.9, which 1.x applied twice
   tint: 0.05,
   saturation: 1,
 } satisfies GlassParams);
@@ -95,7 +81,6 @@ const NUMERIC_KEYS: readonly NumericKey[] = [
   'refractiveIndex',
   'glassThickness',
   'displacementScale',
-  'chromaticBezelFraction',
   'dispersion',
   'blur',
   'specularAngleDeg',
@@ -123,6 +108,7 @@ export function resolveGlassParams(
   if (!isSurfaceKind(p.surface)) throw new TypeError(`liquid-glass: unknown surface "${String(p.surface)}"`);
   if (!BLUR_KINDS.includes(p.blurKind)) throw new TypeError(`liquid-glass: unknown blurKind "${String(p.blurKind)}"`);
   p.specular = Boolean(p.specular);
+  p.physicalScale = Boolean(p.physicalScale);
 
   for (const k of NUMERIC_KEYS) {
     const v = p[k];
@@ -149,8 +135,7 @@ export function resolveGlassParams(
   clamp('refractiveIndex', 1, Infinity, 'min 1');
   clamp('glassThickness', 0, Infinity, 'min 0');
   clamp('displacementScale', 0, Infinity, 'min 0');
-  clamp('chromaticBezelFraction', 0.001, 1, '0.001..1');
-  clamp('dispersion', 0, Infinity, 'min 0');
+  clamp('dispersion', 0, 50, '0..50');
   clamp('blur', 0, Infinity, 'min 0');
   clamp('specularStrength', 0, Infinity, 'min 0');
   clamp('tint', 0, 1, '0..1');
@@ -160,8 +145,8 @@ export function resolveGlassParams(
   return { ...p, shape, notes };
 }
 
-/** Keys whose change requires regenerating the displacement map. */
-export const DISPLACEMENT_KEYS: readonly (keyof GlassParams)[] = [
+/** Keys whose change requires regenerating the map (geometry, optics, and the baked rim light). */
+export const MAP_KEYS: readonly (keyof GlassParams)[] = [
   'width',
   'height',
   'radius',
@@ -169,25 +154,37 @@ export const DISPLACEMENT_KEYS: readonly (keyof GlassParams)[] = [
   'surface',
   'refractiveIndex',
   'glassThickness',
-  'chromaticBezelFraction',
+  'specularAngleDeg',
 ];
 
-/** Keys whose change requires regenerating the specular map. */
-export const SPECULAR_KEYS: readonly (keyof GlassParams)[] = [
-  'width',
-  'height',
-  'radius',
-  'bezelWidth',
-  'specular',
-  'specularAngleDeg',
-  'specularStrength',
-];
+/** The 1.x parameter names (`GlassContainerParams`), kept only for `fromLegacyParams`. */
+export interface LegacyGlassParams {
+  width: number;
+  height: number;
+  radius: number;
+  bezelWidth: number;
+  glassThickness: number;
+  surface: SurfaceKind;
+  refractiveIndex: number;
+  scalePx: number;
+  blurKind: BlurKind;
+  blurStdDev: number;
+  showSpecular: boolean;
+  specularAngleDeg: number;
+  specularStrength: number;
+  dispersion: number;
+  /** 1.x chromatic edge mask width. Dispersion no longer uses a mask; the value is ignored. */
+  chromaticBezelFactor: number;
+  frost: number;
+  saturation: number;
+}
 
 /**
  * Translate 1.x parameter names (`GlassContainerParams`, element attributes) to `GlassParams`.
  * Keys that are undefined in the input are omitted from the output. By default the 1.x
  * thickness smoothstep is applied so a 1.x value renders the same (`thicknessCurve: false`
- * passes it through literally).
+ * passes it through literally). 1.x applied `specularStrength` twice (once clamped into the
+ * image, once as the filter slope), so `s` becomes `s · min(1, s)`.
  */
 export function fromLegacyParams(
   legacy: Partial<LegacyGlassParams>,
@@ -206,13 +203,12 @@ export function fromLegacyParams(
   copy('refractiveIndex', legacy.refractiveIndex);
   copy('glassThickness', legacy.glassThickness === undefined ? undefined : curve ? mapGlassThickness(legacy.glassThickness) : legacy.glassThickness);
   copy('displacementScale', legacy.scalePx);
-  copy('chromaticBezelFraction', legacy.chromaticBezelFactor === undefined ? undefined : 1 / legacy.chromaticBezelFactor);
   copy('dispersion', legacy.dispersion);
   copy('blurKind', legacy.blurKind);
   copy('blur', legacy.blurStdDev);
   copy('specular', legacy.showSpecular);
   copy('specularAngleDeg', legacy.specularAngleDeg);
-  copy('specularStrength', legacy.specularStrength);
+  copy('specularStrength', legacy.specularStrength === undefined ? undefined : legacy.specularStrength * Math.min(1, legacy.specularStrength));
   copy('tint', legacy.frost);
   copy('saturation', legacy.saturation);
   return out;

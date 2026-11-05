@@ -32,7 +32,7 @@ function buildMapNew({
   W, H, radius, bezel, glass, ior, samples, dpr = 1, surface = 'convex_squircle'
 }: NewParams) {
   const curve = displacementCurve({ glassThickness: glass, bezelWidth: bezel, refractiveIndex: ior, surface: NEW_SURFACES[surface].fn, samples });
-  return displacementMap({ width: W, height: H, radius, bezelWidth: bezel, dpr, curve, chromaticBezelFraction: 0.25 }) as unknown as ImageData;
+  return displacementMap({ width: W, height: H, radius, bezelWidth: bezel, dpr, curve }) as unknown as ImageData;
 }
 
 const pickSurface = (title: string) =>

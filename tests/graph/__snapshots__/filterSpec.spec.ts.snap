@@ -5,6 +5,17 @@ exports[`buildFilterSpec > dispersion=0 blur=gauss specular=false: spec is pinne
   "dynamic": [
     {
       "attrs": {
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "refr",
+        "scale": "150",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
         "in": "refr",
         "result": "blurred",
         "stdDeviation": "0.50",
@@ -14,6 +25,7 @@ exports[`buildFilterSpec > dispersion=0 blur=gauss specular=false: spec is pinne
   ],
   "height": 120,
   "id": "lg-test",
+  "padding": 0,
   "static": [
     {
       "attrs": {
@@ -27,31 +39,8 @@ exports[`buildFilterSpec > dispersion=0 blur=gauss specular=false: spec is pinne
       },
       "tag": "feImage",
     },
-    {
-      "attrs": {
-        "in": "SourceGraphic",
-        "in2": "map",
-        "result": "refr",
-        "scale": "150",
-        "xChannelSelector": "R",
-        "yChannelSelector": "G",
-      },
-      "tag": "feDisplacementMap",
-    },
-    {
-      "attrs": {
-        "height": "100%",
-        "href": "data:image/gif;base64,R0lGODlhAQABAAAAACw=",
-        "preserveAspectRatio": "none",
-        "result": "specSrc",
-        "width": "100%",
-        "x": "0",
-        "y": "0",
-      },
-      "tag": "feImage",
-    },
   ],
-  "structureKey": "-|gauss|-",
+  "structureKey": "single|gauss|-",
   "width": 300,
 }
 `;
@@ -61,6 +50,17 @@ exports[`buildFilterSpec > dispersion=0 blur=gauss specular=true: spec is pinned
   "dynamic": [
     {
       "attrs": {
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "refr",
+        "scale": "150",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
         "in": "refr",
         "result": "blurred",
         "stdDeviation": "0.50",
@@ -69,24 +69,17 @@ exports[`buildFilterSpec > dispersion=0 blur=gauss specular=true: spec is pinned
     },
     {
       "attrs": {
-        "in": "specSrc",
-        "result": "specAdj",
+        "in": "map",
+        "result": "rim",
+        "type": "matrix",
+        "values": "0 0 1 0 0  0 0 1 0 0  0 0 1 0 0  0 0 1.1 0 0",
       },
-      "children": [
-        {
-          "attrs": {
-            "slope": "1.1",
-            "type": "linear",
-          },
-          "tag": "feFuncA",
-        },
-      ],
-      "tag": "feComponentTransfer",
+      "tag": "feColorMatrix",
     },
     {
       "attrs": {
         "in": "blurred",
-        "in2": "specAdj",
+        "in2": "rim",
         "mode": "screen",
         "result": "final",
       },
@@ -95,6 +88,7 @@ exports[`buildFilterSpec > dispersion=0 blur=gauss specular=true: spec is pinned
   ],
   "height": 120,
   "id": "lg-test",
+  "padding": 0,
   "static": [
     {
       "attrs": {
@@ -108,31 +102,8 @@ exports[`buildFilterSpec > dispersion=0 blur=gauss specular=true: spec is pinned
       },
       "tag": "feImage",
     },
-    {
-      "attrs": {
-        "in": "SourceGraphic",
-        "in2": "map",
-        "result": "refr",
-        "scale": "150",
-        "xChannelSelector": "R",
-        "yChannelSelector": "G",
-      },
-      "tag": "feDisplacementMap",
-    },
-    {
-      "attrs": {
-        "height": "100%",
-        "href": "data:image/gif;base64,R0lGODlhAQABAAAAACw=",
-        "preserveAspectRatio": "none",
-        "result": "specSrc",
-        "width": "100%",
-        "x": "0",
-        "y": "0",
-      },
-      "tag": "feImage",
-    },
   ],
-  "structureKey": "-|gauss|specular",
+  "structureKey": "single|gauss|rim",
   "width": 300,
 }
 `;
@@ -142,6 +113,17 @@ exports[`buildFilterSpec > dispersion=0 blur=noise1 specular=false: spec is pinn
   "dynamic": [
     {
       "attrs": {
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "refr",
+        "scale": "150",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
         "baseFrequency": "0.035",
         "numOctaves": "5",
         "result": "noise_low",
@@ -173,6 +155,7 @@ exports[`buildFilterSpec > dispersion=0 blur=noise1 specular=false: spec is pinn
   ],
   "height": 120,
   "id": "lg-test",
+  "padding": 0,
   "static": [
     {
       "attrs": {
@@ -186,31 +169,8 @@ exports[`buildFilterSpec > dispersion=0 blur=noise1 specular=false: spec is pinn
       },
       "tag": "feImage",
     },
-    {
-      "attrs": {
-        "in": "SourceGraphic",
-        "in2": "map",
-        "result": "refr",
-        "scale": "150",
-        "xChannelSelector": "R",
-        "yChannelSelector": "G",
-      },
-      "tag": "feDisplacementMap",
-    },
-    {
-      "attrs": {
-        "height": "100%",
-        "href": "data:image/gif;base64,R0lGODlhAQABAAAAACw=",
-        "preserveAspectRatio": "none",
-        "result": "specSrc",
-        "width": "100%",
-        "x": "0",
-        "y": "0",
-      },
-      "tag": "feImage",
-    },
   ],
-  "structureKey": "-|noise1|-",
+  "structureKey": "single|noise1|-",
   "width": 300,
 }
 `;
@@ -220,6 +180,17 @@ exports[`buildFilterSpec > dispersion=0 blur=noise1 specular=true: spec is pinne
   "dynamic": [
     {
       "attrs": {
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "refr",
+        "scale": "150",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
         "baseFrequency": "0.035",
         "numOctaves": "5",
         "result": "noise_low",
@@ -250,24 +221,17 @@ exports[`buildFilterSpec > dispersion=0 blur=noise1 specular=true: spec is pinne
     },
     {
       "attrs": {
-        "in": "specSrc",
-        "result": "specAdj",
+        "in": "map",
+        "result": "rim",
+        "type": "matrix",
+        "values": "0 0 1 0 0  0 0 1 0 0  0 0 1 0 0  0 0 1.1 0 0",
       },
-      "children": [
-        {
-          "attrs": {
-            "slope": "1.1",
-            "type": "linear",
-          },
-          "tag": "feFuncA",
-        },
-      ],
-      "tag": "feComponentTransfer",
+      "tag": "feColorMatrix",
     },
     {
       "attrs": {
         "in": "refrNoise_low",
-        "in2": "specAdj",
+        "in2": "rim",
         "mode": "screen",
         "result": "final",
       },
@@ -276,6 +240,7 @@ exports[`buildFilterSpec > dispersion=0 blur=noise1 specular=true: spec is pinne
   ],
   "height": 120,
   "id": "lg-test",
+  "padding": 0,
   "static": [
     {
       "attrs": {
@@ -289,31 +254,8 @@ exports[`buildFilterSpec > dispersion=0 blur=noise1 specular=true: spec is pinne
       },
       "tag": "feImage",
     },
-    {
-      "attrs": {
-        "in": "SourceGraphic",
-        "in2": "map",
-        "result": "refr",
-        "scale": "150",
-        "xChannelSelector": "R",
-        "yChannelSelector": "G",
-      },
-      "tag": "feDisplacementMap",
-    },
-    {
-      "attrs": {
-        "height": "100%",
-        "href": "data:image/gif;base64,R0lGODlhAQABAAAAACw=",
-        "preserveAspectRatio": "none",
-        "result": "specSrc",
-        "width": "100%",
-        "x": "0",
-        "y": "0",
-      },
-      "tag": "feImage",
-    },
   ],
-  "structureKey": "-|noise1|specular",
+  "structureKey": "single|noise1|rim",
   "width": 300,
 }
 `;
@@ -323,6 +265,17 @@ exports[`buildFilterSpec > dispersion=0 blur=noise2 specular=false: spec is pinn
   "dynamic": [
     {
       "attrs": {
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "refr",
+        "scale": "150",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
         "baseFrequency": "0.4",
         "numOctaves": "4",
         "result": "noise_high",
@@ -354,6 +307,7 @@ exports[`buildFilterSpec > dispersion=0 blur=noise2 specular=false: spec is pinn
   ],
   "height": 120,
   "id": "lg-test",
+  "padding": 0,
   "static": [
     {
       "attrs": {
@@ -367,31 +321,8 @@ exports[`buildFilterSpec > dispersion=0 blur=noise2 specular=false: spec is pinn
       },
       "tag": "feImage",
     },
-    {
-      "attrs": {
-        "in": "SourceGraphic",
-        "in2": "map",
-        "result": "refr",
-        "scale": "150",
-        "xChannelSelector": "R",
-        "yChannelSelector": "G",
-      },
-      "tag": "feDisplacementMap",
-    },
-    {
-      "attrs": {
-        "height": "100%",
-        "href": "data:image/gif;base64,R0lGODlhAQABAAAAACw=",
-        "preserveAspectRatio": "none",
-        "result": "specSrc",
-        "width": "100%",
-        "x": "0",
-        "y": "0",
-      },
-      "tag": "feImage",
-    },
   ],
-  "structureKey": "-|noise2|-",
+  "structureKey": "single|noise2|-",
   "width": 300,
 }
 `;
@@ -401,6 +332,17 @@ exports[`buildFilterSpec > dispersion=0 blur=noise2 specular=true: spec is pinne
   "dynamic": [
     {
       "attrs": {
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "refr",
+        "scale": "150",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
         "baseFrequency": "0.4",
         "numOctaves": "4",
         "result": "noise_high",
@@ -431,24 +373,17 @@ exports[`buildFilterSpec > dispersion=0 blur=noise2 specular=true: spec is pinne
     },
     {
       "attrs": {
-        "in": "specSrc",
-        "result": "specAdj",
+        "in": "map",
+        "result": "rim",
+        "type": "matrix",
+        "values": "0 0 1 0 0  0 0 1 0 0  0 0 1 0 0  0 0 1.1 0 0",
       },
-      "children": [
-        {
-          "attrs": {
-            "slope": "1.1",
-            "type": "linear",
-          },
-          "tag": "feFuncA",
-        },
-      ],
-      "tag": "feComponentTransfer",
+      "tag": "feColorMatrix",
     },
     {
       "attrs": {
         "in": "refrNoise_high",
-        "in2": "specAdj",
+        "in2": "rim",
         "mode": "screen",
         "result": "final",
       },
@@ -457,6 +392,7 @@ exports[`buildFilterSpec > dispersion=0 blur=noise2 specular=true: spec is pinne
   ],
   "height": 120,
   "id": "lg-test",
+  "padding": 0,
   "static": [
     {
       "attrs": {
@@ -470,31 +406,8 @@ exports[`buildFilterSpec > dispersion=0 blur=noise2 specular=true: spec is pinne
       },
       "tag": "feImage",
     },
-    {
-      "attrs": {
-        "in": "SourceGraphic",
-        "in2": "map",
-        "result": "refr",
-        "scale": "150",
-        "xChannelSelector": "R",
-        "yChannelSelector": "G",
-      },
-      "tag": "feDisplacementMap",
-    },
-    {
-      "attrs": {
-        "height": "100%",
-        "href": "data:image/gif;base64,R0lGODlhAQABAAAAACw=",
-        "preserveAspectRatio": "none",
-        "result": "specSrc",
-        "width": "100%",
-        "x": "0",
-        "y": "0",
-      },
-      "tag": "feImage",
-    },
   ],
-  "structureKey": "-|noise2|specular",
+  "structureKey": "single|noise2|rim",
   "width": 300,
 }
 `;
@@ -504,17 +417,19 @@ exports[`buildFilterSpec > dispersion=1 blur=gauss specular=false: spec is pinne
   "dynamic": [
     {
       "attrs": {
-        "in": "map",
-        "result": "chromaticMask",
-        "type": "matrix",
-        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0",
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "dispR",
+        "scale": "147",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
       },
-      "tag": "feColorMatrix",
+      "tag": "feDisplacementMap",
     },
     {
       "attrs": {
-        "in": "refr",
-        "result": "fastR",
+        "in": "dispR",
+        "result": "chR",
         "type": "matrix",
         "values": "1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
       },
@@ -522,8 +437,19 @@ exports[`buildFilterSpec > dispersion=1 blur=gauss specular=false: spec is pinne
     },
     {
       "attrs": {
-        "in": "refr",
-        "result": "fastG",
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "dispG",
+        "scale": "150",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "in": "dispG",
+        "result": "chG",
         "type": "matrix",
         "values": "0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0",
       },
@@ -531,8 +457,19 @@ exports[`buildFilterSpec > dispersion=1 blur=gauss specular=false: spec is pinne
     },
     {
       "attrs": {
-        "in": "refr",
-        "result": "fastB",
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "dispB",
+        "scale": "153",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "in": "dispB",
+        "result": "chB",
         "type": "matrix",
         "values": "0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0",
       },
@@ -540,123 +477,33 @@ exports[`buildFilterSpec > dispersion=1 blur=gauss specular=false: spec is pinne
     },
     {
       "attrs": {
-        "dx": "2.00",
-        "dy": "0",
-        "in": "fastR",
-        "result": "offR_shifted",
-      },
-      "tag": "feOffset",
-    },
-    {
-      "attrs": {
-        "dx": "-2.00",
-        "dy": "0",
-        "in": "fastB",
-        "result": "offB_shifted",
-      },
-      "tag": "feOffset",
-    },
-    {
-      "attrs": {
-        "in": "offR_shifted",
-        "in2": "chromaticMask",
-        "operator": "in",
-        "result": "rBezel",
-      },
-      "tag": "feComposite",
-    },
-    {
-      "attrs": {
-        "in": "offB_shifted",
-        "in2": "chromaticMask",
-        "operator": "in",
-        "result": "bBezel",
-      },
-      "tag": "feComposite",
-    },
-    {
-      "attrs": {
-        "in": "fastR",
-        "in2": "chromaticMask",
-        "operator": "out",
-        "result": "rCenter",
-      },
-      "tag": "feComposite",
-    },
-    {
-      "attrs": {
-        "in": "fastB",
-        "in2": "chromaticMask",
-        "operator": "out",
-        "result": "bCenter",
-      },
-      "tag": "feComposite",
-    },
-    {
-      "attrs": {
-        "in": "rBezel",
-        "in2": "rCenter",
+        "in": "chR",
+        "in2": "chG",
         "k1": "0",
         "k2": "1",
         "k3": "1",
         "k4": "0",
         "operator": "arithmetic",
-        "result": "finalR",
+        "result": "chRG",
       },
       "tag": "feComposite",
     },
     {
       "attrs": {
-        "in": "bBezel",
-        "in2": "bCenter",
+        "in": "chRG",
+        "in2": "chB",
         "k1": "0",
         "k2": "1",
         "k3": "1",
         "k4": "0",
         "operator": "arithmetic",
-        "result": "finalB",
+        "result": "refr",
       },
       "tag": "feComposite",
-    },
-    {
-      "attrs": {
-        "in": "finalR",
-        "in2": "fastG",
-        "mode": "screen",
-        "result": "fastRG",
-      },
-      "tag": "feBlend",
-    },
-    {
-      "attrs": {
-        "in": "fastRG",
-        "in2": "finalB",
-        "mode": "screen",
-        "result": "fastRGB",
-      },
-      "tag": "feBlend",
     },
     {
       "attrs": {
         "in": "refr",
-        "result": "fastA",
-        "type": "matrix",
-        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
-      },
-      "tag": "feColorMatrix",
-    },
-    {
-      "attrs": {
-        "in": "fastRGB",
-        "in2": "fastA",
-        "operator": "in",
-        "result": "chromaticFastOut",
-      },
-      "tag": "feComposite",
-    },
-    {
-      "attrs": {
-        "in": "chromaticFastOut",
         "result": "blurred",
         "stdDeviation": "0.50",
       },
@@ -665,6 +512,7 @@ exports[`buildFilterSpec > dispersion=1 blur=gauss specular=false: spec is pinne
   ],
   "height": 120,
   "id": "lg-test",
+  "padding": 0,
   "static": [
     {
       "attrs": {
@@ -678,31 +526,8 @@ exports[`buildFilterSpec > dispersion=1 blur=gauss specular=false: spec is pinne
       },
       "tag": "feImage",
     },
-    {
-      "attrs": {
-        "in": "SourceGraphic",
-        "in2": "map",
-        "result": "refr",
-        "scale": "150",
-        "xChannelSelector": "R",
-        "yChannelSelector": "G",
-      },
-      "tag": "feDisplacementMap",
-    },
-    {
-      "attrs": {
-        "height": "100%",
-        "href": "data:image/gif;base64,R0lGODlhAQABAAAAACw=",
-        "preserveAspectRatio": "none",
-        "result": "specSrc",
-        "width": "100%",
-        "x": "0",
-        "y": "0",
-      },
-      "tag": "feImage",
-    },
   ],
-  "structureKey": "chromatic|gauss|-",
+  "structureKey": "dispersion|gauss|-",
   "width": 300,
 }
 `;
@@ -712,17 +537,19 @@ exports[`buildFilterSpec > dispersion=1 blur=gauss specular=true: spec is pinned
   "dynamic": [
     {
       "attrs": {
-        "in": "map",
-        "result": "chromaticMask",
-        "type": "matrix",
-        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0",
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "dispR",
+        "scale": "147",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
       },
-      "tag": "feColorMatrix",
+      "tag": "feDisplacementMap",
     },
     {
       "attrs": {
-        "in": "refr",
-        "result": "fastR",
+        "in": "dispR",
+        "result": "chR",
         "type": "matrix",
         "values": "1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
       },
@@ -730,8 +557,19 @@ exports[`buildFilterSpec > dispersion=1 blur=gauss specular=true: spec is pinned
     },
     {
       "attrs": {
-        "in": "refr",
-        "result": "fastG",
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "dispG",
+        "scale": "150",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "in": "dispG",
+        "result": "chG",
         "type": "matrix",
         "values": "0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0",
       },
@@ -739,8 +577,19 @@ exports[`buildFilterSpec > dispersion=1 blur=gauss specular=true: spec is pinned
     },
     {
       "attrs": {
-        "in": "refr",
-        "result": "fastB",
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "dispB",
+        "scale": "153",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "in": "dispB",
+        "result": "chB",
         "type": "matrix",
         "values": "0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0",
       },
@@ -748,123 +597,33 @@ exports[`buildFilterSpec > dispersion=1 blur=gauss specular=true: spec is pinned
     },
     {
       "attrs": {
-        "dx": "2.00",
-        "dy": "0",
-        "in": "fastR",
-        "result": "offR_shifted",
-      },
-      "tag": "feOffset",
-    },
-    {
-      "attrs": {
-        "dx": "-2.00",
-        "dy": "0",
-        "in": "fastB",
-        "result": "offB_shifted",
-      },
-      "tag": "feOffset",
-    },
-    {
-      "attrs": {
-        "in": "offR_shifted",
-        "in2": "chromaticMask",
-        "operator": "in",
-        "result": "rBezel",
-      },
-      "tag": "feComposite",
-    },
-    {
-      "attrs": {
-        "in": "offB_shifted",
-        "in2": "chromaticMask",
-        "operator": "in",
-        "result": "bBezel",
-      },
-      "tag": "feComposite",
-    },
-    {
-      "attrs": {
-        "in": "fastR",
-        "in2": "chromaticMask",
-        "operator": "out",
-        "result": "rCenter",
-      },
-      "tag": "feComposite",
-    },
-    {
-      "attrs": {
-        "in": "fastB",
-        "in2": "chromaticMask",
-        "operator": "out",
-        "result": "bCenter",
-      },
-      "tag": "feComposite",
-    },
-    {
-      "attrs": {
-        "in": "rBezel",
-        "in2": "rCenter",
+        "in": "chR",
+        "in2": "chG",
         "k1": "0",
         "k2": "1",
         "k3": "1",
         "k4": "0",
         "operator": "arithmetic",
-        "result": "finalR",
+        "result": "chRG",
       },
       "tag": "feComposite",
     },
     {
       "attrs": {
-        "in": "bBezel",
-        "in2": "bCenter",
+        "in": "chRG",
+        "in2": "chB",
         "k1": "0",
         "k2": "1",
         "k3": "1",
         "k4": "0",
         "operator": "arithmetic",
-        "result": "finalB",
+        "result": "refr",
       },
       "tag": "feComposite",
-    },
-    {
-      "attrs": {
-        "in": "finalR",
-        "in2": "fastG",
-        "mode": "screen",
-        "result": "fastRG",
-      },
-      "tag": "feBlend",
-    },
-    {
-      "attrs": {
-        "in": "fastRG",
-        "in2": "finalB",
-        "mode": "screen",
-        "result": "fastRGB",
-      },
-      "tag": "feBlend",
     },
     {
       "attrs": {
         "in": "refr",
-        "result": "fastA",
-        "type": "matrix",
-        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
-      },
-      "tag": "feColorMatrix",
-    },
-    {
-      "attrs": {
-        "in": "fastRGB",
-        "in2": "fastA",
-        "operator": "in",
-        "result": "chromaticFastOut",
-      },
-      "tag": "feComposite",
-    },
-    {
-      "attrs": {
-        "in": "chromaticFastOut",
         "result": "blurred",
         "stdDeviation": "0.50",
       },
@@ -872,24 +631,17 @@ exports[`buildFilterSpec > dispersion=1 blur=gauss specular=true: spec is pinned
     },
     {
       "attrs": {
-        "in": "specSrc",
-        "result": "specAdj",
+        "in": "map",
+        "result": "rim",
+        "type": "matrix",
+        "values": "0 0 1 0 0  0 0 1 0 0  0 0 1 0 0  0 0 1.1 0 0",
       },
-      "children": [
-        {
-          "attrs": {
-            "slope": "1.1",
-            "type": "linear",
-          },
-          "tag": "feFuncA",
-        },
-      ],
-      "tag": "feComponentTransfer",
+      "tag": "feColorMatrix",
     },
     {
       "attrs": {
         "in": "blurred",
-        "in2": "specAdj",
+        "in2": "rim",
         "mode": "screen",
         "result": "final",
       },
@@ -898,6 +650,7 @@ exports[`buildFilterSpec > dispersion=1 blur=gauss specular=true: spec is pinned
   ],
   "height": 120,
   "id": "lg-test",
+  "padding": 0,
   "static": [
     {
       "attrs": {
@@ -911,31 +664,8 @@ exports[`buildFilterSpec > dispersion=1 blur=gauss specular=true: spec is pinned
       },
       "tag": "feImage",
     },
-    {
-      "attrs": {
-        "in": "SourceGraphic",
-        "in2": "map",
-        "result": "refr",
-        "scale": "150",
-        "xChannelSelector": "R",
-        "yChannelSelector": "G",
-      },
-      "tag": "feDisplacementMap",
-    },
-    {
-      "attrs": {
-        "height": "100%",
-        "href": "data:image/gif;base64,R0lGODlhAQABAAAAACw=",
-        "preserveAspectRatio": "none",
-        "result": "specSrc",
-        "width": "100%",
-        "x": "0",
-        "y": "0",
-      },
-      "tag": "feImage",
-    },
   ],
-  "structureKey": "chromatic|gauss|specular",
+  "structureKey": "dispersion|gauss|rim",
   "width": 300,
 }
 `;
@@ -945,17 +675,19 @@ exports[`buildFilterSpec > dispersion=1 blur=noise1 specular=false: spec is pinn
   "dynamic": [
     {
       "attrs": {
-        "in": "map",
-        "result": "chromaticMask",
-        "type": "matrix",
-        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0",
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "dispR",
+        "scale": "147",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
       },
-      "tag": "feColorMatrix",
+      "tag": "feDisplacementMap",
     },
     {
       "attrs": {
-        "in": "refr",
-        "result": "fastR",
+        "in": "dispR",
+        "result": "chR",
         "type": "matrix",
         "values": "1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
       },
@@ -963,8 +695,19 @@ exports[`buildFilterSpec > dispersion=1 blur=noise1 specular=false: spec is pinn
     },
     {
       "attrs": {
-        "in": "refr",
-        "result": "fastG",
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "dispG",
+        "scale": "150",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "in": "dispG",
+        "result": "chG",
         "type": "matrix",
         "values": "0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0",
       },
@@ -972,8 +715,19 @@ exports[`buildFilterSpec > dispersion=1 blur=noise1 specular=false: spec is pinn
     },
     {
       "attrs": {
-        "in": "refr",
-        "result": "fastB",
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "dispB",
+        "scale": "153",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "in": "dispB",
+        "result": "chB",
         "type": "matrix",
         "values": "0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0",
       },
@@ -981,117 +735,27 @@ exports[`buildFilterSpec > dispersion=1 blur=noise1 specular=false: spec is pinn
     },
     {
       "attrs": {
-        "dx": "2.00",
-        "dy": "0",
-        "in": "fastR",
-        "result": "offR_shifted",
-      },
-      "tag": "feOffset",
-    },
-    {
-      "attrs": {
-        "dx": "-2.00",
-        "dy": "0",
-        "in": "fastB",
-        "result": "offB_shifted",
-      },
-      "tag": "feOffset",
-    },
-    {
-      "attrs": {
-        "in": "offR_shifted",
-        "in2": "chromaticMask",
-        "operator": "in",
-        "result": "rBezel",
-      },
-      "tag": "feComposite",
-    },
-    {
-      "attrs": {
-        "in": "offB_shifted",
-        "in2": "chromaticMask",
-        "operator": "in",
-        "result": "bBezel",
-      },
-      "tag": "feComposite",
-    },
-    {
-      "attrs": {
-        "in": "fastR",
-        "in2": "chromaticMask",
-        "operator": "out",
-        "result": "rCenter",
-      },
-      "tag": "feComposite",
-    },
-    {
-      "attrs": {
-        "in": "fastB",
-        "in2": "chromaticMask",
-        "operator": "out",
-        "result": "bCenter",
-      },
-      "tag": "feComposite",
-    },
-    {
-      "attrs": {
-        "in": "rBezel",
-        "in2": "rCenter",
+        "in": "chR",
+        "in2": "chG",
         "k1": "0",
         "k2": "1",
         "k3": "1",
         "k4": "0",
         "operator": "arithmetic",
-        "result": "finalR",
+        "result": "chRG",
       },
       "tag": "feComposite",
     },
     {
       "attrs": {
-        "in": "bBezel",
-        "in2": "bCenter",
+        "in": "chRG",
+        "in2": "chB",
         "k1": "0",
         "k2": "1",
         "k3": "1",
         "k4": "0",
         "operator": "arithmetic",
-        "result": "finalB",
-      },
-      "tag": "feComposite",
-    },
-    {
-      "attrs": {
-        "in": "finalR",
-        "in2": "fastG",
-        "mode": "screen",
-        "result": "fastRG",
-      },
-      "tag": "feBlend",
-    },
-    {
-      "attrs": {
-        "in": "fastRG",
-        "in2": "finalB",
-        "mode": "screen",
-        "result": "fastRGB",
-      },
-      "tag": "feBlend",
-    },
-    {
-      "attrs": {
-        "in": "refr",
-        "result": "fastA",
-        "type": "matrix",
-        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
-      },
-      "tag": "feColorMatrix",
-    },
-    {
-      "attrs": {
-        "in": "fastRGB",
-        "in2": "fastA",
-        "operator": "in",
-        "result": "chromaticFastOut",
+        "result": "refr",
       },
       "tag": "feComposite",
     },
@@ -1116,7 +780,7 @@ exports[`buildFilterSpec > dispersion=1 blur=noise1 specular=false: spec is pinn
     },
     {
       "attrs": {
-        "in": "chromaticFastOut",
+        "in": "refr",
         "in2": "quant_low",
         "result": "refrNoise_low",
         "scale": "10.00",
@@ -1128,6 +792,7 @@ exports[`buildFilterSpec > dispersion=1 blur=noise1 specular=false: spec is pinn
   ],
   "height": 120,
   "id": "lg-test",
+  "padding": 0,
   "static": [
     {
       "attrs": {
@@ -1141,31 +806,8 @@ exports[`buildFilterSpec > dispersion=1 blur=noise1 specular=false: spec is pinn
       },
       "tag": "feImage",
     },
-    {
-      "attrs": {
-        "in": "SourceGraphic",
-        "in2": "map",
-        "result": "refr",
-        "scale": "150",
-        "xChannelSelector": "R",
-        "yChannelSelector": "G",
-      },
-      "tag": "feDisplacementMap",
-    },
-    {
-      "attrs": {
-        "height": "100%",
-        "href": "data:image/gif;base64,R0lGODlhAQABAAAAACw=",
-        "preserveAspectRatio": "none",
-        "result": "specSrc",
-        "width": "100%",
-        "x": "0",
-        "y": "0",
-      },
-      "tag": "feImage",
-    },
   ],
-  "structureKey": "chromatic|noise1|-",
+  "structureKey": "dispersion|noise1|-",
   "width": 300,
 }
 `;
@@ -1175,17 +817,19 @@ exports[`buildFilterSpec > dispersion=1 blur=noise1 specular=true: spec is pinne
   "dynamic": [
     {
       "attrs": {
-        "in": "map",
-        "result": "chromaticMask",
-        "type": "matrix",
-        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0",
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "dispR",
+        "scale": "147",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
       },
-      "tag": "feColorMatrix",
+      "tag": "feDisplacementMap",
     },
     {
       "attrs": {
-        "in": "refr",
-        "result": "fastR",
+        "in": "dispR",
+        "result": "chR",
         "type": "matrix",
         "values": "1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
       },
@@ -1193,8 +837,19 @@ exports[`buildFilterSpec > dispersion=1 blur=noise1 specular=true: spec is pinne
     },
     {
       "attrs": {
-        "in": "refr",
-        "result": "fastG",
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "dispG",
+        "scale": "150",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "in": "dispG",
+        "result": "chG",
         "type": "matrix",
         "values": "0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0",
       },
@@ -1202,8 +857,19 @@ exports[`buildFilterSpec > dispersion=1 blur=noise1 specular=true: spec is pinne
     },
     {
       "attrs": {
-        "in": "refr",
-        "result": "fastB",
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "dispB",
+        "scale": "153",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "in": "dispB",
+        "result": "chB",
         "type": "matrix",
         "values": "0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0",
       },
@@ -1211,117 +877,27 @@ exports[`buildFilterSpec > dispersion=1 blur=noise1 specular=true: spec is pinne
     },
     {
       "attrs": {
-        "dx": "2.00",
-        "dy": "0",
-        "in": "fastR",
-        "result": "offR_shifted",
-      },
-      "tag": "feOffset",
-    },
-    {
-      "attrs": {
-        "dx": "-2.00",
-        "dy": "0",
-        "in": "fastB",
-        "result": "offB_shifted",
-      },
-      "tag": "feOffset",
-    },
-    {
-      "attrs": {
-        "in": "offR_shifted",
-        "in2": "chromaticMask",
-        "operator": "in",
-        "result": "rBezel",
-      },
-      "tag": "feComposite",
-    },
-    {
-      "attrs": {
-        "in": "offB_shifted",
-        "in2": "chromaticMask",
-        "operator": "in",
-        "result": "bBezel",
-      },
-      "tag": "feComposite",
-    },
-    {
-      "attrs": {
-        "in": "fastR",
-        "in2": "chromaticMask",
-        "operator": "out",
-        "result": "rCenter",
-      },
-      "tag": "feComposite",
-    },
-    {
-      "attrs": {
-        "in": "fastB",
-        "in2": "chromaticMask",
-        "operator": "out",
-        "result": "bCenter",
-      },
-      "tag": "feComposite",
-    },
-    {
-      "attrs": {
-        "in": "rBezel",
-        "in2": "rCenter",
+        "in": "chR",
+        "in2": "chG",
         "k1": "0",
         "k2": "1",
         "k3": "1",
         "k4": "0",
         "operator": "arithmetic",
-        "result": "finalR",
+        "result": "chRG",
       },
       "tag": "feComposite",
     },
     {
       "attrs": {
-        "in": "bBezel",
-        "in2": "bCenter",
+        "in": "chRG",
+        "in2": "chB",
         "k1": "0",
         "k2": "1",
         "k3": "1",
         "k4": "0",
         "operator": "arithmetic",
-        "result": "finalB",
-      },
-      "tag": "feComposite",
-    },
-    {
-      "attrs": {
-        "in": "finalR",
-        "in2": "fastG",
-        "mode": "screen",
-        "result": "fastRG",
-      },
-      "tag": "feBlend",
-    },
-    {
-      "attrs": {
-        "in": "fastRG",
-        "in2": "finalB",
-        "mode": "screen",
-        "result": "fastRGB",
-      },
-      "tag": "feBlend",
-    },
-    {
-      "attrs": {
-        "in": "refr",
-        "result": "fastA",
-        "type": "matrix",
-        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
-      },
-      "tag": "feColorMatrix",
-    },
-    {
-      "attrs": {
-        "in": "fastRGB",
-        "in2": "fastA",
-        "operator": "in",
-        "result": "chromaticFastOut",
+        "result": "refr",
       },
       "tag": "feComposite",
     },
@@ -1346,7 +922,7 @@ exports[`buildFilterSpec > dispersion=1 blur=noise1 specular=true: spec is pinne
     },
     {
       "attrs": {
-        "in": "chromaticFastOut",
+        "in": "refr",
         "in2": "quant_low",
         "result": "refrNoise_low",
         "scale": "10.00",
@@ -1357,24 +933,17 @@ exports[`buildFilterSpec > dispersion=1 blur=noise1 specular=true: spec is pinne
     },
     {
       "attrs": {
-        "in": "specSrc",
-        "result": "specAdj",
+        "in": "map",
+        "result": "rim",
+        "type": "matrix",
+        "values": "0 0 1 0 0  0 0 1 0 0  0 0 1 0 0  0 0 1.1 0 0",
       },
-      "children": [
-        {
-          "attrs": {
-            "slope": "1.1",
-            "type": "linear",
-          },
-          "tag": "feFuncA",
-        },
-      ],
-      "tag": "feComponentTransfer",
+      "tag": "feColorMatrix",
     },
     {
       "attrs": {
         "in": "refrNoise_low",
-        "in2": "specAdj",
+        "in2": "rim",
         "mode": "screen",
         "result": "final",
       },
@@ -1383,6 +952,7 @@ exports[`buildFilterSpec > dispersion=1 blur=noise1 specular=true: spec is pinne
   ],
   "height": 120,
   "id": "lg-test",
+  "padding": 0,
   "static": [
     {
       "attrs": {
@@ -1396,31 +966,8 @@ exports[`buildFilterSpec > dispersion=1 blur=noise1 specular=true: spec is pinne
       },
       "tag": "feImage",
     },
-    {
-      "attrs": {
-        "in": "SourceGraphic",
-        "in2": "map",
-        "result": "refr",
-        "scale": "150",
-        "xChannelSelector": "R",
-        "yChannelSelector": "G",
-      },
-      "tag": "feDisplacementMap",
-    },
-    {
-      "attrs": {
-        "height": "100%",
-        "href": "data:image/gif;base64,R0lGODlhAQABAAAAACw=",
-        "preserveAspectRatio": "none",
-        "result": "specSrc",
-        "width": "100%",
-        "x": "0",
-        "y": "0",
-      },
-      "tag": "feImage",
-    },
   ],
-  "structureKey": "chromatic|noise1|specular",
+  "structureKey": "dispersion|noise1|rim",
   "width": 300,
 }
 `;
@@ -1430,17 +977,19 @@ exports[`buildFilterSpec > dispersion=1 blur=noise2 specular=false: spec is pinn
   "dynamic": [
     {
       "attrs": {
-        "in": "map",
-        "result": "chromaticMask",
-        "type": "matrix",
-        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0",
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "dispR",
+        "scale": "147",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
       },
-      "tag": "feColorMatrix",
+      "tag": "feDisplacementMap",
     },
     {
       "attrs": {
-        "in": "refr",
-        "result": "fastR",
+        "in": "dispR",
+        "result": "chR",
         "type": "matrix",
         "values": "1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
       },
@@ -1448,8 +997,19 @@ exports[`buildFilterSpec > dispersion=1 blur=noise2 specular=false: spec is pinn
     },
     {
       "attrs": {
-        "in": "refr",
-        "result": "fastG",
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "dispG",
+        "scale": "150",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "in": "dispG",
+        "result": "chG",
         "type": "matrix",
         "values": "0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0",
       },
@@ -1457,8 +1017,19 @@ exports[`buildFilterSpec > dispersion=1 blur=noise2 specular=false: spec is pinn
     },
     {
       "attrs": {
-        "in": "refr",
-        "result": "fastB",
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "dispB",
+        "scale": "153",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "in": "dispB",
+        "result": "chB",
         "type": "matrix",
         "values": "0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0",
       },
@@ -1466,117 +1037,27 @@ exports[`buildFilterSpec > dispersion=1 blur=noise2 specular=false: spec is pinn
     },
     {
       "attrs": {
-        "dx": "2.00",
-        "dy": "0",
-        "in": "fastR",
-        "result": "offR_shifted",
-      },
-      "tag": "feOffset",
-    },
-    {
-      "attrs": {
-        "dx": "-2.00",
-        "dy": "0",
-        "in": "fastB",
-        "result": "offB_shifted",
-      },
-      "tag": "feOffset",
-    },
-    {
-      "attrs": {
-        "in": "offR_shifted",
-        "in2": "chromaticMask",
-        "operator": "in",
-        "result": "rBezel",
-      },
-      "tag": "feComposite",
-    },
-    {
-      "attrs": {
-        "in": "offB_shifted",
-        "in2": "chromaticMask",
-        "operator": "in",
-        "result": "bBezel",
-      },
-      "tag": "feComposite",
-    },
-    {
-      "attrs": {
-        "in": "fastR",
-        "in2": "chromaticMask",
-        "operator": "out",
-        "result": "rCenter",
-      },
-      "tag": "feComposite",
-    },
-    {
-      "attrs": {
-        "in": "fastB",
-        "in2": "chromaticMask",
-        "operator": "out",
-        "result": "bCenter",
-      },
-      "tag": "feComposite",
-    },
-    {
-      "attrs": {
-        "in": "rBezel",
-        "in2": "rCenter",
+        "in": "chR",
+        "in2": "chG",
         "k1": "0",
         "k2": "1",
         "k3": "1",
         "k4": "0",
         "operator": "arithmetic",
-        "result": "finalR",
+        "result": "chRG",
       },
       "tag": "feComposite",
     },
     {
       "attrs": {
-        "in": "bBezel",
-        "in2": "bCenter",
+        "in": "chRG",
+        "in2": "chB",
         "k1": "0",
         "k2": "1",
         "k3": "1",
         "k4": "0",
         "operator": "arithmetic",
-        "result": "finalB",
-      },
-      "tag": "feComposite",
-    },
-    {
-      "attrs": {
-        "in": "finalR",
-        "in2": "fastG",
-        "mode": "screen",
-        "result": "fastRG",
-      },
-      "tag": "feBlend",
-    },
-    {
-      "attrs": {
-        "in": "fastRG",
-        "in2": "finalB",
-        "mode": "screen",
-        "result": "fastRGB",
-      },
-      "tag": "feBlend",
-    },
-    {
-      "attrs": {
-        "in": "refr",
-        "result": "fastA",
-        "type": "matrix",
-        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
-      },
-      "tag": "feColorMatrix",
-    },
-    {
-      "attrs": {
-        "in": "fastRGB",
-        "in2": "fastA",
-        "operator": "in",
-        "result": "chromaticFastOut",
+        "result": "refr",
       },
       "tag": "feComposite",
     },
@@ -1601,7 +1082,7 @@ exports[`buildFilterSpec > dispersion=1 blur=noise2 specular=false: spec is pinn
     },
     {
       "attrs": {
-        "in": "chromaticFastOut",
+        "in": "refr",
         "in2": "quant_high",
         "result": "refrNoise_high",
         "scale": "20.00",
@@ -1613,6 +1094,7 @@ exports[`buildFilterSpec > dispersion=1 blur=noise2 specular=false: spec is pinn
   ],
   "height": 120,
   "id": "lg-test",
+  "padding": 0,
   "static": [
     {
       "attrs": {
@@ -1626,31 +1108,8 @@ exports[`buildFilterSpec > dispersion=1 blur=noise2 specular=false: spec is pinn
       },
       "tag": "feImage",
     },
-    {
-      "attrs": {
-        "in": "SourceGraphic",
-        "in2": "map",
-        "result": "refr",
-        "scale": "150",
-        "xChannelSelector": "R",
-        "yChannelSelector": "G",
-      },
-      "tag": "feDisplacementMap",
-    },
-    {
-      "attrs": {
-        "height": "100%",
-        "href": "data:image/gif;base64,R0lGODlhAQABAAAAACw=",
-        "preserveAspectRatio": "none",
-        "result": "specSrc",
-        "width": "100%",
-        "x": "0",
-        "y": "0",
-      },
-      "tag": "feImage",
-    },
   ],
-  "structureKey": "chromatic|noise2|-",
+  "structureKey": "dispersion|noise2|-",
   "width": 300,
 }
 `;
@@ -1660,17 +1119,19 @@ exports[`buildFilterSpec > dispersion=1 blur=noise2 specular=true: spec is pinne
   "dynamic": [
     {
       "attrs": {
-        "in": "map",
-        "result": "chromaticMask",
-        "type": "matrix",
-        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0",
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "dispR",
+        "scale": "147",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
       },
-      "tag": "feColorMatrix",
+      "tag": "feDisplacementMap",
     },
     {
       "attrs": {
-        "in": "refr",
-        "result": "fastR",
+        "in": "dispR",
+        "result": "chR",
         "type": "matrix",
         "values": "1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
       },
@@ -1678,8 +1139,19 @@ exports[`buildFilterSpec > dispersion=1 blur=noise2 specular=true: spec is pinne
     },
     {
       "attrs": {
-        "in": "refr",
-        "result": "fastG",
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "dispG",
+        "scale": "150",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "in": "dispG",
+        "result": "chG",
         "type": "matrix",
         "values": "0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0",
       },
@@ -1687,8 +1159,19 @@ exports[`buildFilterSpec > dispersion=1 blur=noise2 specular=true: spec is pinne
     },
     {
       "attrs": {
-        "in": "refr",
-        "result": "fastB",
+        "in": "SourceGraphic",
+        "in2": "map",
+        "result": "dispB",
+        "scale": "153",
+        "xChannelSelector": "R",
+        "yChannelSelector": "G",
+      },
+      "tag": "feDisplacementMap",
+    },
+    {
+      "attrs": {
+        "in": "dispB",
+        "result": "chB",
         "type": "matrix",
         "values": "0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0",
       },
@@ -1696,117 +1179,27 @@ exports[`buildFilterSpec > dispersion=1 blur=noise2 specular=true: spec is pinne
     },
     {
       "attrs": {
-        "dx": "2.00",
-        "dy": "0",
-        "in": "fastR",
-        "result": "offR_shifted",
-      },
-      "tag": "feOffset",
-    },
-    {
-      "attrs": {
-        "dx": "-2.00",
-        "dy": "0",
-        "in": "fastB",
-        "result": "offB_shifted",
-      },
-      "tag": "feOffset",
-    },
-    {
-      "attrs": {
-        "in": "offR_shifted",
-        "in2": "chromaticMask",
-        "operator": "in",
-        "result": "rBezel",
-      },
-      "tag": "feComposite",
-    },
-    {
-      "attrs": {
-        "in": "offB_shifted",
-        "in2": "chromaticMask",
-        "operator": "in",
-        "result": "bBezel",
-      },
-      "tag": "feComposite",
-    },
-    {
-      "attrs": {
-        "in": "fastR",
-        "in2": "chromaticMask",
-        "operator": "out",
-        "result": "rCenter",
-      },
-      "tag": "feComposite",
-    },
-    {
-      "attrs": {
-        "in": "fastB",
-        "in2": "chromaticMask",
-        "operator": "out",
-        "result": "bCenter",
-      },
-      "tag": "feComposite",
-    },
-    {
-      "attrs": {
-        "in": "rBezel",
-        "in2": "rCenter",
+        "in": "chR",
+        "in2": "chG",
         "k1": "0",
         "k2": "1",
         "k3": "1",
         "k4": "0",
         "operator": "arithmetic",
-        "result": "finalR",
+        "result": "chRG",
       },
       "tag": "feComposite",
     },
     {
       "attrs": {
-        "in": "bBezel",
-        "in2": "bCenter",
+        "in": "chRG",
+        "in2": "chB",
         "k1": "0",
         "k2": "1",
         "k3": "1",
         "k4": "0",
         "operator": "arithmetic",
-        "result": "finalB",
-      },
-      "tag": "feComposite",
-    },
-    {
-      "attrs": {
-        "in": "finalR",
-        "in2": "fastG",
-        "mode": "screen",
-        "result": "fastRG",
-      },
-      "tag": "feBlend",
-    },
-    {
-      "attrs": {
-        "in": "fastRG",
-        "in2": "finalB",
-        "mode": "screen",
-        "result": "fastRGB",
-      },
-      "tag": "feBlend",
-    },
-    {
-      "attrs": {
-        "in": "refr",
-        "result": "fastA",
-        "type": "matrix",
-        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
-      },
-      "tag": "feColorMatrix",
-    },
-    {
-      "attrs": {
-        "in": "fastRGB",
-        "in2": "fastA",
-        "operator": "in",
-        "result": "chromaticFastOut",
+        "result": "refr",
       },
       "tag": "feComposite",
     },
@@ -1831,7 +1224,7 @@ exports[`buildFilterSpec > dispersion=1 blur=noise2 specular=true: spec is pinne
     },
     {
       "attrs": {
-        "in": "chromaticFastOut",
+        "in": "refr",
         "in2": "quant_high",
         "result": "refrNoise_high",
         "scale": "20.00",
@@ -1842,24 +1235,17 @@ exports[`buildFilterSpec > dispersion=1 blur=noise2 specular=true: spec is pinne
     },
     {
       "attrs": {
-        "in": "specSrc",
-        "result": "specAdj",
+        "in": "map",
+        "result": "rim",
+        "type": "matrix",
+        "values": "0 0 1 0 0  0 0 1 0 0  0 0 1 0 0  0 0 1.1 0 0",
       },
-      "children": [
-        {
-          "attrs": {
-            "slope": "1.1",
-            "type": "linear",
-          },
-          "tag": "feFuncA",
-        },
-      ],
-      "tag": "feComponentTransfer",
+      "tag": "feColorMatrix",
     },
     {
       "attrs": {
         "in": "refrNoise_high",
-        "in2": "specAdj",
+        "in2": "rim",
         "mode": "screen",
         "result": "final",
       },
@@ -1868,6 +1254,7 @@ exports[`buildFilterSpec > dispersion=1 blur=noise2 specular=true: spec is pinne
   ],
   "height": 120,
   "id": "lg-test",
+  "padding": 0,
   "static": [
     {
       "attrs": {
@@ -1881,33 +1268,10 @@ exports[`buildFilterSpec > dispersion=1 blur=noise2 specular=true: spec is pinne
       },
       "tag": "feImage",
     },
-    {
-      "attrs": {
-        "in": "SourceGraphic",
-        "in2": "map",
-        "result": "refr",
-        "scale": "150",
-        "xChannelSelector": "R",
-        "yChannelSelector": "G",
-      },
-      "tag": "feDisplacementMap",
-    },
-    {
-      "attrs": {
-        "height": "100%",
-        "href": "data:image/gif;base64,R0lGODlhAQABAAAAACw=",
-        "preserveAspectRatio": "none",
-        "result": "specSrc",
-        "width": "100%",
-        "x": "0",
-        "y": "0",
-      },
-      "tag": "feImage",
-    },
   ],
-  "structureKey": "chromatic|noise2|specular",
+  "structureKey": "dispersion|noise2|rim",
   "width": 300,
 }
 `;
 
-exports[`buildFilterSpec > serializes to well-formed, escaped SVG markup 1`] = `"<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute;width:0;height:0;overflow:hidden;pointer-events:none"><defs><filter id="lg-test" filterUnits="userSpaceOnUse" primitiveUnits="userSpaceOnUse" x="0" y="0" width="300" height="120" color-interpolation-filters="sRGB"><feImage x="0" y="0" width="300" height="120" preserveAspectRatio="none" href="data:x/y;base64,AA==&amp;&quot;&lt;" result="map"/><feDisplacementMap in="SourceGraphic" in2="map" xChannelSelector="R" yChannelSelector="G" scale="180" result="refr"/><feImage x="0" y="0" width="100%" height="100%" preserveAspectRatio="none" href="data:image/gif;base64,R0lGODlhAQABAAAAACw=" result="specSrc"/><feColorMatrix in="map" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0" result="chromaticMask"/><feColorMatrix in="refr" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="fastR"/><feColorMatrix in="refr" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="fastG"/><feColorMatrix in="refr" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="fastB"/><feOffset in="fastR" dx="2.00" dy="0" result="offR_shifted"/><feOffset in="fastB" dx="-2.00" dy="0" result="offB_shifted"/><feComposite in="offR_shifted" in2="chromaticMask" operator="in" result="rBezel"/><feComposite in="offB_shifted" in2="chromaticMask" operator="in" result="bBezel"/><feComposite in="fastR" in2="chromaticMask" operator="out" result="rCenter"/><feComposite in="fastB" in2="chromaticMask" operator="out" result="bCenter"/><feComposite in="rBezel" in2="rCenter" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="finalR"/><feComposite in="bBezel" in2="bCenter" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="finalB"/><feBlend in="finalR" in2="fastG" mode="screen" result="fastRG"/><feBlend in="fastRG" in2="finalB" mode="screen" result="fastRGB"/><feColorMatrix in="refr" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="fastA"/><feComposite in="fastRGB" in2="fastA" operator="in" result="chromaticFastOut"/><feGaussianBlur in="chromaticFastOut" stdDeviation="0.20" result="blurred"/><feComponentTransfer in="specSrc" result="specAdj"><feFuncA type="linear" slope="0.9"/></feComponentTransfer><feBlend in="blurred" in2="specAdj" mode="screen" result="final"/></filter></defs></svg>"`;
+exports[`buildFilterSpec > serializes to well-formed, escaped SVG markup 1`] = `"<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute;width:0;height:0;overflow:hidden;pointer-events:none"><defs><filter id="lg-test" filterUnits="userSpaceOnUse" primitiveUnits="userSpaceOnUse" x="0" y="0" width="300" height="120" color-interpolation-filters="sRGB"><feImage x="0" y="0" width="300" height="120" preserveAspectRatio="none" href="data:x/y;base64,AA==&amp;&quot;&lt;" result="map"/><feDisplacementMap in="SourceGraphic" in2="map" xChannelSelector="R" yChannelSelector="G" scale="176.4" result="dispR"/><feColorMatrix in="dispR" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="chR"/><feDisplacementMap in="SourceGraphic" in2="map" xChannelSelector="R" yChannelSelector="G" scale="180" result="dispG"/><feColorMatrix in="dispG" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="chG"/><feDisplacementMap in="SourceGraphic" in2="map" xChannelSelector="R" yChannelSelector="G" scale="183.6" result="dispB"/><feColorMatrix in="dispB" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="chB"/><feComposite in="chR" in2="chG" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="chRG"/><feComposite in="chRG" in2="chB" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="refr"/><feGaussianBlur in="refr" stdDeviation="0.20" result="blurred"/><feColorMatrix in="map" type="matrix" values="0 0 1 0 0  0 0 1 0 0  0 0 1 0 0  0 0 0.81 0 0" result="rim"/><feBlend in="blurred" in2="rim" mode="screen" result="final"/></filter></defs></svg>"`;

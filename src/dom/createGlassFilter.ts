@@ -7,8 +7,7 @@ import {
 } from '../core/params.js';
 import { displacementCurve } from '../core/optics/disp1d.js';
 import { displacementMap, maxAbs } from '../core/optics/disp2d.js';
-import { specularMap } from '../core/optics/specularLight.js';
-import { buildFilterSpec, TRANSPARENT_PIXEL, type FilterSpec } from '../core/filters/spec.js';
+import { buildFilterSpec, type FilterSpec } from '../core/filters/spec.js';
 import { createFilterSvg, applyFilterSpec, type ElementFactory } from './mountFilter.js';
 import { encodeImageToBlobUrl, revokeBlobUrl, type ImageEncoder, type UrlRevoker } from './encodeImage.js';
 import { UrlSlot } from './mapCache.js';
@@ -23,6 +22,13 @@ export interface GlassFilterOptions extends Partial<GlassParams> {
   mount?: Element;
   /** Device pixel ratio for the maps. Default: `window.devicePixelRatio`, tracked for changes. */
   dpr?: number;
+  /** Gaussian width of the rim light, CSS px. Default 2. */
+  rimPx?: number;
+  /**
+   * Extra filter region around the element box, CSS px, so displaced samples can come from just
+   * outside it (useful with concave profiles). The output is still clipped to the box. Default 0.
+   */
+  regionPadding?: number;
   /** Pixel buffer → URL. Default: PNG blob URL via canvas. Seam for tests and workers. */
   encodeImage?: ImageEncoder;
   /** Releases URLs from `encodeImage`. Default: `URL.revokeObjectURL` for blob URLs. */
@@ -34,10 +40,12 @@ export interface GlassFilterOptions extends Partial<GlassParams> {
 }
 
 export interface GlassFilterDebug {
-  displacementMapUrl: string | null;
-  specularMapUrl: string | null;
-  /** Largest |displacement| the optics produced before normalization, px (OQ-10). */
+  /** The one map image: R,G displacement, B rim light. */
+  mapUrl: string | null;
+  /** Largest |displacement| the optics produced before normalization, px. */
   physicalMaxDisplacementPx: number;
+  /** The `scale` the displacement primitive currently uses (physical or artist). */
+  displacementPx: number;
   /** Completed renders so far. */
   renders: number;
 }
@@ -104,6 +112,8 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
   const revoke = options.revokeImage ?? revokeBlobUrl;
   const mount = options.mount ?? host;
   const fixedDpr = options.dpr !== undefined;
+  const rimPx = options.rimPx;
+  const regionPadding = options.regionPadding ?? 0;
   let dpr = options.dpr ?? defaultDpr();
 
   const { params: initial } = splitGlassOptions(options);
@@ -113,11 +123,10 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
   const { svg, filter } = createFilterSvg(doc, id);
   mount.appendChild(svg);
 
-  const dispSlot = new UrlSlot(revoke);
-  const specSlot = new UrlSlot(revoke);
+  const mapSlot = new UrlSlot(revoke);
   let spec: FilterSpec | null = null;
   let destroyed = false;
-  const debug: GlassFilterDebug = { displacementMapUrl: null, specularMapUrl: null, physicalMaxDisplacementPx: 0, renders: 0 };
+  const debug: GlassFilterDebug = { mapUrl: null, physicalMaxDisplacementPx: 0, displacementPx: 0, renders: 0 };
 
   // ---- render scheduling: coalesce per microtask, newest params win, each waiter resolves
   //      after a render that started at or after its request.
@@ -165,15 +174,26 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
     const p = params;
     const d = dpr;
 
-    const dispKey = JSON.stringify([p.width, p.height, p.radius, p.bezelWidth, p.surface, p.refractiveIndex, p.glassThickness, p.chromaticBezelFraction, d]);
-    if (dispSlot.key !== dispKey) {
+    const mapKey = JSON.stringify([
+      p.width,
+      p.height,
+      p.radius,
+      p.bezelWidth,
+      p.surface,
+      p.refractiveIndex,
+      p.glassThickness,
+      p.specularAngleDeg,
+      rimPx ?? null,
+      d,
+    ]);
+    if (mapSlot.key !== mapKey) {
       const curve = displacementCurve({
         glassThickness: p.glassThickness,
         bezelWidth: p.bezelWidth,
         refractiveIndex: p.refractiveIndex,
         surface: p.surface,
       });
-      debug.physicalMaxDisplacementPx = maxAbs(curve);
+      const physical = maxAbs(curve);
       const img = displacementMap({
         width: p.width,
         height: p.height,
@@ -181,43 +201,28 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
         bezelWidth: p.bezelWidth,
         dpr: d,
         curve,
-        chromaticBezelFraction: p.chromaticBezelFraction,
+        maxDisplacement: physical,
+        rim: { angleDeg: p.specularAngleDeg, rimPx },
       });
       const url = await encode(img);
       if (destroyed) {
         revoke(url);
         return;
       }
-      dispSlot.set(dispKey, url);
+      debug.physicalMaxDisplacementPx = physical;
+      mapSlot.set(mapKey, url);
     }
 
-    const specKey = JSON.stringify([p.width, p.height, p.radius, p.bezelWidth, p.specular, p.specularAngleDeg, p.specularStrength, d]);
-    if (specSlot.key !== specKey) {
-      let url: string | null = null;
-      if (p.specular) {
-        const img = specularMap({
-          width: p.width,
-          height: p.height,
-          radius: p.radius,
-          bezelWidth: p.bezelWidth,
-          dpr: d,
-          angleDeg: p.specularAngleDeg,
-          strength: p.specularStrength,
-        });
-        url = await encode(img);
-        if (destroyed) {
-          revoke(url);
-          return;
-        }
-      }
-      specSlot.set(specKey, url);
-    }
-
-    const next = buildFilterSpec(p, { id, mapHref: dispSlot.url!, specularHref: specSlot.url ?? TRANSPARENT_PIXEL });
+    const scale = p.physicalScale ? debug.physicalMaxDisplacementPx : p.displacementScale;
+    const next = buildFilterSpec(
+      p.physicalScale ? { ...p, displacementScale: scale } : p,
+      { id, mapHref: mapSlot.url! },
+      { padding: regionPadding },
+    );
     applyFilterSpec(doc, filter, spec, next);
     spec = next;
-    debug.displacementMapUrl = dispSlot.url;
-    debug.specularMapUrl = specSlot.url;
+    debug.mapUrl = mapSlot.url;
+    debug.displacementPx = scale;
     debug.renders += 1;
     options.onRender?.(handle);
   }
@@ -269,8 +274,7 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
     if (destroyed) return;
     destroyed = true;
     unwatchDpr();
-    dispSlot.dispose();
-    specSlot.dispose();
+    mapSlot.dispose();
     svg.remove();
     const pending = waiters;
     waiters = [];
