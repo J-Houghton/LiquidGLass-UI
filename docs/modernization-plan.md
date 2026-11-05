@@ -7,7 +7,40 @@ Target architecture (decided, not up for debate here):
 - The published package is headless: `src/core` (engine) plus a small imperative API that attaches the effect to a caller-supplied element, exposes `update`/`destroy`, and owns no framework. Zero runtime dependencies. ESM, typed, tree-shakeable. Importable from React/Next, vanilla, anything.
 - Web components survive only as a thin optional wrapper over that API. Lit is removed entirely; the wrapper is a hand-rolled `HTMLElement`.
 
-Sections: 0 ground truth, 1 audit, 2 public API, 3 implementation plan, 4 open questions, 5 CLAUDE.md.
+Sections: status, 0 ground truth, 1 audit, 2 public API, 3 implementation plan, 4 open questions, 5 CLAUDE.md.
+
+---
+
+## Status (2026-11-05, end of day)
+
+Executed on branch `modernize/headless`, one commit per step. All open questions were decided
+per the recommendations in §4 (OQ-13: not on npm, so 2.0.0 with no deprecation path needed).
+
+| Phase | State | Notes |
+|---|---|---|
+| 0 Lock behavior | done | 0.5 (benchmark gating) landed before 0.3/0.4 so the suite was green first. `@types/node` added as a dev type package for the fixture helpers. |
+| 1 Purify core | done | Fixtures unchanged through 1.2. 1.5 drops the 1.x `bezel ≤ radius` and circle-only rules (OQ-14, extended to bezel). 1.6 picked 20/40 (OQ-9). |
+| 2 Filter graph as data | done | Equivalence against the Lit-era graph was proven for all 12 structures before that code was deleted (commit "Phase 2.1 + 2.3"). |
+| 3 Headless API | done | `createGlassFilter`, `attachLiquidGlass`, ESM-only package with `.`/`./core` entries. Demo dogfoods the API (3.6). |
+| 4 Elements, Lit removal | done | `./elements` entry; lifecycle tests run under `happy-dom` (dev-only, the addition OQ-4 reserved). 4.3 landed early to fix a real break: `sideEffects:false` made Rollup drop the demo's side-effect-only imports, so the demo now has an explicit entry (`demo/main.ts`). `blur` is exposed as the `blurAmount` element property because `HTMLElement.blur()` exists. |
+| 5 Research-dependent | **waiting** | Nothing started. Inputs expected in `docs/research/`. |
+| 6 Release | 6.1 done, 6.2 see commit log | README, CHANGELOG, 2.0.0. Dependency bumps are their own commit if they pass. |
+
+Not yet done by anyone: a visual check of the demo in a real browser after Phase 3.6/4.3 (this
+session had no browser). Run `npm run dev`, load each preset, toggle the debug map, drag, resize.
+
+New findings while executing (added as OQ-17 and OQ-18 in §4):
+
+- The band geometry's corner distance (`R - dist`) and straight-edge distance (`W-1-x`) differ by
+  one pixel, so the right and bottom sides sit one pixel deeper in the band than the left and top.
+  Measured: at the mid-height row of the default 300×120 shape the left rim pixel reads R=222 and
+  the right R=3 instead of 34; the rim sample (u=0) also differs from its neighbour (222 vs 253),
+  a one-pixel bright ring. Preserved and pinned; see `src/core/optics/band.ts`.
+- The specular map flips the normal's y component in corner sectors only, so corner highlights do
+  not match the adjacent straight edges (at 60°, a top-left corner reads ~0.26 alignment where
+  the edges beside it read 0.87/0.5). Preserved and pinned; see `src/core/optics/specularLight.ts`.
+- `specularStrength` is applied twice (clamped into the image and again as the `feFuncA` slope),
+  so 0.9 renders as ~0.81. Preserved for parity.
 
 ---
 
@@ -499,6 +532,8 @@ Dependencies: 0 → 1 → 2 → 3 → 4 → 6. Phase 5 items slot in after 3 (5.
 | OQ-14 | Keep the "circle-only surface" coercion? | Drop it in 2.0 unless you remember why it exists; the 1D profile is shape-independent. |
 | OQ-15 | Demo: drive it with the headless API or the elements? | Stage through the headless API (proves what you ship), one elements example on the page. |
 | OQ-16 | The banding benchmark's thresholds: delete, keep as reporting, or re-tune after research? | Keep as reporting only (0.5). Re-tune only if 5.3 changes the map encoding; otherwise they measure a trade-off you already accepted. |
+| OQ-17 | Fix the two pinned geometry quirks found during Phase 1 (one-pixel corner offset in `band.ts`; flipped corner normal in `specularLight.ts`)? | Yes, both, in one commit with regenerated fixtures, after eyeballing before/after in the demo. Each is a one-line change (`R - dist` → `R - 1 - dist` or the edge formula → `W - x`; drop the `p.corner ? -p.ny : p.ny`). The highlight notches at corner/edge junctions are a visible defect. |
+| OQ-18 | `specularStrength` applied twice (image clamp × filter slope)? | Leave for 2.0 (presets were tuned against it). Fold into 5.3 when the lighting model is revisited: bake the image at strength 1 and let the slope carry it, then re-tune the six presets' strengths. |
 
 ---
 
