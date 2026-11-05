@@ -67,33 +67,56 @@ describe('disp2d: rounded-rect displacement map', () => {
       });
 
       it('center pixel and the outside-corner pixel are neutral', () => {
-        expect(pixel(img, W >> 1, H >> 1)).toEqual(NEUTRAL);
         expect(pixel(img, 0, 0)).toEqual(NEUTRAL);
+        const center = pixel(img, W >> 1, H >> 1);
+        if (c.w > 2 * c.b && c.h > 2 * c.b) {
+          expect(center).toEqual(NEUTRAL); // flat interior: exactly neutral
+        } else {
+          // bezel covers the whole shape: the four center pixels sit half a pixel off the axes,
+          // at the flat inner end of the profile, so they are neutral within rounding
+          expect(Math.abs(center[0] - 128)).toBeLessThanOrEqual(2);
+          expect(Math.abs(center[1] - 128)).toBeLessThanOrEqual(2);
+          expect(center[2]).toBe(0);
+          expect(center[3]).toBe(255);
+        }
       });
 
-      it('rim pixels carry a full chromatic mask and a purely normal displacement', () => {
+      it('rim pixels carry a near-full chromatic mask and a purely normal displacement', () => {
         const top = pixel(img, W >> 1, 0);
         const left = pixel(img, 0, H >> 1);
-        expect(top[2]).toBe(255);
-        expect(left[2]).toBe(255);
-        expect(top[0]).toBe(128); // top edge normal is vertical: no x displacement
-        expect(left[1]).toBe(128); // left edge normal is horizontal: no y displacement
+        expect(top[2]).toBeGreaterThan(200); // pixel centers sit half a pixel inside the rim
+        expect(left[2]).toBeGreaterThan(200);
+        expect(top[2]).toBeGreaterThan(pixel(img, W >> 1, 1)[2]);
+        // edge midpoints: the pixel center is half a pixel off the axis, so on a circle or stadium
+        // (where the midpoint falls in a corner sector) the normal is a hair off axis
+        expect(Math.abs(top[0] - 128)).toBeLessThanOrEqual(1); // top edge normal is vertical: no x displacement
+        expect(Math.abs(left[1] - 128)).toBeLessThanOrEqual(1); // left edge normal is horizontal: no y displacement
       });
 
-      // Only straight-edge pairs mirror exactly. In corner sectors the right/bottom side sits one
-      // pixel further into the band than the left/top side (corner distance is `R - dist`, flat
-      // distance is `W - 1 - x`), which the fixtures pin and the plan lists as a known quirk.
-      it('opposite straight-edge rim pixels displace in opposite directions', () => {
-        const R = Math.round(c.r * c.dpr);
-        if (W > 2 * R) {
-          const top = pixel(img, W >> 1, 0);
-          const bottom = pixel(img, W >> 1, H - 1);
-          expect(Math.abs(top[1] + bottom[1] - 256)).toBeLessThanOrEqual(1);
-        }
-        if (H > 2 * R) {
-          const left = pixel(img, 0, H >> 1);
-          const right = pixel(img, W - 1, H >> 1);
-          expect(Math.abs(left[0] + right[0] - 256)).toBeLessThanOrEqual(1);
+      it('opposite rim pixels displace in opposite directions (corners included)', () => {
+        const top = pixel(img, W >> 1, 0);
+        const bottom = pixel(img, W >> 1, H - 1);
+        const left = pixel(img, 0, H >> 1);
+        const right = pixel(img, W - 1, H >> 1);
+        expect(Math.abs(top[1] + bottom[1] - 256)).toBeLessThanOrEqual(1);
+        expect(Math.abs(left[0] + right[0] - 256)).toBeLessThanOrEqual(1);
+        expect(left[2]).toBe(right[2]);
+        expect(top[2]).toBe(bottom[2]);
+      });
+
+      it('is an exact mirror image across both axes', () => {
+        for (let y = 0; y < H; y += 7) {
+          for (let x = 0; x < W; x += 5) {
+            const a = pixel(img, x, y);
+            const h = pixel(img, W - 1 - x, y);
+            const v = pixel(img, x, H - 1 - y);
+            expect(Math.abs(a[0] + h[0] - 256)).toBeLessThanOrEqual(1); // R flips across the vertical axis
+            expect(Math.abs(a[1] - h[1])).toBeLessThanOrEqual(1);
+            expect(a[2]).toBe(h[2]);
+            expect(Math.abs(a[1] + v[1] - 256)).toBeLessThanOrEqual(1); // G flips across the horizontal axis
+            expect(Math.abs(a[0] - v[0])).toBeLessThanOrEqual(1);
+            expect(a[2]).toBe(v[2]);
+          }
         }
       });
 
@@ -118,7 +141,7 @@ describe('disp2d: rounded-rect displacement map', () => {
     const b5 = pixel(img, x, 5)[2];
     const b10 = pixel(img, x, 10)[2];
     const b15 = pixel(img, x, 15)[2];
-    expect(b0).toBe(255);
+    expect(b0).toBeGreaterThan(b5);
     expect(b5).toBeGreaterThan(b10);
     expect(b10).toBeGreaterThan(b15);
     expect(b15).toBe(0);

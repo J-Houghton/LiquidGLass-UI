@@ -23,10 +23,8 @@ export interface SpecularMapOptions {
  * Grayscale rim highlight: a Gaussian band hugging the outer edge, weighted by how well the
  * outward normal aligns with the light direction (symmetric: `angle` and `angle + 180`
  * give the same image). Packed identically into RGB and alpha so it composites additively.
- *
- * Preserved quirk (pinned by fixtures, see plan OQ-17): in the corner sectors the y
- * component of the normal is flipped relative to the straight edges, so corner highlights
- * respond to the light angle differently from the edges beside them.
+ * Corners use the same normal convention as the straight edges, so the highlight is
+ * continuous around the shape.
  */
 export function specularMap(opts: SpecularMapOptions): RGBAImage {
   const { dpr, angleDeg } = opts;
@@ -44,8 +42,7 @@ export function specularMap(opts: SpecularMapOptions): RGBAImage {
 
   forEachBandPixel(W, H, R, B, (p) => {
     if (p.t > 3 * T) return;
-    const ny = p.corner ? -p.ny : p.ny;
-    const align = Math.max(0, Math.abs(p.nx * vx + ny * vy));
+    const align = Math.abs(p.nx * vx + p.ny * vy);
     // Gaussian falloff centered at the outer edge (t = 0)
     const rim = Math.exp(-(p.t * p.t) / (2 * T * T));
     const coeff = Math.min(1, align * rim * strength);

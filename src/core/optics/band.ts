@@ -2,6 +2,10 @@
  * Shared geometry for the bezel band of a rounded rectangle, in device pixels.
  * Used by the displacement map and the specular map so both agree on which pixels are
  * in the band, which way the outward normal points, and how deep into the band a pixel is.
+ *
+ * Every pixel is evaluated at its center (x + 0.5, y + 0.5). That makes the corner sectors
+ * and the straight edges agree on distance, and makes the band an exact mirror image across
+ * both axes (pixel x ↔ W-1-x, y ↔ H-1-y).
  */
 
 export interface BandPixel {
@@ -12,23 +16,21 @@ export interface BandPixel {
   /** Outward unit normal, y-down screen coordinates. */
   nx: number;
   ny: number;
-  /** Distance into the band from the outer edge, px (0 at the rim). */
+  /** Distance from the outer edge to the pixel center, px (0.5 for a rim pixel). */
   t: number;
   /** True in the four corner sectors, false along the straight edges. */
   corner: boolean;
 }
 
-/** Point-in-rounded-rectangle test, matching the historical implementation exactly. */
+/** Point-in-rounded-rectangle test for a point (x, y) in continuous coordinates. */
 export function inRoundedRect(x: number, y: number, w: number, h: number, r: number): boolean {
   const onL = x < r;
-  const onR = x >= w - r;
+  const onR = x > w - r;
   const onT = y < r;
-  const onB = y >= h - r;
+  const onB = y > h - r;
   if ((onL || onR) && (onT || onB)) {
-    const flatW = w - 2 * r;
-    const flatH = h - 2 * r;
-    const cx = onL ? x - r : x - r - flatW;
-    const cy = onT ? y - r : y - r - flatH;
+    const cx = onL ? x - r : x - (w - r);
+    const cy = onT ? y - r : y - (h - r);
     return cx * cx + cy * cy <= r * r + 1e-6;
   }
   return x >= 0 && x < w && y >= 0 && y < h;
@@ -38,10 +40,6 @@ export function inRoundedRect(x: number, y: number, w: number, h: number, r: num
  * Visit every pixel of the band: inside the outer rounded rectangle (W×H, radius R) and
  * outside the inner one inset by B. The visitor receives one reused object; copy fields
  * out if you need to keep them.
- *
- * Known quirk, preserved on purpose and pinned by fixtures: corner distance is `R - dist`
- * while straight-edge distance is `W-1-x` / `H-1-y`, so the right and bottom sides sit one
- * pixel deeper into the band than the left and top. See the modernization plan, OQ-17.
  */
 export function forEachBandPixel(
   W: number,
@@ -56,33 +54,33 @@ export function forEachBandPixel(
   const p: BandPixel = { x: 0, y: 0, idx: 0, nx: 0, ny: 0, t: 0, corner: false };
 
   for (let y = 0; y < H; y++) {
+    const py = y + 0.5;
     for (let x = 0; x < W; x++) {
-      if (!inRoundedRect(x, y, W, H, R)) continue;
-      if (W2 > 0 && H2 > 0 && inRoundedRect(x - B, y - B, W2, H2, Rin)) continue;
+      const px = x + 0.5;
+      if (!inRoundedRect(px, py, W, H, R)) continue;
+      if (W2 > 0 && H2 > 0 && inRoundedRect(px - B, py - B, W2, H2, Rin)) continue;
 
       p.x = x;
       p.y = y;
       p.idx = (y * W + x) * 4;
 
-      const onL = x < R;
-      const onR = x >= W - R;
-      const onT = y < R;
-      const onB = y >= H - R;
+      const onL = px < R;
+      const onR = px > W - R;
+      const onT = py < R;
+      const onB = py > H - R;
       if ((onL || onR) && (onT || onB)) {
-        const flatW = W - 2 * R;
-        const flatH = H - 2 * R;
-        const cx = onL ? x - R : x - R - flatW;
-        const cy = onT ? y - R : y - R - flatH;
+        const cx = onL ? px - R : px - (W - R);
+        const cy = onT ? py - R : py - (H - R);
         const dist = Math.max(1e-6, Math.hypot(cx, cy));
         p.nx = cx / dist;
         p.ny = cy / dist;
         p.t = R - dist;
         p.corner = true;
       } else {
-        const dL = x;
-        const dR = W - 1 - x;
-        const dT = y;
-        const dB = H - 1 - y;
+        const dL = px;
+        const dR = W - px;
+        const dT = py;
+        const dB = H - py;
         const m = Math.min(dL, dR, dT, dB);
         p.corner = false;
         if (m === dT) {

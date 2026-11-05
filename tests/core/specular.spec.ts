@@ -42,9 +42,39 @@ describe('specularLight: rim highlight image', () => {
     });
   }
 
-  it('top rim pixel at 60 degrees and strength 0.9 is 255 * sin(60) * 0.9, floored', () => {
+  it('top rim pixel at 60 degrees: alignment sin(60) x Gaussian rim at t=0.5 x strength 0.9', () => {
     const img = build(CASES[0]);
-    expect(pixel(img, img.width >> 1, 0)).toEqual([198, 198, 198, 198]);
+    const T = 2; // rim px at dpr 1
+    const expected = Math.floor(255 * Math.min(1, Math.sin(Math.PI / 3) * Math.exp(-(0.5 * 0.5) / (2 * T * T)) * 0.9));
+    expect(pixel(img, img.width >> 1, 0)).toEqual([expected, expected, expected, expected]);
+    expect(expected).toBeGreaterThan(185);
+  });
+
+  it('corner normals are continuous with the edges: a 45-degree light lights the top-left and bottom-right corners only', () => {
+    const img = build({ ...CASES[0], angle: 45, strength: 1 });
+    const W = img.width;
+    const H = img.height;
+    const topLeft = pixel(img, 18, 18)[0]; // on the 45-degree rim of the top-left corner (R = 60)
+    const topRight = pixel(img, W - 1 - 18, 18)[0];
+    const bottomRight = pixel(img, W - 1 - 18, H - 1 - 18)[0];
+    const bottomLeft = pixel(img, 18, H - 1 - 18)[0];
+    expect(topLeft).toBeGreaterThan(150);
+    expect(bottomRight).toBe(topLeft);
+    expect(topRight).toBeLessThan(5);
+    expect(bottomLeft).toBe(topRight);
+  });
+
+  it('is an exact mirror image across both axes for a vertical light', () => {
+    const img = build({ ...CASES[0], angle: 90 });
+    const W = img.width;
+    const H = img.height;
+    for (let y = 0; y < H; y += 3) {
+      for (let x = 0; x < W; x += 5) {
+        const a = pixel(img, x, y)[3];
+        expect(pixel(img, W - 1 - x, y)[3]).toBe(a);
+        expect(pixel(img, x, H - 1 - y)[3]).toBe(a);
+      }
+    }
   });
 
   it('strength is clamped to [0, 1] inside the image', () => {
