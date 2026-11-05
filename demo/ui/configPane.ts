@@ -237,8 +237,11 @@ function init() {
   handle.addEventListener('pointercancel', endDrag);
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init, { once: true });
-} else {
-  init();
+/** Mount the control pane once the DOM is ready. Called from demo/main.ts. */
+export function initConfigPane(): void {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init, { once: true });
+  } else {
+    init();
+  }
 }

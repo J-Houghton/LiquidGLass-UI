@@ -376,3 +376,51 @@ body.show-grid::before {
   border-radius: inherit;
   z-index: 100;
 }
+
+/* Workbench test patterns (static HTML; replaced the Lit <workbench-patterns> element) */
+.workbench-patterns {
+  display: grid;
+  gap: 2rem;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  color: var(--demo-color-text);
+}
+.workbench-patterns .section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.workbench-patterns h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  opacity: 0.9;
+  font-family: var(--font-display);
+}
+.workbench-patterns p {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.6;
+  opacity: 0.8;
+  max-width: 65ch;
+}
+.workbench-patterns .test-block {
+  width: 100%;
+  height: 120px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+.workbench-patterns .gradient-ramp {
+  background: linear-gradient(to right, #000, #333, #666, #999, #ccc, #fff);
+}
+.workbench-patterns .diagonal-stripes {
+  background-color: #050505;
+  background-image: repeating-linear-gradient(45deg, #050505 0px, #050505 10px, #ffffff 10px, #ffffff 12px);
+}
+[data-theme='light'] .workbench-patterns .diagonal-stripes {
+  background-color: #fff;
+  background-image: repeating-linear-gradient(45deg, #fff 0px, #fff 10px, #000 10px, #000 12px);
+}

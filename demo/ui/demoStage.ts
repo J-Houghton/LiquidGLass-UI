@@ -306,13 +306,15 @@ export class DemoStageController {
   }
 }
 
-function init() {
-  if (!document.querySelector('[data-demo-stage]')) return;
-  new DemoStageController().init();
-}
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init, { once: true });
-} else {
-  init();
+/** Start the stage once the DOM is ready. Called from demo/main.ts. */
+export function initDemoStage(): void {
+  const start = () => {
+    if (!document.querySelector('[data-demo-stage]')) return;
+    new DemoStageController().init();
+  };
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start, { once: true });
+  } else {
+    start();
+  }
 }
