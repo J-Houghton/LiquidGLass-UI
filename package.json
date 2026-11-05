@@ -2,10 +2,12 @@
   "name": "liquid-glass-filter",
   "version": "1.0.0",
   "type": "module",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "main": "./dist/liquid-glass.cjs.js",
   "module": "./dist/liquid-glass.es.js",
-  "types": "./dist/index.d.ts", 
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "import": "./dist/liquid-glass.es.js",
@@ -15,10 +17,12 @@
   },
   "scripts": {
     "dev": "vite demo/",
-    "build": "tsc && vite build",
-    "build:demo": "tsc && vite build --config vite.demo.config.ts",
+    "build": "tsc -p tsconfig.json && vite build",
+    "build:demo": "tsc -p tsconfig.json && vite build --config vite.demo.config.ts",
     "preview": "vite preview",
-    "test": "vitest"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json"
   },
   "peerDependencies": {
     "lit": "^3.0.0"
