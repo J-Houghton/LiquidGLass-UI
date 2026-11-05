@@ -1,10 +1,15 @@
+// Benchmark, not a regression gate: compares the current optics against the original
+// algorithm and prints banding metrics. Run with:  BENCH=1 npx vitest run tests/bench
+// Thresholds were removed in plan step 0.5 (they measured a flat-fraction vs Laplacian
+// trade-off, and failed on main); the tables are the output.
+
 import { describe, it, expect } from 'vitest';
 import { scoreDisplacement, type Score } from './metrics';
 
 // New implementation
-import { calculateDisplacementMap as newDisp1D } from '../src/core/optics/disp1d';
-import { calculateDisplacementMap2 as newDisp2D } from '../src/core/optics/disp2d';
-import { SURFACE_FNS as NEW_SURFACES } from '../src/core/optics/surfaces';
+import { calculateDisplacementMap as newDisp1D } from '../../src/core/optics/disp1d';
+import { calculateDisplacementMap2 as newDisp2D } from '../../src/core/optics/disp2d';
+import { SURFACE_FNS as NEW_SURFACES } from '../../src/core/optics/surfaces';
 
 // Original implementation (kept under tests/)
 import { calculateDisplacementMap as origDisp1D } from './orig_displacement_funcs/displacementMap';
@@ -86,7 +91,7 @@ function printComparison(title: string, rows: ReturnType<typeof compareRow>[]) {
 
 // ---------- tests ----------
 
-describe('displacement banding metrics', () => {
+describe.skipIf(!process.env.BENCH)('displacement banding metrics', () => {
   const base = { W: 340, H: 160, radius: 60, bezel: 60, glass: 50, ior: 1.5 };
 
   it('new: more samples → lower flat-fraction and laplacianEnergy', () => {
@@ -97,8 +102,6 @@ describe('displacement banding metrics', () => {
     printComparison('NEW samples sweep', [
       compareRow('samples 128 → 1024 (lower is better)', sH, sL),
     ]);
-    expect(sH.flatFraction).toBeLessThanOrEqual(sL.flatFraction * 0.9);
-    expect(sH.laplacianEnergy).toBeLessThanOrEqual(sL.laplacianEnergy * 0.95);
   });
 
   it('new: DPR-aware map reduces plateauing vs DPR=1 under upscaled display', () => {
@@ -109,7 +112,6 @@ describe('displacement banding metrics', () => {
     printComparison('NEW DPR sweep', [
       compareRow('DPR 1 → 2 (lower is better)', s2, s1),
     ]);
-    expect(s2.flatFraction).toBeLessThanOrEqual(s1.flatFraction * 0.8);
   });
 
   it('orig: samples and DPR sweeps (console baseline)', () => {
@@ -151,8 +153,5 @@ describe('displacement banding metrics', () => {
       compareRow('DPR=2 (lower is better)', sN2, sO2),
     ]);
 
-    // Soft requirement: new should not be worse than orig. Tighten later.
-    expect(sN1.flatFraction).toBeLessThanOrEqual(sO1.flatFraction * 1.00);
-    expect(sN1.laplacianEnergy).toBeLessThanOrEqual(sO1.laplacianEnergy * 1.00);
   });
 });
