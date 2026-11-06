@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Liquid Glass Workbench</title>
-  <link rel="stylesheet" href="./ui/demoPage.css" /> 
+  <link rel="stylesheet" href="./ui/demoPage.css" />
 </head>
 <body class="show-grid"> <!-- Default to grid -->
   <!-- Toolbar -->
@@ -12,8 +12,9 @@
     <div class="toolbar-brand">
       <span class="brand-name">Liquid Glass</span>
       <span class="brand-badge">Workbench</span>
+      <span class="brand-badge brand-badge--mode" id="modeBadge" title="Render path for this browser">detecting…</span>
     </div>
-    
+
     <div class="toolbar-controls">
       <button type="button" id="btnTheme" class="btn-icon" aria-label="Toggle Theme">
         <svg class="icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -40,7 +41,7 @@
 
   <!-- App Layout -->
   <div class="app-container">
-    
+
     <!-- Sidebar: Library -->
     <aside class="app-sidebar">
       <div class="sidebar-section">
@@ -62,47 +63,32 @@
     <main class="demo-layout">
       <section class="demo-workspace" data-demo-workspace>
         <div class="paper-sheet">
-          <workbench-patterns></workbench-patterns>
+          <div class="workbench-patterns">
+            <div class="section">
+              <h3>Readable, mixed-weight text</h3>
+              <p>
+                Real-time refraction and frost. Configurable surfaces. Drag anywhere.
+                <a href="#" onclick="return false;">Sample link</a> and <strong>bold text</strong> to test contrast.
+                Use this row to pass beneath your glass and verify displacement along edges and glyph stems.
+              </p>
+            </div>
+
+            <div class="section">
+              <h3>Luma Ramp (Banding Check)</h3>
+              <div class="test-block gradient-ramp"></div>
+            </div>
+
+            <div class="section">
+              <h3>High Frequency Edges (Aliasing Check)</h3>
+              <div class="test-block diagonal-stripes"></div>
+            </div>
+          </div>
         </div>
         <div class="demo-stage-layer" data-demo-stage></div>
       </section>
     </main>
   </div>
 
-  <script type="module">
-    import '../src/index.ts';
-    import './ui/demoStage.ts';
-    import './ui/configPane.ts'; // Still used for tweaking active element
-    import './ui/workbenchPatterns.ts';
-
-    // Theme Toggle Logic
-    const btnTheme = document.getElementById('btnTheme');
-    const root = document.documentElement;
-    const sun = btnTheme.querySelector('.icon-sun');
-    const moon = btnTheme.querySelector('.icon-moon');
-
-    const updateThemeIcon = (isDark) => {
-      if (isDark) {
-        sun.style.display = 'block';
-        moon.style.display = 'none';
-      } else {
-        sun.style.display = 'none';
-        moon.style.display = 'block';
-      }
-    };
-
-    btnTheme.addEventListener('click', () => {
-      const isDark = root.dataset.theme === 'dark';
-      root.dataset.theme = isDark ? 'light' : 'dark';
-      updateThemeIcon(!isDark);
-    });
-
-    // Init Theme
-    const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    if (isSystemDark) {
-      root.dataset.theme = 'dark';
-      updateThemeIcon(true);
-    }
-  </script>
+  <script type="module" src="./main.ts"></script>
 </body>
 </html>
