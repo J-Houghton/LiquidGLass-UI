@@ -32,11 +32,11 @@
       "import": "./dist/index.js"
     },
     "./core": {
-      "types": "./dist/core.d.ts",
+      "types": "./dist/core/index.d.ts",
       "import": "./dist/core.js"
     },
     "./elements": {
-      "types": "./dist/elements.d.ts",
+      "types": "./dist/elements/index.d.ts",
       "import": "./dist/elements.js"
     },
     "./package.json": "./package.json"
@@ -49,13 +49,14 @@
   },
   "scripts": {
     "dev": "vite demo/",
-    "build": "tsc -p tsconfig.json && vite build",
+    "build": "tsc -p tsconfig.json && vite build && tsc -p tsconfig.dts.json",
     "build:demo": "tsc -p tsconfig.json && vite build --config vite.demo.config.ts",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.test.json && tsc -p tsconfig.core.json",
-    "prepublishOnly": "npm run typecheck && npm test && npm run build"
+    "prepublishOnly": "npm run typecheck && npm test && npm run build",
+    "postbuild": "node scripts/check-dist.mjs"
   },
   "devDependencies": {
     "@tweakpane/core": "^2.0.5",
@@ -64,7 +65,6 @@
     "tweakpane": "^4.0.5",
     "typescript": "^6.0.3",
     "vite": "^8.3.6",
-    "vite-plugin-dts": "^4.5.4",
     "vitest": "^5.1.0"
   }
 }
