@@ -424,3 +424,12 @@ body.show-grid::before {
   background-color: #fff;
   background-image: repeating-linear-gradient(45deg, #fff 0px, #fff 10px, #000 10px, #000 12px);
 }
+
+/* Render-mode badge: which path the current browser got (see detectGlassSupport) */
+.brand-badge--mode {
+  margin-left: 0.25rem;
+}
+.brand-badge--mode[data-mode='frost'] {
+  background: #b45309;
+  color: #fff;
+}

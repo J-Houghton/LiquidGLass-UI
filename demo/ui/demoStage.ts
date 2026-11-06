@@ -53,7 +53,20 @@ function createGlass(config: GlassParams, parent: HTMLElement, id: string): Glas
       debugEl.style.backgroundImage = url ? `url(${url})` : '';
     },
   });
+  showRenderMode(handle);
   return { el, debugEl, handle };
+}
+
+/** Toolbar badge: which path this browser got (SVG lens in Chromium, CSS frost elsewhere). */
+function showRenderMode(handle: LiquidGlassHandle): void {
+  const badge = document.getElementById('modeBadge');
+  if (!badge) return;
+  badge.textContent = handle.mode === 'glass' ? 'SVG lens' : 'CSS frost fallback';
+  badge.dataset.mode = handle.mode;
+  badge.title =
+    handle.mode === 'glass'
+      ? 'backdrop-filter: url(#svg) renders in this engine'
+      : `detectGlassSupport() = "${handle.support}": this engine does not render SVG backdrop filters, so you see the CSS fallback`;
 }
 
 /** Apply a parameter patch: size goes through CSS (the observer follows), the rest through the handle. */
