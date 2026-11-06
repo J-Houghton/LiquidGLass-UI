@@ -548,6 +548,44 @@ Dependencies: 0 → 1 → 2 → 3 → 4 → 6. Phase 5 items slot in after 3 (5.
 
 ---
 
+## 6. Package comparison and optimization backlog (2026-11-06)
+
+Source-level comparison against the four strongest current packages (hyalite 0.5.0, PallavAg
+liquid-glass-web-react, vaso, samasante/liquid-glass, glisse 0.5.0; full sources read, not just the
+survey). Where we stand:
+
+| Aspect | Ours | Field | Verdict |
+|---|---|---|---|
+| Optics | 1D Snell trace (512 samples, numeric derivative, soft knee) swept over a rounded-rect band; 4 profiles | hyalite and vaso: same Snell idea (hyalite 0.25 px steps with a slope cap; vaso 256-entry LUT); PallavAg/samasante/glisse: analytic dome + erf feathering, no Snell | On par with the best; our profile set is the kube.io/vaso/hyalite one |
+| Map resolution | Full device resolution (W·H·dpr²), no cap | hyalite caps at 320k px, vaso at 160k, PallavAg/samasante fixed 512² stretched, glisse dpr ≤ 2; nobody else is DPR-aware | **Gap:** a 900×600 card at 2× is a 2.2 Mpx map and an 8.6 MB buffer per regen |
+| Map encoding | async `toBlob` → blob URL | everyone: sync `toDataURL` (base64 PNG) | Ours is better (no 33 % bloat, no sync encode); needs `img-src blob:` under CSP |
+| Symmetry | pixel centers, quadrant-mirrored, exact | hyalite/PallavAg/samasante mirror; vaso/glisse full walk | On par |
+| Filter region | `userSpaceOnUse` with explicit px size, rewritten on every resize | hyalite: `filterUnits=objectBoundingBox 0 0 1 1` + `primitiveUnits=userSpaceOnUse`, feImage with no subregion, so the region follows the element and the old map stretches until the rebuild lands | **Gap:** our region lags one render behind during resize |
+| Resize policy | regenerate per exact size, serialized newest-wins | hyalite: size buckets on a 1.02 grid + settle/90 ms live throttle; vaso: stretch, re-sharpen after 100 ms; glisse: requestIdleCallback refit | Partly covered by serialization; bucketing would raise registry hits |
+| Blur stage | after displacement (Gaussian or noise) | hyalite, PallavAg, samasante: blur `SourceGraphic` *before* displacement (hyalite pins alpha to 1 after the blur to avoid a white rim hairline); glisse: after, masked to the rim | Field leans "before"; worth an option |
+| Dispersion | 3 passes at (1 ∓ 0.02·d) × scale, summed | PallavAg 1.2/1.1/1.0 ×, samasante ±0.11·d ×, glisse 1+0.2d/1+0.1d/1 ×, hyalite fixed ±2·d px, vaso 9 Gaussian-weighted spectral samples | On par; hyalite's absolute-px fringe is a nicer control |
+| Rim / specular | 2 px Gaussian rim, light only, in B | hyalite: signed B = light **and** shade (Fresnel/caustic from the field) with multiply + add, ring mask from |R−½|+|G−½| for ring-only saturation; PallavAg/samasante: glow + edge with sum/diff projections | **Gap:** we have no shade side, so the glass reads flatter |
+| Cache | refcounted registry, revoke on last release | hyalite: two-level (maps vs filters) + 24 warm idle maps; vaso: LRU 32 | Add a small idle cache |
+| Support | brands/UA + `supports(blur)`; frost fallback | hyalite: `supports(url(#x))` + brands/UA + vendor + `<html data-hyalite=force\|off>`; vaso: UA + `supports(url(#a))`; glisse/samasante: UA only | On par; add the `url(#x)` probe and a page-level override |
+| Appear | none | hyalite "materialize": scale eases in from 0 over N ms on a cloned filter | Cheap to add (attribute-only updates) |
+| Packaging | 3 ESM entries, zero deps, per-file d.ts, ~15 kB gzip unminified total | PallavAg ~5 kB React component; glisse React-only; vaso React + core; hyalite global script | Fine; ours is the only one with DPR, SSR-safe import and a no-DOM core |
+
+Backlog, ranked. "No visual change" items are safe to do without a browser pass.
+
+| # | Change | Effort | Visual change? |
+|---|---|---|---|
+| B1 | Map pixel budget: `maxMapPixels` (default 320k, hyalite's) caps the effective DPR; feImage stretches. Keep `rimPx` in CSS px so the rim does not thin out. | S | none for small/medium elements; softer rim on very large ones |
+| B2 | Filter region as `objectBoundingBox 0 0 1 1` with `primitiveUnits=userSpaceOnUse` and no feImage subregion when `regionPadding` is 0. Region follows the box; no per-size attribute writes; old map stretches during resize. | S | none (spec snapshots change) |
+| B4 | Idle cache in `MapRegistry`: keep the last N released maps (default 16) warm; revoke on eviction. | S | none |
+| B8 | Support: add `CSS.supports('backdrop-filter','url(#x)')` as a required signal and honour `<html data-liquid-glass-support="force\|off">`. | S | none |
+| B9 | Size bucketing on a 1.02 geometric grid for the map key (hyalite) so a resize burst hits the registry. Only if B1/B2 leave regen cost visible. | S | none |
+| B5 | `blurStage: 'before' \| 'after'` option (default stays `after`); recommend trying `before` with alpha pinned to 1. | S | only when switched |
+| B7 | `appear` (ms): ease `displacementScale` from 0 on attach via attribute-only updates. | S | opt-in |
+| B6 | Signed rim: light **and** shade in the blue channel (128 neutral), multiply for shade, add for light, weights from the surface slope (hyalite's 0.78/0.30 as starting point). The one change that visibly deepens the glass. | M | yes, fixtures, needs an eyeball pass |
+| B10 | `dispersionUnit: 'relative' \| 'px'` (hyalite's fixed-pixel fringe). | S | opt-in |
+
+Done in this pass: the build check found and fixed empty `.d.ts` output (Vite 8 + vite-plugin-dts 4), so types now come from `tsc` and `scripts/check-dist.mjs` guards every build.
+
 ## 5. Draft `CLAUDE.md`
 
 Written to the repository root as `CLAUDE.md` (uncommitted). It describes the commands as they exist after step 0.1, and the directory rules as they will be once `src/dom` and `src/elements` exist; the rules apply to new code immediately.
