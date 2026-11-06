@@ -7,6 +7,8 @@ Published as `liquid-glass-filter` (2.x, headless).
 The design, audit, status and open decisions are in `docs/modernization-plan.md`. Read its
 "Status" section before starting work. The verified survey of the field that drove Phase 5 is
 `docs/research-liquid-glass-2026.md`; cite it rather than re-deriving browser-support claims.
+The consumer-facing guide is `docs/usage.md`; a public API change updates it (and the README
+tables) in the same PR.
 
 ## Commands
 

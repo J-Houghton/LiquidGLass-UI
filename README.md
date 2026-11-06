@@ -13,6 +13,9 @@ stays crisp; whatever is behind it refracts.
   CSS frost fallback (see [Browser support](#browser-support)).
 - **Optional custom elements** behind a separate entry point.
 
+The full usage and API guide, with every option, parameter range, render path, framework
+snippet and troubleshooting entry, is [`docs/usage.md`](docs/usage.md).
+
 ## Install
 
 ```bash
