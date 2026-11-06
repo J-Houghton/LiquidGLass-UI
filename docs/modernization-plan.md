@@ -24,13 +24,16 @@ per the recommendations in §4 (OQ-13: not on npm, so 2.0.0 with no deprecation 
 | 3 Headless API | done | `createGlassFilter`, `attachLiquidGlass`, ESM-only package with `.`/`./core` entries. Demo dogfoods the API (3.6). |
 | 4 Elements, Lit removal | done | `./elements` entry; lifecycle tests run under `happy-dom` (dev-only, the addition OQ-4 reserved). 4.3 landed early to fix a real break: `sideEffects:false` made Rollup drop the demo's side-effect-only imports, so the demo now has an explicit entry (`demo/main.ts`). `blur` is exposed as the `blurAmount` element property because `HTMLElement.blur()` exists. |
 | 5 Research-dependent | done for the "clear win" items; the rest are decisions (below) | Driven by `docs/research-liquid-glass-2026.md` (its §5 ranks 14 items). Landed: item 1 real support detection + item 4(i) frost fallback + item 7 reduced transparency (5.1); item 2 three-pass dispersion + item 8 rim-in-blue-channel and region padding + item 6 `physicalScale` (5.3); item 3 quadrant-mirrored band walk + item 10 shared refcounted map registry (5.5). OQ-17 and OQ-18 were fixed on the way. Decision for 5.2 (renderer): stay SVG-only, handle remains renderer-neutral (research items 11, 14 are "not worth it now"). 5.4 (shapes) and 5.6 (vocabulary) are deferred/settled: see OQ-19 to OQ-23. |
-| 6 Release | done (6.3 publish workflow not added) | README, CHANGELOG, 2.0.0. 6.2 bumped to TypeScript 6.0, Vite 8.3, Vitest 5.1, happy-dom 21, Node 22 in both workflows. TypeScript 7 (native compiler) and vite-plugin-dts 5 (rewrite over unplugin-dts, `rollupTypes` → `bundleTypes`) were tried and deliberately not taken yet. |
+| 6 Release | done | README, CHANGELOG, 2.0.0. 6.2 bumped to TypeScript 6.0, Vite 8.3, Vitest 5.1, happy-dom 21, Node 22 in both workflows. TypeScript 7 (native compiler) and vite-plugin-dts 5 (rewrite over unplugin-dts, `rollupTypes` → `bundleTypes`) were tried and deliberately not taken yet. 6.3: `.github/workflows/release.yml` publishes to npm with provenance on a `v*` tag that matches `package.json` (needs the `NPM_TOKEN` secret); `package.json` carries repository/homepage/bugs/keywords/publishConfig and a `prepublishOnly` gate. |
 
-Not yet done by anyone: a visual check of the demo in a real browser (this session had no browser),
-now covering the Phase 3.6/4.3 rewrite, the pixel-center geometry (OQ-17), the three-pass dispersion
-and the blue-channel rim (5.3). Run `npm run dev` in Chrome, load each preset, slide dispersion to
-2–5, toggle the debug map (B channel is the rim now), drag, resize; then load it in Safari or Firefox
-and confirm the frost fallback and `data-liquid-glass="frost"`.
+Visual check: done by the owner in a browser on 2026-11-05 after the Phase 5 rendering changes
+("tested in browser and it works"). The branch was pushed as `feat/liquid-glass-2.0` (renamed from
+`modernize/headless`) on 2026-11-06, not yet merged. The demo toolbar now shows which render path the
+visiting browser got ("SVG lens" or "CSS frost fallback").
+
+Considered and not done: throttling observer-driven resizes (hyalite rebuilds at most every 90 ms).
+Unnecessary here because renders are serialized with newest-params-wins, so during a continuous
+resize the regeneration rate is already bounded by encode latency, not by frame rate.
 
 New findings while executing (added as OQ-17 and OQ-18 in §4):
 
@@ -541,7 +544,7 @@ Dependencies: 0 → 1 → 2 → 3 → 4 → 6. Phase 5 items slot in after 3 (5.
 | OQ-20 | A content-side `filter: url()` mode so Safari and Firefox refract owned content (research item 4(ii)). | Later, opt-in, only if a product needs refraction outside Chromium. The core is ready (graph is data); the cost is API shape (the call must receive the content), the 4096² WebKit clamp, no `<video>` on Safari, and Firefox's CPU path. Frost suffices for 2.0. |
 | OQ-21 | SDF-driven geometry for per-corner radii, superellipse corners matching `corner-shape`, and merging (research items 9, 13, 14). | Defer until a shape need exists. `corner-shape: squircle` alone would make the CSS clip disagree with the circular-corner map, so it needs item 9 first. |
 | OQ-22 | HTML-in-Canvas / WebGPU renderer for lensing beyond the box (research item 11). | No. Chromium-only like the SVG path, young reference libraries, read-back gaps. The handle stays renderer-neutral in case WebKit changes the picture. |
-| OQ-23 | Where the research doc lives and when it is committed. | The other session wrote it to `docs/research-liquid-glass-2026.md` (untracked at the end of this pass because it was still being finalized). Commit it as-is once that session is done; CLAUDE.md and README already point at that path. |
+| OQ-23 | Where the research doc lives and when it is committed. | **Done** 2026-11-06: committed as `docs/research-liquid-glass-2026.md` (its last edits were wording and line-reference refreshes; the 14 ranked items did not change). CLAUDE.md and README point at that path. If the research session edits it again, that is just another commit. |
 
 ---
 
