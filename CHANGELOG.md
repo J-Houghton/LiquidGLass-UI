@@ -55,6 +55,15 @@ fixture-pinned ways listed under "Rendering changes".
   the filter stretches them to the box, so a resize burst hits the map registry; `debug.mapWidth`,
   `debug.mapHeight`. Rim-band pixels shift by up to 2 % versus exact maps; `sizeBucket: 1` restores them.
 - `dispersionUnit` parameter: `'relative'` (default, unchanged) or `'px'` for a fixed-width fringe.
+- Content-side lens (experimental): `attachLiquidGlass(target, { content, mode })` applies the same
+  graph with `filter: url()` to an element you own, so the lens renders in Safari and Firefox.
+  `buildFilterSpec(..., { region })` confines the stages to the lens rectangle and ends with a
+  source cut-out and composite; `createGlassFilter` gains `lens` / `setLens()` / `bumpFilterId`;
+  the handle gains `mode: 'content'`, `content`, `relayout()`, `getContentStyle()`;
+  `detectContentFilterSupport()`, `needsFilterIdBump()`, `isWebKitEngine()`, `safariMajorVersion()`;
+  `<liquid-glass-container content="selector" mode="content">`. In Chrome the content lens matches
+  the backdrop lens pixel for pixel outside a one-pixel anti-aliasing ring at the shape edge (and
+  the rectangle corners when `blur` ≥ 1 px); Safari and Firefox need a manual check.
 - `MapRegistry` keeps up to `maxIdle` released maps warm (page registry: 16); `clearIdle()`.
 - `detectGlassSupport()` also requires `backdrop-filter: url()` to parse and honours
   `<html data-liquid-glass-support="force|off">`.

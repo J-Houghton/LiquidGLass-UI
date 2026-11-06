@@ -80,6 +80,30 @@ panel.style.backdropFilter = filter.url;   // 'url(#lg-1)'
 The filter region lives in the styled element's coordinate space, so `width` and `height` must
 equal that element's size. This path does no support detection; pair it with `detectGlassSupport()`.
 
+### Bring your own content (Safari and Firefox, experimental)
+
+`backdrop-filter: url()` renders only in Chromium. Where it does not, the same lens can be applied
+with plain `filter: url()` to an element whose pixels you own, with the lens as a subregion at the
+glass's position. Pass that element as `content`:
+
+```ts
+const handle = attachLiquidGlass(panel, {
+  content: document.querySelector('#hero'), // the element behind the panel
+  // mode: 'auto' (default): backdrop lens on Chromium, content lens elsewhere; 'content' forces it
+});
+// after moving the panel yourself (drag, layout change): handle.relayout()
+```
+
+The content element gets `filter: url(#id)`; the panel keeps its tint and radius. The lens follows
+size changes of both elements and scrolling; moving the panel needs `relayout()` (attribute writes,
+no map work). One lens per content element. In content mode the blur runs before displacement,
+the lens is saturated inside the filter, and the rectangle corners outside the rounded shape get
+the lens blur (invisible at the default 0.2 px). Caveats from the engines, all documented in
+`docs/research-liquid-glass-2026.md` §3 B: Safari leaves `<video>` and WebGL canvases unfiltered and
+downscales filtered content over 4096 device px per side (the handle warns once); Safari before 27
+needs a fresh filter id per update (done automatically); Firefox filters on the CPU. Filter the
+smallest element that sits behind the glass, not the page.
+
 ### HTML custom elements
 
 ```ts
@@ -99,7 +123,9 @@ defineLiquidGlassElements();   // no-op on a server; idempotent
 Attributes are the parameter names in kebab-case. The 1.x attribute names (`scale-px`,
 `blur-std-dev`, `show-specular`, `frost`) are still accepted. On the element, the `blur` parameter is
 the `blurAmount` property because `HTMLElement.blur()` already exists. `appear="400"` plays the
-entrance on connect; `element.replayAppear()` plays it again.
+entrance on connect; `element.replayAppear()` plays it again. `content="#hero"` (a selector,
+resolved in the element's root on connect) and `mode="content"` select the content-side lens
+described above.
 
 ### Engine only
 
@@ -143,6 +169,8 @@ Values are validated and clamped; `handle.params.notes` lists anything that was 
 | `frostBlurPx` (12) | Blur radius of the frost fallback. |
 | `reducedTransparency` (`'auto'`) | Frostier, higher-contrast glass: tint ≥ 0.35, blur ≥ 1.5, no dispersion. `'auto'` follows `prefers-reduced-transparency` where the browser exposes it (Chromium does, Safari does not), or pass a boolean from your own setting. |
 | `appear` (none) | Entrance: the lens eases in from flat glass over this many ms (or `{ duration, easing }`). Attribute-only updates, no map work; skipped under `prefers-reduced-motion`. Replay any time with `handle.appear()`. |
+| `content`, `mode` (`'auto'`) | Content-side lens for engines without `backdrop-filter: url()`: the element to filter, and whether to use it only where the backdrop lens fails (`'auto'`) or always (`'content'`). See "Bring your own content". |
+| `contentSupport`, `bumpFilterId`, `warn` | Overrides for content mode: `filter: url()` detection, the Safari < 27 fresh-id-per-update workaround (`createGlassFilter` option too), and where the oversized-content warning goes. |
 | `size`, `radius`, `applyStyles` | Sizing source, corner radius source, whether to write styles onto the target. |
 | `regionPadding` (0) | Enlarge the filter region around the box so displaced samples can come from just outside it (concave profiles). Output is still clipped to the box. |
 | `maxMapPixels` (320 000) | Pixel budget per map: above it the map is generated at a lower ratio and stretched by the filter (the rim keeps its CSS-px width). `Infinity` disables. |
@@ -154,7 +182,9 @@ Values are validated and clamped; `handle.params.notes` lists anything that was 
 
 | Member | |
 |---|---|
-| `mode`, `support` | `'glass'` or `'frost'`; what detection concluded. |
+| `mode`, `support` | `'glass'` (backdrop lens), `'content'` (content-side lens) or `'frost'`; what detection concluded. |
+| `content`, `relayout()`, `getContentStyle()` | Content mode: the filtered element, re-measure the lens offset after a move (attribute writes only), and the declaration the content element needs (`filter`) for `applyStyles: false`. |
+| `lens`, `setLens({ x, y })` | The lens offset inside the content element (`createGlassFilter` option `lens`); null in backdrop mode. |
 | `update(patch)` | Merge and re-render. Calls in the same tick are coalesced; the newest parameters win. Returns a promise that resolves when the DOM reflects the patch. |
 | `ready` | Resolves after the first render. |
 | `params` | Current, validated parameters. |
@@ -182,7 +212,9 @@ Verified against engine sources and bug trackers in November 2026 (details and c
 (Client Hints brands, UA string fallback). That is the same compromise every current library makes;
 it will be revisited if WebKit's in-progress software path ships. Override it for a page with
 `<html data-liquid-glass-support="force">` or `"off"`. The frost fallback is
-`backdrop-filter: blur() saturate()`, the tint, and a 1px inset highlight; no refraction.
+`backdrop-filter: blur() saturate()`, the tint, and a 1px inset highlight; no refraction. For real
+refraction in WebKit and Gecko, hand the lens the element behind it ("Bring your own content"):
+`filter: url()` on owned pixels renders in all three engines.
 
 Handles with identical geometry share one map image through a reference-counted registry that also
 keeps the last 16 released maps warm, so a list of same-size cards costs one map and a remount costs

@@ -99,6 +99,13 @@ it belongs in `src/dom`; core takes numbers and returns data.
   `backdrop-filter: url()` but render nothing, so `detectGlassSupport()` is an engine sniff by
   necessity and `attachLiquidGlass` falls back to CSS frost. Tests that want the glass path in
   happy-dom or the fake DOM must pass `support: 'full'`.
+- Content-side mode (`content` option, `buildFilterSpec` `region`) applies the graph with `filter: url()`
+  to an element the consumer owns. Rules that are not obvious: one lens per content element (the
+  filter is a property of that element); the blur always runs before displacement there, because a
+  blur after it would feather the lens rectangle and the hole cut from the source would show through;
+  a move is `setLens()`, attribute writes only, never a map; Safari < 27 needs `bumpFilterId`, which
+  makes `handle.id`/`handle.url` change per render. Tests force it with `mode: 'content'` or
+  `support: 'frost', contentSupport: true`.
 
 ## Workflow
 
