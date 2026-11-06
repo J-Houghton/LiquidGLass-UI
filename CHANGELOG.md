@@ -46,8 +46,17 @@ fixture-pinned ways listed under "Rendering changes".
 - Entrance animation: `appear` option, `handle.appear(ms)`, `handle.setIntensity(k)` / `intensity`
   (a 0..1 multiplier on displacement and rim, attribute-only); `appear` attribute and `replayAppear()`
   on `<liquid-glass-container>`. Honours `prefers-reduced-motion`.
-- Playground: an A/B twin that mirrors the active glass with one override (blur stage), captions,
+- Playground: an A/B twin that mirrors the active glass with overrides (blur stage, shade), captions,
   and a "Replay appear" control.
+- `shade` parameter (0..1, default 0): edge darkening from the lens's normalized stretch profile,
+  baked below 128 in the map's blue channel and multiplied in by the filter. Demo presets use 0.35.
+- `maxMapPixels` option (default 320 000): pixel budget per map; `debug.mapDpr` reports the ratio.
+- `MapRegistry` keeps up to `maxIdle` released maps warm (page registry: 16); `clearIdle()`.
+- `detectGlassSupport()` also requires `backdrop-filter: url()` to parse and honours
+  `<html data-liquid-glass-support="force|off">`.
+- `demo/visual.html` screenshot harness, `scripts/visual-shot.mjs` (headless Chrome/Edge) and
+  `scripts/png-diff.mjs` (PNG compare + diff image), all dependency-free.
+- `scripts/check-dist.mjs` post-build guard; declarations come from `tsc` (vite-plugin-dts dropped).
 - `<liquid-glass-container>` and `<liquid-glass-filter>` as hand-rolled custom elements with
   typed properties, attribute aliases, a `debug` overlay and a `liquid-glass:render` event.
 - Injectable seams (`encodeImage`, `revokeImage`, `registry`, `resizeObserver`, `matchMedia`,
@@ -60,8 +69,11 @@ fixture-pinned ways listed under "Rendering changes".
   sides and a bright one-pixel ring at the rim).
 - The rim highlight uses the same normal in corners as on the edges (1.x flipped it, leaving notches
   at corner/edge junctions).
-- One map image: R,G displacement, B rim light. The separate specular image and second `feImage`
-  are gone.
+- One map image: R,G displacement, B lighting (128 neutral; light above, shade below). The separate
+  specular image and second `feImage` are gone.
+- The filter region is the element box in `objectBoundingBox` units (primitives stay in px), so a
+  resize rewrites nothing on the graph and the old map stretches until the new one lands.
+  Pixel-identical to the previous explicit-px region (verified by screenshot diff).
 - Dispersion is radial (three `feDisplacementMap` passes at `1 ∓ 0.02·dispersion` of the scale,
   channel-isolated and summed) instead of a horizontal `feOffset` fringe masked to the bezel.
 - Noise blur rendered its first frame at 5× the strength of every later frame; fixed.

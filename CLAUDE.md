@@ -21,6 +21,8 @@ The design, audit, status and open decisions are in `docs/modernization-plan.md`
 | Demo build | `npm run build:demo` | `dist-demo/`; GitHub Pages deploys this on push to `main`. |
 | Benchmark | `BENCH=1 npx vitest run tests/bench` | Banding metrics vs. the original algorithm. Not a gate. |
 | Regenerate fixtures | `UPDATE_FIXTURES=1 npm test` | Only in a commit that explains the intended visual change. |
+| Screenshot harness | `npm run dev -- --port 5178`, then `node scripts/visual-shot.mjs out.png 'a={...}&b={...}&base={...}'` | Deterministic `demo/visual.html` scene, one glass per query variant, headless local Chrome/Edge, no extra deps. View the PNG with the Read tool. |
+| Screenshot diff | `node scripts/png-diff.mjs before.png after.png diff.png` | Exit 0 when identical; prints differing pixel count, mean/max delta and bounding box. |
 
 ## Layout and import rules
 
@@ -55,6 +57,9 @@ it belongs in `src/dom`; core takes numbers and returns data.
 3. **Tests before refactors.** Any change to `src/core` math or to `buildFilterSpec` lands with a
    fixture or snapshot that pins the current output first. A refactor commit must not change
    fixtures. An intended visual change regenerates them in its own commit that says what changed.
+   For anything that touches rendering: take baseline screenshots with the harness before the
+   change, the same ones after, diff them, look at the PNGs, and state the verdict in the commit.
+   "No visual change" means `png-diff` reports identical.
 4. **`sideEffects: false` stays true.** Consequence: never rely on side-effect-only imports
    inside this package, including the demo (`import './x.ts'` gets tree-shaken; call an exported
    function instead).
@@ -84,8 +89,12 @@ it belongs in `src/dom`; core takes numbers and returns data.
 - `HTMLElement.prototype.blur()` exists, so the elements expose the `blur` parameter as `blurAmount`.
 - The band is sampled at pixel centers and computed for one quadrant, then mirrored. Tests assert
   exact mirror symmetry and equivalence with a naive walk; keep both properties.
-- One map image carries everything: R,G displacement, B rim light (baked at strength 1; the filter
-  applies `specularStrength` once). Changing `specularAngleDeg` regenerates the map on purpose.
+- One map image carries everything: R,G displacement, B lighting signed around 128 (light above,
+  baked at strength 1; shade below, the normalized stretch profile). The filter applies
+  `specularStrength` and `shade` once. Changing `specularAngleDeg` regenerates the map on purpose.
+- The filter region is `objectBoundingBox 0 0 1 1` with `primitiveUnits="userSpaceOnUse"` and no
+  feImage subregion (unless `regionPadding` > 0), so resizes rewrite nothing on the graph. Keep it.
+- Maps are capped at `maxMapPixels` (320k device px) and stretched; `debug.mapDpr` tells you the ratio.
 - Browser support is settled, not a guess: the lens renders only in Chromium; WebKit and Gecko parse
   `backdrop-filter: url()` but render nothing, so `detectGlassSupport()` is an engine sniff by
   necessity and `attachLiquidGlass` falls back to CSS frost. Tests that want the glass path in

@@ -128,6 +128,7 @@ All lengths are CSS pixels. Defaults in parentheses.
 | `blurKind` (`gauss`), `blur` (0.2) | Gaussian blur, or `noise1`/`noise2` for a textured, organic distortion. |
 | `blurStage` (`after`) | `after` blurs the refracted result; `before` blurs the backdrop first and then displaces it, which keeps the rim and the dispersion fringe crisp. The playground's A/B twin shows both side by side. |
 | `specular` (true), `specularAngleDeg` (60), `specularStrength` (0.81) | Rim highlight on/off, light direction, brightness. |
+| `shade` (0) | Edge darkening, 0..1: how dark the glass gets where the lens thins the backdrop the most (just inside the rim), fading to nothing where it is flat. Reads as the thickness of the edge; 0.35 is a good start. |
 | `tint` (0.05) | Black tint over the glass, 0 to 1. |
 | `saturation` (1) | Applied to the backdrop with the filter. |
 
@@ -144,6 +145,7 @@ Values are validated and clamped; `handle.params.notes` lists anything that was 
 | `appear` (none) | Entrance: the lens eases in from flat glass over this many ms (or `{ duration, easing }`). Attribute-only updates, no map work; skipped under `prefers-reduced-motion`. Replay any time with `handle.appear()`. |
 | `size`, `radius`, `applyStyles` | Sizing source, corner radius source, whether to write styles onto the target. |
 | `regionPadding` (0) | Enlarge the filter region around the box so displaced samples can come from just outside it (concave profiles). Output is still clipped to the box. |
+| `maxMapPixels` (320 000) | Pixel budget per map: above it the map is generated at a lower ratio and stretched by the filter (the rim keeps its CSS-px width). `Infinity` disables. |
 | `rimPx` (2) | Width of the rim highlight. |
 | `mount`, `dpr`, `encodeImage`, `revokeImage`, `registry`, `document` | Where the `<svg>` goes, device pixel ratio, and seams for tests, workers and shared caches. |
 
@@ -158,12 +160,9 @@ Values are validated and clamped; `handle.params.notes` lists anything that was 
 | `url`, `id`, `filterElement`, `svgElement` | The filter reference and its elements. |
 | `setDpr(n)`, `refresh()` | Re-render at another device pixel ratio / with current parameters. |
 | `intensity`, `setIntensity(k)`, `appear(ms?)` | A 0..1 multiplier on displacement and rim (graph attributes only); `appear` eases it from 0 to 1. |
-| `debug` | `mapUrl` (one image: R,G displacement, B rim light), `physicalMaxDisplacementPx`, `displacementPx`, `renders`. |
+| `debug` | `mapUrl` (one image: R,G displacement, B light above 128 and shade below), `mapDpr`, `physicalMaxDisplacementPx`, `displacementPx`, `renders`. |
 | `destroy()` | Removes everything the handle created. Idempotent. |
 | `getStyle()` (attach only) | The declarations the effect needs, for `applyStyles: false`. |
-
-Handles with identical geometry share one map image through a reference-counted registry, so a list
-of same-size cards costs one map.
 
 ## Browser support
 
@@ -178,10 +177,15 @@ Verified against engine sources and bug trackers in November 2026 (details and c
 | Gecko (Firefox) through 159 | Parses the value, renders nothing for this graph. Gets the frost fallback. |
 
 `CSS.supports()` cannot tell these apart (support is defined at parse level), so
-`detectGlassSupport()` is an engine check (Client Hints brands, UA string fallback) plus a parse
-check. That is the same compromise every current library makes; it will be revisited if WebKit's
-in-progress software path ships. The frost fallback is `backdrop-filter: blur() saturate()`, the
-tint, and a 1px inset highlight; no refraction.
+`detectGlassSupport()` is a parse check for `url()` in `backdrop-filter` plus an engine check
+(Client Hints brands, UA string fallback). That is the same compromise every current library makes;
+it will be revisited if WebKit's in-progress software path ships. Override it for a page with
+`<html data-liquid-glass-support="force">` or `"off"`. The frost fallback is
+`backdrop-filter: blur() saturate()`, the tint, and a 1px inset highlight; no refraction.
+
+Handles with identical geometry share one map image through a reference-counted registry that also
+keeps the last 16 released maps warm, so a list of same-size cards costs one map and a remount costs
+nothing.
 
 ## Development
 
@@ -192,6 +196,11 @@ npm test             # vitest, once
 npm run typecheck    # whole repo + a no-DOM check of src/core
 npm run build        # dist/: index, core, elements (ESM + .d.ts)
 BENCH=1 npx vitest run tests/bench   # banding benchmark vs. the original algorithm
+
+# visual checks: deterministic harness + headless Chrome/Edge screenshots, no extra dependencies
+npm run dev -- --port 5178
+node scripts/visual-shot.mjs out/ab.png 'a={"shade":0}&b={"shade":0.35}&base={"dispersion":2}'
+node scripts/png-diff.mjs out/before.png out/after.png out/diff.png
 ```
 
 Layout: `src/core` (pure engine), `src/dom` (browser glue), `src/elements` (custom elements),

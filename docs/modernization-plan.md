@@ -574,17 +574,17 @@ Backlog, ranked. "No visual change" items are safe to do without a browser pass.
 
 | # | Change | Effort | Visual change? |
 |---|---|---|---|
-| B1 | Map pixel budget: `maxMapPixels` (default 320k, hyalite's) caps the effective DPR; feImage stretches. Keep `rimPx` in CSS px so the rim does not thin out. | S | none for small/medium elements; softer rim on very large ones |
-| B2 | Filter region as `objectBoundingBox 0 0 1 1` with `primitiveUnits=userSpaceOnUse` and no feImage subregion when `regionPadding` is 0. Region follows the box; no per-size attribute writes; old map stretches during resize. | S | none (spec snapshots change) |
-| B4 | Idle cache in `MapRegistry`: keep the last N released maps (default 16) warm; revoke on eviction. | S | none |
-| B8 | Support: add `CSS.supports('backdrop-filter','url(#x)')` as a required signal and honour `<html data-liquid-glass-support="force\|off">`. | S | none |
+| B1 | **Done 2026-11-06.** `maxMapPixels` (default 320k) caps the generation ratio; `debug.mapDpr`. Screenshots: default and variant scenes pixel-identical; a 900×420 scene differs only along the rim band (1.4 % of pixels), as intended. | S | none below the budget |
+| B2 | **Done 2026-11-06.** `objectBoundingBox 0 0 1 1` region, px primitives, no feImage subregion without padding. Screenshot diff: identical. | S | none |
+| B4 | **Done 2026-11-06.** `MapRegistry({ maxIdle })`, page registry keeps 16 warm, `clearIdle()`. | S | none |
+| B8 | **Done 2026-11-06.** `url(#x)` parse probe required; `<html data-liquid-glass-support="force\|off">` override. | S | none |
 | B9 | Size bucketing on a 1.02 geometric grid for the map key (hyalite) so a resize burst hits the registry. Only if B1/B2 leave regen cost visible. | S | none |
 | B5 | **Done 2026-11-06.** `blurStage: 'before' \| 'after'` (default stays `after`); `before` pins alpha to 1 after the blur. Compare both live in the playground: "Compare (A/B twin)" puts a second glass next to the active one that mirrors every control and differs only by the twin's blur stage. | S | only when switched |
 | B7 | **Done 2026-11-06.** `appear` option / `handle.appear()` / `setIntensity()`; `appear` attribute + `replayAppear()` on the element; "Replay appear" in the playground replays on the glass and its twin together. Reduced motion snaps. | S | opt-in |
-| B6 | Signed rim: light **and** shade in the blue channel (128 neutral), multiply for shade, add for light, weights from the surface slope (hyalite's 0.78/0.30 as starting point). The one change that visibly deepens the glass. | M | yes, fixtures, needs an eyeball pass |
+| B6 | **Done 2026-11-06.** Blue channel signed around 128: light above (unchanged model), shade below = the lens's *normalized stretch profile* (inward decrease of the displacement curve / its max). The first attempt baked the photometric density gain and saturated into a black frame at any strength (screenshots), so the amplitude lives in the `shade` parameter (0..1, API default 0, demo presets 0.35) and the map only carries the shape. Multiply blend in the graph, before the rim. Screenshots at 0 / 0.35 / 0.7 and on the lens/lip/concave presets look like a thicker edge without a frame. | M | only when `shade` > 0 |
 | B10 | `dispersionUnit: 'relative' \| 'px'` (hyalite's fixed-pixel fringe). | S | opt-in |
 
-Done in this pass: the build check found and fixed empty `.d.ts` output (Vite 8 + vite-plugin-dts 4), so types now come from `tsc` and `scripts/check-dist.mjs` guards every build.
+Done in this pass: the build check found and fixed empty `.d.ts` output (Vite 8 + vite-plugin-dts 4), so types now come from `tsc` and `scripts/check-dist.mjs` guards every build. Visual verification now has tooling: `demo/visual.html` (deterministic scene, query-string variants), `scripts/visual-shot.mjs` (headless local Chrome/Edge; repeat shots are byte-identical) and `scripts/png-diff.mjs`. Remaining backlog: B9 (size bucketing, only if resize cost shows) and B10 (absolute-px dispersion unit).
 
 ## 5. Draft `CLAUDE.md`
 
