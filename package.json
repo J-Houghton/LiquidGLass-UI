@@ -2,8 +2,26 @@
   "name": "liquid-glass-filter",
   "version": "2.0.0",
   "description": "Physics-based liquid glass refraction for the web: a headless engine plus a tiny attach/update/destroy API. Zero dependencies.",
-  "type": "module",
+  "keywords": [
+    "liquid-glass",
+    "glass",
+    "refraction",
+    "backdrop-filter",
+    "svg-filter",
+    "displacement-map",
+    "web-components",
+    "headless"
+  ],
+  "homepage": "https://github.com/J-Houghton/LiquidGLass-UI#readme",
+  "bugs": {
+    "url": "https://github.com/J-Houghton/LiquidGLass-UI/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/J-Houghton/LiquidGLass-UI.git"
+  },
   "license": "MIT",
+  "type": "module",
   "files": [
     "dist"
   ],
@@ -25,6 +43,10 @@
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
     "dev": "vite demo/",
     "build": "tsc -p tsconfig.json && vite build",
@@ -32,7 +54,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc -p tsconfig.test.json && tsc -p tsconfig.core.json"
+    "typecheck": "tsc -p tsconfig.test.json && tsc -p tsconfig.core.json",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
   },
   "devDependencies": {
     "@tweakpane/core": "^2.0.5",
