@@ -24,13 +24,32 @@ describe('buildFilterSpec', () => {
     });
   }
 
-  it('the only static primitive is the map image', () => {
+  it('the only static primitive is the map image, filling an objectBoundingBox region by default', () => {
     const spec = buildFilterSpec(resolveGlassParams({ width: 320, height: 200 }), { ...REFS, mapHref: 'blob:m' });
     expect(spec.static.map((p) => p.tag)).toEqual(['feImage']);
-    expect(spec.static[0].attrs).toMatchObject({ href: 'blob:m', width: '320', height: '200', result: 'map' });
+    expect(spec.static[0].attrs).toEqual({ preserveAspectRatio: 'none', href: 'blob:m', result: 'map' });
     expect(spec.width).toBe(320);
     expect(spec.height).toBe(200);
     expect(spec.padding).toBe(0);
+    expect(filterElementAttrs(spec)).toEqual({
+      id: 'lg-test',
+      filterUnits: 'objectBoundingBox',
+      primitiveUnits: 'userSpaceOnUse',
+      x: '0',
+      y: '0',
+      width: '1',
+      height: '1',
+      'color-interpolation-filters': 'sRGB',
+    });
+  });
+
+  it('a size change alone changes nothing in the graph (the box follows the element)', () => {
+    const a = buildFilterSpec(resolveGlassParams({ width: 300, height: 120 }), REFS);
+    const b = buildFilterSpec(resolveGlassParams({ width: 500, height: 260 }), REFS);
+    expect(b.static).toEqual(a.static);
+    expect(b.dynamic).toEqual(a.dynamic);
+    expect(filterElementAttrs(b)).toEqual(filterElementAttrs(a));
+    expect(b.structureKey).toBe(a.structureKey);
   });
 
   it('single displacement pass reads SourceGraphic through the map at displacementScale', () => {
@@ -130,18 +149,19 @@ describe('buildFilterSpec', () => {
     expect(spec.dynamic.find((p) => p.tag === 'feDisplacementMap' && p.attrs.in2 === 'quant_low')!.attrs.scale).toBe('16.00');
   });
 
-  it('padding enlarges the filter region around the box but not the map image', () => {
+  it('padding switches to an explicit px region around the box; the map image keeps the box', () => {
     const spec = buildFilterSpec(resolveGlassParams({ width: 300, height: 120 }), REFS, { padding: 24 });
-    expect(filterElementAttrs(spec)).toMatchObject({ x: '-24', y: '-24', width: '348', height: '168' });
+    expect(filterElementAttrs(spec)).toMatchObject({ filterUnits: 'userSpaceOnUse', x: '-24', y: '-24', width: '348', height: '168' });
     expect(spec.static[0].attrs).toMatchObject({ x: '0', y: '0', width: '300', height: '120' });
     expect(buildFilterSpec(resolveGlassParams(), REFS, { padding: -5 }).padding).toBe(0);
+    expect(spec.structureKey).not.toBe(buildFilterSpec(resolveGlassParams({ width: 300, height: 120 }), REFS).structureKey);
   });
 
   it('serializes to well-formed, escaped SVG markup', () => {
     const spec = buildFilterSpec(resolveGlassParams({ dispersion: 1 }), { ...REFS, mapHref: 'data:x/y;base64,AA==&"<' });
     const svg = filterSpecToSvg(spec);
     expect(svg.startsWith('<svg xmlns="http://www.w3.org/2000/svg"')).toBe(true);
-    expect(svg).toContain('<filter id="lg-test" filterUnits="userSpaceOnUse"');
+    expect(svg).toContain('<filter id="lg-test" filterUnits="objectBoundingBox" primitiveUnits="userSpaceOnUse"');
     expect(svg).toContain('href="data:x/y;base64,AA==&amp;&quot;&lt;"');
     expect(svg).toContain('<feBlend in="blurred" in2="rim" mode="screen" result="final"/>');
     expect((svg.match(/<filter/g) ?? []).length).toBe(1);

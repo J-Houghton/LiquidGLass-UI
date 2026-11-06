@@ -108,6 +108,23 @@ describe('createGlassFilter', () => {
     expect(encoded).toHaveLength(1);
   });
 
+  it('caps the map at maxMapPixels by lowering the generation ratio, never raising it', async () => {
+    const { create, encoded } = env();
+    const h = create({ width: 400, height: 300, dpr: 2, maxMapPixels: 100_000 });
+    await h.ready;
+    const expected = Math.sqrt(100_000 / (400 * 300)); // 0.9129
+    expect(h.debug.mapDpr).toBeCloseTo(expected, 6);
+    expect(encoded[0].width).toBe(Math.round(400 * expected));
+    expect(encoded[0].height).toBe(Math.round(300 * expected));
+    const small = create({ width: 100, height: 50, dpr: 2, maxMapPixels: 100_000 });
+    await small.ready;
+    expect(small.debug.mapDpr).toBe(2);
+    expect(encoded[1].width).toBe(200);
+    const uncapped = create({ width: 400, height: 300, dpr: 2, maxMapPixels: Infinity });
+    await uncapped.ready;
+    expect(encoded[2].width).toBe(800);
+  });
+
   it('regionPadding enlarges the filter region', async () => {
     const { create } = env();
     const h = create({ width: 100, height: 50, regionPadding: 8 });

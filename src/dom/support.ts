@@ -1,11 +1,12 @@
 /**
  * Support detection for `backdrop-filter: url(#svg-filter)`.
  *
- * `CSS.supports` cannot answer this: support is defined at parse level, and both WebKit and Gecko
- * parse the value yet render nothing for a filter graph with `feImage` + `feDisplacementMap`
+ * `CSS.supports` alone cannot answer this: support is defined at parse level, and both WebKit and
+ * Gecko parse the value yet render nothing for a filter graph with `feImage` + `feDisplacementMap`
  * (WebKit drops the whole backdrop-filter list at compositing; Gecko ignores graphs that fall back
  * to its blob path). As of late 2026 only Chromium renders it, so, like every library in the field,
- * this is an engine check plus a parse check. Revisit when WebKit's software path ships.
+ * this is a parse check for `url()` plus an engine check. A page can override the verdict with
+ * `<html data-liquid-glass-support="force|off">`. Revisit when WebKit's software path ships.
  */
 
 export type GlassSupport =
@@ -23,6 +24,8 @@ export interface SupportEnvironment {
   brands?: readonly string[];
   /** `CSS.supports(property, value)`. */
   supports?: (property: string, value: string) => boolean;
+  /** Page-level override: `<html data-liquid-glass-support="force|off">`. */
+  override?: 'force' | 'off' | null;
 }
 
 /** Chromium-based engine? Client Hints brands when present, UA string otherwise. */
@@ -44,23 +47,29 @@ function safeSupports(env: SupportEnvironment, property: string, value: string):
   }
 }
 
+const supportsEither = (env: SupportEnvironment, value: string): boolean =>
+  safeSupports(env, 'backdrop-filter', value) || safeSupports(env, '-webkit-backdrop-filter', value);
+
 /** Read the current browser's environment. Safe to call without a DOM (everything is optional). */
 export function browserSupportEnvironment(): SupportEnvironment {
   const nav = typeof navigator !== 'undefined' ? navigator : undefined;
   const uad = (nav as unknown as { userAgentData?: { brands?: { brand: string }[] } } | undefined)?.userAgentData;
   const css = typeof CSS !== 'undefined' && typeof CSS.supports === 'function' ? CSS : undefined;
+  const attr = typeof document !== 'undefined' ? document.documentElement?.getAttribute('data-liquid-glass-support') : null;
   return {
     userAgent: nav?.userAgent,
     brands: uad?.brands?.map((b) => b.brand),
     supports: css ? (p, v) => css.supports(p, v) : undefined,
+    override: attr === 'force' || attr === 'off' ? attr : null,
   };
 }
 
 /** Classify what the current (or given) environment can render. */
 export function detectGlassSupport(env: SupportEnvironment = browserSupportEnvironment()): GlassSupport {
-  const hasBackdrop =
-    safeSupports(env, 'backdrop-filter', 'blur(1px)') || safeSupports(env, '-webkit-backdrop-filter', 'blur(1px)');
-  if (!hasBackdrop) return 'none';
+  if (env.override === 'force') return 'full';
+  if (env.override === 'off') return 'frost';
+  if (!supportsEither(env, 'blur(1px)')) return 'none';
+  if (!supportsEither(env, 'url(#x)')) return 'frost';
   return isChromiumEngine(env) ? 'full' : 'frost';
 }
 

@@ -87,15 +87,20 @@ describe('attachLiquidGlass (glass mode)', () => {
     expect(target.children.map((c) => c.tagName)).toEqual(['svg']);
   });
 
-  it('follows size changes reported by the observer', async () => {
-    const { attach } = env();
+  it('follows size changes reported by the observer: new map, region stays the element box', async () => {
+    const { attach, encoded } = env();
     const h = attach();
     await h.ready;
+    expect(encoded).toHaveLength(1);
     FakeResizeObserver.instances[0].fire(500, 250);
     await h.update({});
     expect(h.params.width).toBe(500);
     expect(h.params.height).toBe(250);
-    expect((h.filterElement as unknown as FakeElement).getAttribute('width')).toBe('500');
+    expect(encoded).toHaveLength(2);
+    expect(encoded[1].width).toBe(500);
+    const f = h.filterElement as unknown as FakeElement;
+    expect(f.getAttribute('filterUnits')).toBe('objectBoundingBox');
+    expect(f.getAttribute('width')).toBe('1');
   });
 
   it('a fixed size disables observation', async () => {

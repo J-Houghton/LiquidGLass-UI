@@ -52,10 +52,15 @@ const prim = (tag: string, attrs: Record<string, string>, children?: FilterPrimi
 const num = (v: number): string => String(Math.round(v * 1000) / 1000);
 
 export function buildFilterSpec(p: ResolvedGlassParams, refs: FilterRefs, opts: FilterSpecOptions = {}): FilterSpec {
-  const w = String(p.width);
-  const h = String(p.height);
+  const padding = Math.max(0, opts.padding ?? 0);
+  // Without padding the filter region is the element's box in objectBoundingBox units and the
+  // map image has no subregion, so it fills whatever the box is right now: a resized element
+  // keeps a (stretched) lens while the sharper map is still encoding, and nothing size-dependent
+  // has to be rewritten on the graph. With padding the region is explicit px (see filterElementAttrs).
   const staticPrims: FilterPrimitive[] = [
-    prim('feImage', { x: '0', y: '0', width: w, height: h, preserveAspectRatio: 'none', href: refs.mapHref, result: 'map' }),
+    padding > 0
+      ? prim('feImage', { x: '0', y: '0', width: String(p.width), height: String(p.height), preserveAspectRatio: 'none', href: refs.mapHref, result: 'map' })
+      : prim('feImage', { preserveAspectRatio: 'none', href: refs.mapHref, result: 'map' }),
   ];
 
   const dynamic: FilterPrimitive[] = [];
@@ -87,24 +92,40 @@ export function buildFilterSpec(p: ResolvedGlassParams, refs: FilterRefs, opts: 
     id: refs.id,
     width: p.width,
     height: p.height,
-    padding: Math.max(0, opts.padding ?? 0),
+    padding,
     static: staticPrims,
     dynamic,
-    structureKey: `${chromatic ? 'dispersion' : 'single'}|${p.blurStage}:${p.blurKind}|${p.specular ? 'rim' : '-'}`,
+    structureKey: `${chromatic ? 'dispersion' : 'single'}|${p.blurStage}:${p.blurKind}|${p.specular ? 'rim' : '-'}|pad:${padding > 0 ? 'px' : 'box'}`,
   };
 }
 
-/** Attributes of the <filter> element itself. */
+/**
+ * Attributes of the <filter> element itself. Primitive units are always user space (CSS px, so
+ * `scale` is in px). The region is the element box in objectBoundingBox units, or explicit px
+ * when a padding is requested.
+ */
 export function filterElementAttrs(spec: FilterSpec): Record<string, string> {
   const pad = spec.padding;
+  if (pad > 0) {
+    return {
+      id: spec.id,
+      filterUnits: 'userSpaceOnUse',
+      primitiveUnits: 'userSpaceOnUse',
+      x: num(-pad),
+      y: num(-pad),
+      width: num(spec.width + 2 * pad),
+      height: num(spec.height + 2 * pad),
+      'color-interpolation-filters': 'sRGB',
+    };
+  }
   return {
     id: spec.id,
-    filterUnits: 'userSpaceOnUse',
+    filterUnits: 'objectBoundingBox',
     primitiveUnits: 'userSpaceOnUse',
-    x: num(-pad),
-    y: num(-pad),
-    width: num(spec.width + 2 * pad),
-    height: num(spec.height + 2 * pad),
+    x: '0',
+    y: '0',
+    width: '1',
+    height: '1',
     'color-interpolation-filters': 'sRGB',
   };
 }

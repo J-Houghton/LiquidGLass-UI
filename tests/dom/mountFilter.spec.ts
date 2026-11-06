@@ -23,7 +23,8 @@ describe('mountFilter', () => {
     const { filter } = createFilterSvg(doc as unknown as Doc, 'lg-1');
     const spec = buildFilterSpec(resolveGlassParams({ dispersion: 1 }), REFS);
     applyFilterSpec(doc as unknown as Doc, filter, null, spec);
-    expect(filter.getAttribute('width')).toBe('300');
+    expect(filter.getAttribute('filterUnits')).toBe('objectBoundingBox');
+    expect(filter.getAttribute('width')).toBe('1');
     expect(filter.getAttribute('color-interpolation-filters')).toBe('sRGB');
     const f = filter as unknown as El;
     expect(f.children.length).toBe(spec.static.length + spec.dynamic.length);
@@ -59,7 +60,7 @@ describe('mountFilter', () => {
     expect(f.children.map((c) => c.tagName)).toEqual(['feImage', 'feDisplacementMap', 'feGaussianBlur']);
   });
 
-  it('a size change updates the filter region and the map image box', () => {
+  it('a padded spec switches the region to px and gives the map image an explicit box; and back', () => {
     const doc = new FakeDocument();
     const { filter } = createFilterSvg(doc as unknown as Doc, 'lg-1');
     const a = buildFilterSpec(resolveGlassParams({ width: 300, height: 120 }), REFS);
@@ -67,10 +68,16 @@ describe('mountFilter', () => {
     const b = buildFilterSpec(resolveGlassParams({ width: 400, height: 200 }), REFS, { padding: 10 });
     applyFilterSpec(doc as unknown as Doc, filter, a, b);
     const f = filter as unknown as El;
+    expect(f.getAttribute('filterUnits')).toBe('userSpaceOnUse');
     expect(f.getAttribute('x')).toBe('-10');
     expect(f.getAttribute('width')).toBe('420');
     expect(f.getAttribute('height')).toBe('220');
     expect(f.children[0].getAttribute('width')).toBe('400');
     expect(f.children[0].getAttribute('height')).toBe('200');
+    const c = buildFilterSpec(resolveGlassParams({ width: 400, height: 200 }), REFS);
+    applyFilterSpec(doc as unknown as Doc, filter, b, c);
+    expect(f.getAttribute('filterUnits')).toBe('objectBoundingBox');
+    expect(f.getAttribute('width')).toBe('1');
+    expect(f.children[0].getAttribute('width')).toBeNull();
   });
 });

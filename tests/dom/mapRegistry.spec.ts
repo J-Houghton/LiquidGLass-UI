@@ -62,6 +62,43 @@ describe('MapRegistry', () => {
     expect(url).toBe('blob:ok');
   });
 
+  it('keeps released maps warm up to maxIdle and revives them without producing', async () => {
+    const revoked: string[] = [];
+    const reg = new MapRegistry((u) => revoked.push(u), { maxIdle: 2 });
+    let produced = 0;
+    const produce = async () => `blob:${++produced}`;
+    await reg.acquire('a', produce);
+    reg.release('a');
+    expect(revoked).toEqual([]);
+    expect(reg.size).toBe(0);
+    expect(reg.idleSize).toBe(1);
+    expect(await reg.acquire('a', produce)).toBe('blob:1'); // revived, not produced again
+    expect(produced).toBe(1);
+    expect(reg.idleSize).toBe(0);
+    reg.release('a');
+    await reg.acquire('b', produce);
+    reg.release('b');
+    await reg.acquire('c', produce);
+    reg.release('c'); // third idle map: the oldest (a) is evicted
+    expect(revoked).toEqual(['blob:1']);
+    expect(reg.idleSize).toBe(2);
+    reg.clearIdle();
+    expect(revoked).toEqual(['blob:1', 'blob:2', 'blob:3']);
+    expect(reg.idleSize).toBe(0);
+  });
+
+  it('parks a map that finished encoding after every holder released, when idle is allowed', async () => {
+    const revoked: string[] = [];
+    const reg = new MapRegistry((u) => revoked.push(u), { maxIdle: 4 });
+    let resolveIt!: (u: string) => void;
+    const p = reg.acquire('k', () => new Promise<string>((r) => (resolveIt = r)));
+    reg.release('k');
+    resolveIt('blob:late');
+    await p;
+    expect(revoked).toEqual([]);
+    expect(reg.idleSize).toBe(1);
+  });
+
   it('UrlSlot moves between keys releasing the old one, and releases on dispose', async () => {
     const revoked: string[] = [];
     const reg = new MapRegistry((u) => revoked.push(u));

@@ -22,6 +22,12 @@ export interface GlassFilterOptions extends Partial<GlassParams> {
   mount?: Element;
   /** Device pixel ratio for the maps. Default: `window.devicePixelRatio`, tracked for changes. */
   dpr?: number;
+  /**
+   * Pixel budget for one map. When width × height × dpr² exceeds it, the map is generated at a
+   * lower ratio and stretched by the filter (the displacement field is smooth, the rim keeps its
+   * CSS-px width). Default 320 000 (about 565×565 device px); `Infinity` disables the cap.
+   */
+  maxMapPixels?: number;
   /** Gaussian width of the rim light, CSS px. Default 2. */
   rimPx?: number;
   /**
@@ -52,6 +58,8 @@ export interface GlassFilterOptions extends Partial<GlassParams> {
 export interface GlassFilterDebug {
   /** The one map image: R,G displacement, B rim light. */
   mapUrl: string | null;
+  /** Ratio the current map was generated at (≤ dpr once the pixel budget bites). */
+  mapDpr: number;
   /** Largest |displacement| the optics produced before normalization, px. */
   physicalMaxDisplacementPx: number;
   /** The `scale` the displacement primitive currently uses (physical or artist). */
@@ -92,6 +100,16 @@ export interface GlassFilterHandle {
 
 const clamp01 = (v: number): number => (Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 1);
 
+/** hyalite's budget: about 565×565 device px per map. */
+export const DEFAULT_MAX_MAP_PIXELS = 320_000;
+
+/** The ratio to generate a width×height map at under a pixel budget (never above `dpr`). */
+export function budgetedDpr(width: number, height: number, dpr: number, maxMapPixels: number): number {
+  const area = Math.max(1, width * height);
+  if (!(maxMapPixels > 0) || !Number.isFinite(maxMapPixels)) return dpr;
+  return Math.max(0.1, Math.min(dpr, Math.sqrt(maxMapPixels / area)));
+}
+
 let idCounter = 0;
 /** Unique-per-page filter id (`lg-1`, `lg-2`, …). */
 export function nextGlassId(prefix = 'lg'): string {
@@ -130,6 +148,7 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
   const fixedDpr = options.dpr !== undefined;
   const rimPx = options.rimPx;
   const regionPadding = options.regionPadding ?? 0;
+  const maxMapPixels = options.maxMapPixels ?? DEFAULT_MAX_MAP_PIXELS;
   let dpr = options.dpr ?? defaultDpr();
   let intensity = clamp01(options.intensity ?? 1);
 
@@ -145,7 +164,7 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
   const mapSlot = new UrlSlot(registry);
   let spec: FilterSpec | null = null;
   let destroyed = false;
-  const debug: GlassFilterDebug = { mapUrl: null, physicalMaxDisplacementPx: 0, displacementPx: 0, renders: 0 };
+  const debug: GlassFilterDebug = { mapUrl: null, mapDpr: dpr, physicalMaxDisplacementPx: 0, displacementPx: 0, renders: 0 };
 
   // ---- render scheduling: coalesce per microtask, newest params win, each waiter resolves
   //      after a render that started at or after its request.
@@ -191,7 +210,7 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
 
   async function renderOnce(): Promise<void> {
     const p = params;
-    const d = dpr;
+    const d = budgetedDpr(p.width, p.height, dpr, maxMapPixels);
 
     const mapKey = JSON.stringify([
       p.width,
@@ -230,6 +249,7 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
       );
       if (destroyed) return;
       debug.physicalMaxDisplacementPx = physical;
+      debug.mapDpr = d;
     }
 
     const scale = (p.physicalScale ? debug.physicalMaxDisplacementPx : p.displacementScale) * intensity;

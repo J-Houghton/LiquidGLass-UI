@@ -35,8 +35,15 @@ export interface GlassParams {
   // look
   blurKind: BlurKind;
   /**
-   * 'after' (default): blur the refracted result. 'before': blur the backdrop first, then
-   * displace it, which keeps the rim and the dispersion fringe crisp (what most 2026 libraries do).
+   * Where the blur sits in the filter graph.
+   * - 'after' (default): the refracted image is blurred, so the rim highlight's edges and the
+   *   dispersion fringe soften along with the backdrop.
+   * - 'before': the backdrop is blurred first (alpha pinned to opaque), then displaced, so the
+   *   rim and the colour fringe stay crisp while the interior is soft (hyalite, PallavAg and
+   *   samasante do this).
+   * At the default `blur` of 0.2 px the two are indistinguishable: the difference only shows once
+   * `blur` is around 1 px or more, and is most visible with `dispersion` > 0 over high-contrast
+   * backdrops. Compare live in the playground ("Compare (A/B twin)") or with `demo/visual.html`.
    */
   blurStage: BlurStage;
   /** Blur amount: Gaussian standard deviation, or noise displacement scale for noise kinds. */

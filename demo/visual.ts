@@ -1,0 +1,54 @@
+/**
+ * Visual harness for screenshots. Renders one glass per query variant over a fixed backdrop.
+ *
+ *   /visual.html?a={"blurStage":"after"}&b={"blurStage":"before"}&base={"blur":1.5}
+ *
+ * `base` is merged into every variant; `a`, `b`, `c`, `d` are the variants (JSON patches of
+ * GlassParams). `debug=1` shows the map instead of the glass. The document gets
+ * `data-ready="1"` once every glass has rendered, which is what the screenshot script waits for.
+ */
+import { attachLiquidGlass, DEFAULT_GLASS_PARAMS, type GlassParams, type LiquidGlassHandle } from '../src/index.ts';
+
+const q = new URLSearchParams(location.search);
+const parse = (key: string): Partial<GlassParams> => {
+  const v = q.get(key);
+  return v ? (JSON.parse(v) as Partial<GlassParams>) : {};
+};
+
+const base: Partial<GlassParams> = { width: 360, height: 180, radius: 48, bezelWidth: 48, ...parse('base') };
+const variants = (['a', 'b', 'c', 'd'] as const).filter((k) => k === 'a' || q.has(k));
+const stage = document.getElementById('stage')!;
+const handles: LiquidGlassHandle[] = [];
+
+for (const key of variants) {
+  const patch = parse(key);
+  const params = { ...base, ...patch };
+  const el = document.createElement('div');
+  el.className = 'glass';
+  el.style.width = `${params.width ?? DEFAULT_GLASS_PARAMS.width}px`;
+  el.style.height = `${params.height ?? DEFAULT_GLASS_PARAMS.height}px`;
+  const label = document.createElement('div');
+  label.className = 'glass__label';
+  label.textContent = `${key}: ${Object.keys(patch).length ? JSON.stringify(patch) : 'base'}`;
+  el.appendChild(label);
+  const debugEl = document.createElement('div');
+  debugEl.className = 'glass__debug';
+  debugEl.hidden = q.get('debug') !== '1';
+  el.appendChild(debugEl);
+  stage.appendChild(el);
+
+  const handle = attachLiquidGlass(el, {
+    ...params,
+    radius: params.radius ?? DEFAULT_GLASS_PARAMS.radius,
+    appear: 0,
+    onRender: (h) => {
+      debugEl.style.backgroundImage = h.debug.mapUrl ? `url(${h.debug.mapUrl})` : '';
+    },
+  });
+  handles.push(handle);
+}
+
+Promise.all(handles.map((h) => h.ready)).then(() => {
+  // one more frame so the browser has decoded the map images and painted the filter
+  requestAnimationFrame(() => requestAnimationFrame(() => (document.documentElement.dataset.ready = '1')));
+});

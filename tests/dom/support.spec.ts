@@ -46,6 +46,18 @@ describe('detectGlassSupport', () => {
     expect(detectGlassSupport({ userAgent: UA.iosChrome, supports: yes })).toBe('frost');
   });
 
+  it("'frost' when the engine is Chromium but url() does not parse in backdrop-filter", () => {
+    const noUrl = (_p: string, v: string) => !v.startsWith('url(');
+    expect(detectGlassSupport({ userAgent: UA.chrome, supports: noUrl })).toBe('frost');
+  });
+
+  it('the page-level override wins over detection', () => {
+    expect(detectGlassSupport({ userAgent: UA.safari, supports: yes, override: 'force' })).toBe('full');
+    expect(detectGlassSupport({ userAgent: UA.chrome, supports: yes, override: 'off' })).toBe('frost');
+    expect(detectGlassSupport({ userAgent: UA.chrome, supports: no, override: 'force' })).toBe('full');
+    expect(detectGlassSupport({ userAgent: UA.chrome, supports: yes, override: null })).toBe('full');
+  });
+
   it("'none' without backdrop-filter or without CSS.supports, and when supports() throws", () => {
     expect(detectGlassSupport({ userAgent: UA.chrome, supports: no })).toBe('none');
     expect(detectGlassSupport({ userAgent: UA.chrome })).toBe('none');
