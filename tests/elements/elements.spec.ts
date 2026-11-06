@@ -173,3 +173,22 @@ describe('<liquid-glass-container content>', () => {
     expect(el.glass).toBeNull();
   });
 });
+
+describe('<liquid-glass-container motion>', () => {
+  it('motion attribute attaches the spring/squash motion; tokens choose the parts; removal detaches', async () => {
+    document.body.innerHTML = `<liquid-glass-container id="m" motion width="200" height="100"></liquid-glass-container>`;
+    const el = document.getElementById('m') as LiquidGlassElement;
+    await el.glass!.ready;
+    expect(el.motion).not.toBeNull();
+    const first = el.motion!;
+    el.setAttribute('motion', 'hover');
+    expect(el.motion).not.toBe(first);
+    el.motion!.press(); // press is off with only 'hover'
+    expect(el.motion!.pressed).toBe(false);
+    el.motion!.hover(true);
+    el.removeAttribute('motion');
+    expect(el.motion).toBeNull();
+    el.remove();
+    expect(el.motion).toBeNull();
+  });
+});

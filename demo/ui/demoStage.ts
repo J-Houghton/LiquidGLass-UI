@@ -1,8 +1,10 @@
 import {
   attachLiquidGlass,
+  attachGlassMotion,
   resolveGlassParams,
   DEFAULT_GLASS_PARAMS,
   type GlassParams,
+  type GlassMotionHandle,
   type LiquidGlassHandle,
 } from '../../src/index.js';
 import { CONTAINERS_CHANGED_EVENT, REMOVE_CONTAINER_EVENT, SELECT_CONTAINER_EVENT } from './events.js';
@@ -23,7 +25,44 @@ export type StageEntry = Glass & {
   wrapper: HTMLDivElement;
   debug: boolean;
   twin: (Glass & { override: Partial<GlassParams> }) | null;
+  /** One motion handle per glass in the wrapper (primary, twin), all driven by the wrapper's pointer. */
+  motion: GlassMotionHandle[];
+  motionSettings: MotionSettings | null;
 };
+
+/** The playground's view of the motion options. */
+export interface MotionSettings {
+  press: boolean;
+  drag: boolean;
+  hover: boolean;
+  /** Press spring, perceptual: seconds and bounce. */
+  duration: number;
+  bounce: number;
+}
+
+export const DEFAULT_MOTION: MotionSettings = { press: true, drag: true, hover: false, duration: 0.35, bounce: 0.3 };
+
+/** (Re)attach the motion for an entry and its twin. `null` detaches. */
+export function setMotion(entry: StageEntry, settings: MotionSettings | null): void {
+  for (const m of entry.motion) m.destroy();
+  entry.motion = [];
+  entry.motionSettings = settings;
+  if (!settings || !(settings.press || settings.drag || settings.hover)) return;
+  const spring = { duration: settings.duration, bounce: settings.bounce };
+  const glasses = entry.twin ? [entry, entry.twin] : [entry];
+  for (const g of glasses) {
+    entry.motion.push(
+      attachGlassMotion(g.handle, {
+        // the wrapper owns the drag (and the pointer capture), so it is the pointer source
+        pointerTarget: entry.wrapper,
+        element: g.el,
+        press: settings.press ? { spring } : false,
+        drag: settings.drag,
+        hover: settings.hover ? { spring: { duration: settings.duration, bounce: settings.bounce / 2 } } : false,
+      }),
+    );
+  }
+}
 
 /** Registry read by the config pane. */
 export const stage = {
@@ -99,7 +138,10 @@ export function setTwin(entry: StageEntry, override: Partial<GlassParams> | null
     entry.wrapper.classList.remove('has-twin');
   }
   entry.captionEl.textContent = '';
-  if (!override) return;
+  if (!override) {
+    setMotion(entry, entry.motionSettings);
+    return;
+  }
 
   const base = entry.handle.params;
   const config = resolveGlassParams({ ...base, ...override }, DEFAULT_GLASS_PARAMS);
@@ -108,6 +150,7 @@ export function setTwin(entry: StageEntry, override: Partial<GlassParams> | null
   entry.twin = { ...twin, override };
   entry.wrapper.classList.add('has-twin');
   entry.captionEl.textContent = captionFor(base, 'A');
+  setMotion(entry, entry.motionSettings); // the twin moves with the primary
 }
 
 /** Re-run the entrance on the primary and its twin together, so the two can be compared mid-flight. */
@@ -279,7 +322,8 @@ export class DemoStageController {
 
     const glass = createGlass(config, wrapper, id, '');
     this.makeDraggable(wrapper, id);
-    const entry: StageEntry = { id, label, wrapper, ...glass, debug: false, twin: null };
+    const entry: StageEntry = { id, label, wrapper, ...glass, debug: false, twin: null, motion: [], motionSettings: null };
+    setMotion(entry, { ...DEFAULT_MOTION });
     stage.entries.set(id, entry);
     return entry;
   }
@@ -332,6 +376,7 @@ export class DemoStageController {
     const id = event.detail?.id;
     const entry = id ? stage.entries.get(id) : undefined;
     if (!id || !entry) return;
+    setMotion(entry, null);
     entry.twin?.handle.destroy();
     entry.handle.destroy();
     entry.wrapper.remove();

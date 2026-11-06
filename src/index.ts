@@ -28,6 +28,10 @@ export type { MapRegistryOptions } from './dom/mapCache.js';
 export type { ElementFactory } from './dom/mountFilter.js';
 export { createFilterSvg, applyFilterSpec } from './dom/mountFilter.js';
 
+export type { GlassMotionOptions, GlassMotionHandle, MotionFrame, MotionGlass, PressMotion, HoverMotion } from './dom/attachGlassMotion.js';
+export { attachGlassMotion } from './dom/attachGlassMotion.js';
+export * from './motion/index.js';
+
 export type { GlassSupport, SupportEnvironment } from './dom/support.js';
 export {
   detectGlassSupport,

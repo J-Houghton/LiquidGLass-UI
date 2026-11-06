@@ -9,7 +9,18 @@ import {
   type GlassParams,
 } from '../../src/index.js';
 import { CONTAINERS_CHANGED_EVENT, REMOVE_CONTAINER_EVENT, SELECT_CONTAINER_EVENT } from './events.js';
-import { stage, updateEntry, setGlassDebug, setTwin, replayAppear, APPEAR_MS, type StageEntry } from './demoStage.js';
+import {
+  stage,
+  updateEntry,
+  setGlassDebug,
+  setTwin,
+  setMotion,
+  replayAppear,
+  APPEAR_MS,
+  DEFAULT_MOTION,
+  type MotionSettings,
+  type StageEntry,
+} from './demoStage.js';
 
 type PaneParams = GlassParams & {
   target: string;
@@ -19,7 +30,20 @@ type PaneParams = GlassParams & {
   twinBlurStage: BlurStage;
   twinShadeOn: boolean;
   twinShade: number;
+  motionPress: boolean;
+  motionDrag: boolean;
+  motionHover: boolean;
+  motionDuration: number;
+  motionBounce: number;
 };
+
+const motionSettingsOf = (p: PaneParams): MotionSettings => ({
+  press: p.motionPress,
+  drag: p.motionDrag,
+  hover: p.motionHover,
+  duration: p.motionDuration,
+  bounce: p.motionBounce,
+});
 
 const twinOverride = (p: PaneParams): Partial<GlassParams> => ({
   blurStage: p.twinBlurStage,
@@ -54,6 +78,12 @@ function syncParamsFromEntry(entry: StageEntry, params: PaneParams, bindings: Pa
   params.twinBlurStage = entry.twin?.override.blurStage ?? p.blurStage;
   params.twinShadeOn = entry.twin?.override.shade !== undefined;
   params.twinShade = entry.twin?.override.shade ?? 0.35;
+  const m = entry.motionSettings ?? { ...DEFAULT_MOTION, press: false, drag: false, hover: false };
+  params.motionPress = m.press;
+  params.motionDrag = m.drag;
+  params.motionHover = m.hover;
+  params.motionDuration = m.duration;
+  params.motionBounce = m.bounce;
   bindings.forEach((binding) => binding.refresh());
 }
 
@@ -76,6 +106,11 @@ function init() {
     twinBlurStage: 'after',
     twinShadeOn: true,
     twinShade: 0.35,
+    motionPress: DEFAULT_MOTION.press,
+    motionDrag: DEFAULT_MOTION.drag,
+    motionHover: DEFAULT_MOTION.hover,
+    motionDuration: DEFAULT_MOTION.duration,
+    motionBounce: DEFAULT_MOTION.bounce,
   };
 
   const host = document.createElement('div');
@@ -208,10 +243,32 @@ function init() {
   bindParam(look, 'saturation', { min: 0, max: 3, step: 0.05 });
 
   // --- Entrance animation: tune the duration, replay on the active glass (and its twin) ---
-  const motion = pane.addFolder({ title: 'Appear' });
-  bindings.push(motion.addBinding(params, 'appearMs', { min: 0, max: 2000, step: 50, label: 'Duration ms' }));
-  motion.addButton({ title: 'Replay appear' }).on('click', () => {
+  const appearFolder = pane.addFolder({ title: 'Appear' });
+  bindings.push(appearFolder.addBinding(params, 'appearMs', { min: 0, max: 2000, step: 50, label: 'Duration ms' }));
+  appearFolder.addButton({ title: 'Replay appear' }).on('click', () => {
     if (activeEntry) void replayAppear(activeEntry, params.appearMs);
+  });
+
+  // --- Motion: spring on press/hover, velocity squash while dragging (research §4.5) ---
+  const motionFolder = pane.addFolder({ title: 'Motion' });
+  const bindMotion = (key: 'motionPress' | 'motionDrag' | 'motionHover' | 'motionDuration' | 'motionBounce', config: Record<string, unknown>) => {
+    const b = motionFolder.addBinding(params, key, config as never);
+    b.on('change', () => {
+      if (isSyncing || !activeEntry) return;
+      setMotion(activeEntry, motionSettingsOf(params));
+    });
+    bindings.push(b);
+  };
+  bindMotion('motionPress', { label: 'Press' });
+  bindMotion('motionDrag', { label: 'Drag squash' });
+  bindMotion('motionHover', { label: 'Hover lift' });
+  bindMotion('motionDuration', { min: 0.1, max: 1.5, step: 0.05, label: 'Spring s' });
+  bindMotion('motionBounce', { min: -0.5, max: 0.9, step: 0.05, label: 'Bounce' });
+  motionFolder.addButton({ title: 'Press and release' }).on('click', () => {
+    for (const m of activeEntry?.motion ?? []) {
+      m.press();
+      setTimeout(() => m.release(), 250);
+    }
   });
 
   // --- A/B twin: a second glass that mirrors every control above except the override ---

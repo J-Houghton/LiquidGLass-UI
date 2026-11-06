@@ -5,5 +5,5 @@
     "types": [],
     "noEmit": true
   },
-  "include": ["src/core"]
+  "include": ["src/core", "src/motion"]
 }

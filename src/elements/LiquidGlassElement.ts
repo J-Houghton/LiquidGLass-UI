@@ -1,5 +1,6 @@
 import type { GlassParams } from '../core/params.js';
 import { attachLiquidGlass, type LiquidGlassHandle, type LiquidGlassOptions } from '../dom/attachLiquidGlass.js';
+import { attachGlassMotion, type GlassMotionHandle } from '../dom/attachGlassMotion.js';
 import { GLASS_PROP_SCHEMA, adoptOwnProps, attrPatch, defineAccessors, observedAttributesOf } from './reactiveProps.js';
 
 /** Safe to evaluate on a server: falls back to a plain class when HTMLElement is absent. */
@@ -14,14 +15,17 @@ export const ElementBase: typeof HTMLElement =
  * entrance of that many ms on connect; `replayAppear()` plays it again. `content="<selector>"`
  * names the element to refract through `filter: url()` where the backdrop lens does not render
  * (resolved in the element's root on connect); `mode="content"` forces that path.
+ * `motion="press drag hover"` (any subset; the bare attribute means press and drag) attaches
+ * the spring/squash motion.
  */
 export class LiquidGlassElement extends ElementBase {
-  static readonly observedAttributes: readonly string[] = [...observedAttributesOf(GLASS_PROP_SCHEMA), 'debug', 'appear', 'content', 'mode'];
+  static readonly observedAttributes: readonly string[] = [...observedAttributesOf(GLASS_PROP_SCHEMA), 'debug', 'appear', 'content', 'mode', 'motion'];
   /** Options merged into every instance's `attachLiquidGlass` call (set via defineLiquidGlassElements). */
   static defaults: Partial<LiquidGlassOptions> = {};
 
   _props: Record<string, unknown> = {};
   private _glass: LiquidGlassHandle | null = null;
+  private _motion: GlassMotionHandle | null = null;
   private _debug = false;
   private _debugEl: HTMLElement | null = null;
   private _pending: Record<string, unknown> | null = null;
@@ -35,6 +39,11 @@ export class LiquidGlassElement extends ElementBase {
   /** The live handle, or null while disconnected. */
   get glass(): LiquidGlassHandle | null {
     return this._glass;
+  }
+
+  /** The motion handle while the `motion` attribute is set and the element is connected. */
+  get motion(): GlassMotionHandle | null {
+    return this._motion;
   }
 
   /** Show the displacement map instead of the glass (development aid). */
@@ -79,9 +88,12 @@ export class LiquidGlassElement extends ElementBase {
       },
     });
     this._syncDebugOverlay();
+    this._syncMotion();
   }
 
   disconnectedCallback(): void {
+    this._motion?.destroy();
+    this._motion = null;
     this._glass?.destroy();
     this._glass = null;
     this._pending = null;
@@ -104,6 +116,10 @@ export class LiquidGlassElement extends ElementBase {
       }
       return;
     }
+    if (name === 'motion') {
+      this._syncMotion();
+      return;
+    }
     const patch = attrPatch(GLASS_PROP_SCHEMA, name, value);
     if (!patch) return;
     if (this._props[patch.key] === patch.value) return;
@@ -124,6 +140,21 @@ export class LiquidGlassElement extends ElementBase {
     this._pending = null;
     if (!patch || !this._glass) return;
     void this._glass.update(patch as Partial<GlassParams>);
+  }
+
+  /** (Re)attach the motion for the current `motion` attribute. */
+  private _syncMotion(): void {
+    this._motion?.destroy();
+    this._motion = null;
+    const attr = this.getAttribute('motion');
+    if (attr === null || !this._glass) return;
+    const tokens = attr.split(/\s+/).filter(Boolean);
+    const all = tokens.length === 0;
+    this._motion = attachGlassMotion(this._glass, {
+      press: all || tokens.includes('press'),
+      drag: all || tokens.includes('drag'),
+      hover: tokens.includes('hover'),
+    });
   }
 
   /** The `content` attribute as an element: a selector resolved in this element's root (shadow or document). */

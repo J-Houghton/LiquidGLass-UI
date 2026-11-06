@@ -1,4 +1,4 @@
-// Post-build guard: the three package entries must exist, export their key symbols at runtime,
+// Post-build guard: the four package entries must exist, export their key symbols at runtime,
 // ship non-empty declarations, and keep the custom-element tag map augmentation.
 // Runs via `npm run build` (postbuild) and therefore in CI.
 import { readFileSync, existsSync } from 'node:fs';
@@ -13,6 +13,7 @@ const entries = {
   '.': { runtime: ['attachLiquidGlass', 'createGlassFilter', 'detectGlassSupport', 'resolveGlassParams'], types: ['attachLiquidGlass', 'LiquidGlassHandle', 'GlassParams'] },
   './core': { runtime: ['displacementCurve', 'displacementMap', 'buildFilterSpec', 'filterSpecToSvg'], types: ['displacementMap', 'RGBAImage'] },
   './elements': { runtime: ['defineLiquidGlassElements', 'LiquidGlassElement', 'LiquidGlassFilterElement'], types: ['defineLiquidGlassElements', 'LiquidGlassElement', 'HTMLElementTagNameMap'] },
+  './motion': { runtime: ['stepSpring', 'springPhysics', 'squashDeformation'], types: ['SpringState', 'SquashConfig'] },
 };
 
 for (const [name, want] of Object.entries(entries)) {
@@ -66,4 +67,4 @@ if (failures.length) {
   for (const f of failures) console.error('  - ' + f);
   process.exit(1);
 }
-console.log('check-dist: OK (3 entries, runtime exports, non-empty declarations, tag map present)');
+console.log('check-dist: OK (4 entries, runtime exports, non-empty declarations, tag map present)');

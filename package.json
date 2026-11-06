@@ -39,6 +39,10 @@
       "types": "./dist/elements/index.d.ts",
       "import": "./dist/elements.js"
     },
+    "./motion": {
+      "types": "./dist/motion/index.d.ts",
+      "import": "./dist/motion.js"
+    },
     "./package.json": "./package.json"
   },
   "main": "./dist/index.js",
