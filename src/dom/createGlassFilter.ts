@@ -28,6 +28,12 @@ export interface GlassFilterOptions extends Partial<GlassParams> {
    * CSS-px width). Default 320 000 (about 565×565 device px); `Infinity` disables the cap.
    */
   maxMapPixels?: number;
+  /**
+   * Geometric grid the map size is rounded up to (1.02 = 2 % steps; sizes up to 64 px are exact),
+   * so a resize burst reuses maps from the registry instead of regenerating one per pixel of
+   * width. The filter stretches the map to the exact box (at most 2 % per axis). `1` disables.
+   */
+  sizeBucket?: number;
   /** Gaussian width of the rim light, CSS px. Default 2. */
   rimPx?: number;
   /**
@@ -60,6 +66,9 @@ export interface GlassFilterDebug {
   mapUrl: string | null;
   /** Ratio the current map was generated at (≤ dpr once the pixel budget bites). */
   mapDpr: number;
+  /** Device-pixel size of the current map (bucketed CSS size × mapDpr). */
+  mapWidth: number;
+  mapHeight: number;
   /** Largest |displacement| the optics produced before normalization, px. */
   physicalMaxDisplacementPx: number;
   /** The `scale` the displacement primitive currently uses (physical or artist). */
@@ -110,6 +119,17 @@ export function budgetedDpr(width: number, height: number, dpr: number, maxMapPi
   return Math.max(0.1, Math.min(dpr, Math.sqrt(maxMapPixels / area)));
 }
 
+/** hyalite's grid: sizes above 64 px round up to the next power of 1.02. */
+export const DEFAULT_SIZE_BUCKET = 1.02;
+export const SIZE_BUCKET_MIN = 64;
+
+/** Round a CSS size up to its bucket on a geometric grid (exact below `SIZE_BUCKET_MIN` or when ratio ≤ 1). */
+export function bucketSize(value: number, ratio: number = DEFAULT_SIZE_BUCKET): number {
+  if (!(ratio > 1) || !(value > SIZE_BUCKET_MIN)) return value;
+  const step = Math.ceil(Math.log(value) / Math.log(ratio) - 1e-9);
+  return Math.max(value, Math.pow(ratio, step));
+}
+
 let idCounter = 0;
 /** Unique-per-page filter id (`lg-1`, `lg-2`, …). */
 export function nextGlassId(prefix = 'lg'): string {
@@ -149,6 +169,7 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
   const rimPx = options.rimPx;
   const regionPadding = options.regionPadding ?? 0;
   const maxMapPixels = options.maxMapPixels ?? DEFAULT_MAX_MAP_PIXELS;
+  const sizeBucket = options.sizeBucket ?? DEFAULT_SIZE_BUCKET;
   let dpr = options.dpr ?? defaultDpr();
   let intensity = clamp01(options.intensity ?? 1);
 
@@ -164,7 +185,7 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
   const mapSlot = new UrlSlot(registry);
   let spec: FilterSpec | null = null;
   let destroyed = false;
-  const debug: GlassFilterDebug = { mapUrl: null, mapDpr: dpr, physicalMaxDisplacementPx: 0, displacementPx: 0, renders: 0 };
+  const debug: GlassFilterDebug = { mapUrl: null, mapDpr: dpr, mapWidth: 0, mapHeight: 0, physicalMaxDisplacementPx: 0, displacementPx: 0, renders: 0 };
 
   // ---- render scheduling: coalesce per microtask, newest params win, each waiter resolves
   //      after a render that started at or after its request.
@@ -210,11 +231,14 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
 
   async function renderOnce(): Promise<void> {
     const p = params;
-    const d = budgetedDpr(p.width, p.height, dpr, maxMapPixels);
+    // The map is generated for the bucketed size and stretched to the exact box by the filter.
+    const mw = bucketSize(p.width, sizeBucket);
+    const mh = bucketSize(p.height, sizeBucket);
+    const d = budgetedDpr(mw, mh, dpr, maxMapPixels);
 
     const mapKey = JSON.stringify([
-      p.width,
-      p.height,
+      mw,
+      mh,
       p.radius,
       p.bezelWidth,
       p.surface,
@@ -236,8 +260,8 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
       await mapSlot.acquire(mapKey, () =>
         encode(
           displacementMap({
-            width: p.width,
-            height: p.height,
+            width: mw,
+            height: mh,
             radius: p.radius,
             bezelWidth: p.bezelWidth,
             dpr: d,
@@ -250,11 +274,20 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
       if (destroyed) return;
       debug.physicalMaxDisplacementPx = physical;
       debug.mapDpr = d;
+      debug.mapWidth = Math.round(mw * d);
+      debug.mapHeight = Math.round(mh * d);
     }
 
     const scale = (p.physicalScale ? debug.physicalMaxDisplacementPx : p.displacementScale) * intensity;
     const next = buildFilterSpec(
-      { ...p, displacementScale: scale, specularStrength: p.specularStrength * intensity, shade: p.shade * intensity },
+      {
+        ...p,
+        displacementScale: scale,
+        specularStrength: p.specularStrength * intensity,
+        shade: p.shade * intensity,
+        // a px fringe must shrink with the entrance too; a relative one follows the scale already
+        dispersion: p.dispersionUnit === 'px' ? p.dispersion * intensity : p.dispersion,
+      },
       { id, mapHref: mapSlot.url! },
       { padding: regionPadding },
     );

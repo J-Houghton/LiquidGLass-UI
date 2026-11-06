@@ -5,7 +5,16 @@
 export * from './core/index.js';
 
 export type { GlassFilterOptions, GlassFilterHandle, GlassFilterDebug } from './dom/createGlassFilter.js';
-export { createGlassFilter, nextGlassId, splitGlassOptions, budgetedDpr, DEFAULT_MAX_MAP_PIXELS } from './dom/createGlassFilter.js';
+export {
+  createGlassFilter,
+  nextGlassId,
+  splitGlassOptions,
+  budgetedDpr,
+  bucketSize,
+  DEFAULT_MAX_MAP_PIXELS,
+  DEFAULT_SIZE_BUCKET,
+  SIZE_BUCKET_MIN,
+} from './dom/createGlassFilter.js';
 
 export type { LiquidGlassOptions, LiquidGlassHandle, GlassFallback, AppearOptions } from './dom/attachLiquidGlass.js';
 export { attachLiquidGlass, reducedTransparencyParams, easeOutCubic } from './dom/attachLiquidGlass.js';

@@ -1,4 +1,4 @@
-import type { BlurKind, ResolvedGlassParams } from '../params.js';
+import type { BlurKind, DispersionUnit, ResolvedGlassParams } from '../params.js';
 
 /**
  * Pure description of the SVG filter graph. The DOM layer materializes it into elements;
@@ -78,7 +78,11 @@ export function buildFilterSpec(p: ResolvedGlassParams, refs: FilterRefs, opts: 
     source = 'soft';
   }
 
-  dynamic.push(...(chromatic ? dispersionStage(source, p.displacementScale, p.dispersion) : displacementStage(source, p.displacementScale)));
+  dynamic.push(
+    ...(chromatic
+      ? dispersionStage(source, p.displacementScale, p.dispersion, p.dispersionUnit)
+      : displacementStage(source, p.displacementScale)),
+  );
 
   let input = 'refr';
   if (!before) {
@@ -159,16 +163,17 @@ function displacementStage(source: string, scale: number): FilterPrimitive[] {
 /**
  * Chromatic dispersion as three displacement passes: red at a slightly smaller scale, blue at
  * a slightly larger one, each channel isolated and the three summed (valid because the backdrop
- * is opaque). The fringe is radial and scales with the lens.
+ * is opaque). The fringe is radial; it scales with the lens in 'relative' units and has a fixed
+ * width in 'px' units.
  */
-function dispersionStage(source: string, scale: number, dispersion: number): FilterPrimitive[] {
-  const k = DISPERSION_SPREAD * dispersion;
+function dispersionStage(source: string, scale: number, dispersion: number, unit: DispersionUnit): FilterPrimitive[] {
+  const spread = unit === 'px' ? dispersion : scale * DISPERSION_SPREAD * dispersion;
   return [
-    displace(source, scale * (1 - k), 'dispR'),
+    displace(source, Math.max(0, scale - spread), 'dispR'),
     prim('feColorMatrix', { in: 'dispR', type: 'matrix', values: KEEP_R, result: 'chR' }),
     displace(source, scale, 'dispG'),
     prim('feColorMatrix', { in: 'dispG', type: 'matrix', values: KEEP_G, result: 'chG' }),
-    displace(source, scale * (1 + k), 'dispB'),
+    displace(source, scale + spread, 'dispB'),
     prim('feColorMatrix', { in: 'dispB', type: 'matrix', values: KEEP_B, result: 'chB' }),
     prim('feComposite', { in: 'chR', in2: 'chG', operator: 'arithmetic', k1: '0', k2: '1', k3: '1', k4: '0', result: 'chRG' }),
     prim('feComposite', { in: 'chRG', in2: 'chB', operator: 'arithmetic', k1: '0', k2: '1', k3: '1', k4: '0', result: 'refr' }),

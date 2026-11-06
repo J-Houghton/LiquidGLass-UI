@@ -189,6 +189,13 @@ function init() {
 
   const chromatic = pane.addFolder({ title: 'Chromatic' });
   bindParam(chromatic, 'dispersion', { min: 0, max: 10, step: 0.1, label: 'Dispersion' });
+  bindParam(chromatic, 'dispersionUnit', {
+    label: 'Unit',
+    options: [
+      { text: 'Relative (2 % of scale per unit)', value: 'relative' },
+      { text: 'Pixels', value: 'px' },
+    ],
+  });
 
   const specular = pane.addFolder({ title: 'Specular' });
   bindParam(specular, 'specular', { label: 'Enable' });

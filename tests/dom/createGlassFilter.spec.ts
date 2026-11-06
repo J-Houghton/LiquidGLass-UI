@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { FakeDocument, type FakeElement } from '../helpers/fakeDom';
-import { createGlassFilter } from '../../src/dom/createGlassFilter';
+import { createGlassFilter, bucketSize } from '../../src/dom/createGlassFilter';
 import type { RGBAImage } from '../../src/core/image';
 
 type Doc = Pick<Document, 'createElementNS'>;
@@ -33,7 +33,7 @@ describe('createGlassFilter', () => {
     expect(filterOf(h).children.length).toBe(0); // nothing rendered synchronously
     await h.ready;
     expect(encoded).toHaveLength(1); // one map: displacement + rim
-    expect(encoded[0].width).toBe(200);
+    expect(encoded[0].width).toBe(Math.round(bucketSize(200))); // 202: sizes above 64 px are bucketed
     const kids = filterOf(h).children;
     expect(kids[0].getAttribute('href')).toBe('blob:1');
     expect(h.debug.mapUrl).toBe('blob:1');
@@ -108,19 +108,48 @@ describe('createGlassFilter', () => {
     expect(encoded).toHaveLength(1);
   });
 
+  it('buckets map sizes on a 1.02 grid so nearby sizes share one map', async () => {
+    expect(bucketSize(64)).toBe(64);
+    expect(bucketSize(10)).toBe(10);
+    expect(bucketSize(301)).toBeCloseTo(305.7, 0);
+    expect(bucketSize(305)).toBe(bucketSize(301));
+    expect(bucketSize(320)).toBeGreaterThan(bucketSize(305));
+    expect(bucketSize(301, 1)).toBe(301);
+    expect(bucketSize(Math.pow(1.02, 290))).toBeCloseTo(Math.pow(1.02, 290), 9); // exact powers stay put
+
+    const { create, encoded } = env();
+    const h = create({ width: 301, height: 151 });
+    await h.ready;
+    expect(encoded).toHaveLength(1);
+    expect(h.debug.mapWidth).toBe(Math.round(bucketSize(301)));
+    expect(h.debug.mapHeight).toBe(Math.round(bucketSize(151)));
+    expect(encoded[0].width).toBe(h.debug.mapWidth);
+    await h.update({ width: 304, height: 152 }); // same buckets: no regeneration
+    expect(encoded).toHaveLength(1);
+    expect(h.params.width).toBe(304);
+    await h.update({ width: 320 });
+    expect(encoded).toHaveLength(2);
+
+    const exact = create({ width: 301, height: 151, sizeBucket: 1 });
+    await exact.ready;
+    expect(exact.debug.mapWidth).toBe(301);
+    await exact.update({ width: 302 });
+    expect(encoded).toHaveLength(4);
+  });
+
   it('caps the map at maxMapPixels by lowering the generation ratio, never raising it', async () => {
     const { create, encoded } = env();
-    const h = create({ width: 400, height: 300, dpr: 2, maxMapPixels: 100_000 });
+    const h = create({ width: 400, height: 300, dpr: 2, maxMapPixels: 100_000, sizeBucket: 1 });
     await h.ready;
     const expected = Math.sqrt(100_000 / (400 * 300)); // 0.9129
     expect(h.debug.mapDpr).toBeCloseTo(expected, 6);
     expect(encoded[0].width).toBe(Math.round(400 * expected));
     expect(encoded[0].height).toBe(Math.round(300 * expected));
-    const small = create({ width: 100, height: 50, dpr: 2, maxMapPixels: 100_000 });
+    const small = create({ width: 100, height: 50, dpr: 2, maxMapPixels: 100_000, sizeBucket: 1 });
     await small.ready;
     expect(small.debug.mapDpr).toBe(2);
     expect(encoded[1].width).toBe(200);
-    const uncapped = create({ width: 400, height: 300, dpr: 2, maxMapPixels: Infinity });
+    const uncapped = create({ width: 400, height: 300, dpr: 2, maxMapPixels: Infinity, sizeBucket: 1 });
     await uncapped.ready;
     expect(encoded[2].width).toBe(800);
   });
@@ -238,11 +267,11 @@ describe('createGlassFilter', () => {
 
   it('setDpr regenerates the map at the new resolution', async () => {
     const { create, encoded } = env();
-    const h = create({ width: 100, height: 50 });
+    const h = create({ width: 100, height: 50 }); // 100 px is bucketed (> 64): compare against the bucket
     await h.ready;
     await h.setDpr(2);
     expect(h.dpr).toBe(2);
-    expect(encoded[1].width).toBe(200);
+    expect(encoded[1].width).toBe(Math.round(bucketSize(100) * 2));
     expect(encoded[1].height).toBe(100);
   });
 

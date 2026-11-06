@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { FakeDocument, type FakeElement } from '../helpers/fakeDom';
 import { attachLiquidGlass } from '../../src/dom/attachLiquidGlass';
+import { bucketSize } from '../../src/dom/createGlassFilter';
 import type { RGBAImage } from '../../src/core/image';
 
 type Doc = Pick<Document, 'createElementNS'>;
@@ -97,7 +98,7 @@ describe('attachLiquidGlass (glass mode)', () => {
     expect(h.params.width).toBe(500);
     expect(h.params.height).toBe(250);
     expect(encoded).toHaveLength(2);
-    expect(encoded[1].width).toBe(500);
+    expect(encoded[1].width).toBe(Math.round(bucketSize(500))); // bucketed CSS size at dpr 1
     const f = h.filterElement as unknown as FakeElement;
     expect(f.getAttribute('filterUnits')).toBe('objectBoundingBox');
     expect(f.getAttribute('width')).toBe('1');

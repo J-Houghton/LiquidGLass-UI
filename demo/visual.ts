@@ -4,16 +4,18 @@
  *   /visual.html?a={"blurStage":"after"}&b={"blurStage":"before"}&base={"blur":1.5}
  *
  * `base` is merged into every variant; `a`, `b`, `c`, `d` are the variants (JSON patches of
- * GlassParams). `debug=1` shows the map instead of the glass. The document gets
+ * GlassParams). `opts` is a JSON patch of attach options (e.g. `{"sizeBucket":1,"maxMapPixels":1e9}`)
+ * applied to every glass. `debug=1` shows the map instead of the glass. The document gets
  * `data-ready="1"` once every glass has rendered, which is what the screenshot script waits for.
  */
-import { attachLiquidGlass, DEFAULT_GLASS_PARAMS, type GlassParams, type LiquidGlassHandle } from '../src/index.ts';
+import { attachLiquidGlass, DEFAULT_GLASS_PARAMS, type GlassParams, type LiquidGlassHandle, type LiquidGlassOptions } from '../src/index.ts';
 
 const q = new URLSearchParams(location.search);
 const parse = (key: string): Partial<GlassParams> => {
   const v = q.get(key);
   return v ? (JSON.parse(v) as Partial<GlassParams>) : {};
 };
+const opts = (JSON.parse(q.get('opts') ?? '{}') as Partial<LiquidGlassOptions>) ?? {};
 
 const base: Partial<GlassParams> = { width: 360, height: 180, radius: 48, bezelWidth: 48, ...parse('base') };
 const variants = (['a', 'b', 'c', 'd'] as const).filter((k) => k === 'a' || q.has(k));
@@ -38,6 +40,7 @@ for (const key of variants) {
   stage.appendChild(el);
 
   const handle = attachLiquidGlass(el, {
+    ...opts,
     ...params,
     radius: params.radius ?? DEFAULT_GLASS_PARAMS.radius,
     appear: 0,

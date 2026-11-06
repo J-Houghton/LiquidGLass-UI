@@ -115,6 +115,15 @@ describe('buildFilterSpec', () => {
     });
   });
 
+  it("dispersionUnit 'px' spreads red and blue by a fixed number of pixels, never below zero", () => {
+    const spec = buildFilterSpec(resolveGlassParams({ displacementScale: 100, dispersion: 6, dispersionUnit: 'px' }), REFS);
+    const passes = spec.dynamic.filter((p) => p.tag === 'feDisplacementMap' && p.attrs.in === 'SourceGraphic');
+    expect(passes.map((p) => p.attrs.scale)).toEqual(['94', '100', '106']);
+    const tiny = buildFilterSpec(resolveGlassParams({ displacementScale: 4, dispersion: 6, dispersionUnit: 'px' }), REFS);
+    expect(tiny.dynamic[0].attrs.scale).toBe('0');
+    expect(spec.structureKey).toBe(buildFilterSpec(resolveGlassParams({ displacementScale: 100, dispersion: 6 }), REFS).structureKey);
+  });
+
   it('structureKey depends only on the enabled stages', () => {
     const a = buildFilterSpec(resolveGlassParams({ dispersion: 1, blur: 0.1 }), REFS);
     const b = buildFilterSpec(resolveGlassParams({ dispersion: 3, blur: 2, specularStrength: 2 }), REFS);

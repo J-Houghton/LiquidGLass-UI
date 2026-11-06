@@ -2,12 +2,13 @@
  * Pure engine: parameters, maps, filter description. No DOM, no globals.
  * Everything here is safe to import and run on a server or in a worker.
  */
-export type { GlassParams, ResolvedGlassParams, BlurKind, BlurStage, LegacyGlassParams } from './params.js';
+export type { GlassParams, ResolvedGlassParams, BlurKind, BlurStage, DispersionUnit, LegacyGlassParams } from './params.js';
 export {
   DEFAULT_GLASS_PARAMS,
   GLASS_PARAM_KEYS,
   BLUR_KINDS,
   BLUR_STAGES,
+  DISPERSION_UNITS,
   MAP_KEYS,
   resolveGlassParams,
   fromLegacyParams,

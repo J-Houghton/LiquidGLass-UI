@@ -56,6 +56,13 @@ describe('resolveGlassParams', () => {
     expect(resolveGlassParams({ shade: -1 }).shade).toBe(0);
   });
 
+  it('dispersionUnit defaults to relative, accepts px, and px widens the dispersion clamp', () => {
+    expect(resolveGlassParams().dispersionUnit).toBe('relative');
+    expect(resolveGlassParams({ dispersionUnit: 'px', dispersion: 60 }).dispersion).toBe(60);
+    expect(resolveGlassParams({ dispersion: 60 }).dispersion).toBe(50);
+    expect(() => resolveGlassParams({ dispersionUnit: 'em' as never })).toThrow(/unknown dispersionUnit/);
+  });
+
   it('blurStage defaults to after and accepts before', () => {
     expect(resolveGlassParams().blurStage).toBe('after');
     expect(resolveGlassParams({ blurStage: 'before' }).blurStage).toBe('before');

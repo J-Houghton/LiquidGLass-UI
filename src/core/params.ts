@@ -8,6 +8,10 @@ export const BLUR_KINDS: readonly BlurKind[] = ['gauss', 'noise1', 'noise2'];
 export type BlurStage = 'before' | 'after';
 export const BLUR_STAGES: readonly BlurStage[] = ['before', 'after'];
 
+/** How `dispersion` is read: a share of the displacement scale, or a fixed number of pixels. */
+export type DispersionUnit = 'relative' | 'px';
+export const DISPERSION_UNITS: readonly DispersionUnit[] = ['relative', 'px'];
+
 /** The full parameter set of one glass surface. All lengths are CSS px. */
 export interface GlassParams {
   // geometry
@@ -28,10 +32,13 @@ export interface GlassParams {
    */
   physicalScale: boolean;
   /**
-   * Chromatic dispersion: red and blue are displaced at `1 ∓ 0.02·dispersion` times the
-   * green scale (three displacement passes). 0 disables the stage.
+   * Chromatic dispersion (three displacement passes). 0 disables the stage. Its meaning depends
+   * on `dispersionUnit`: `'relative'` displaces red and blue at `1 ∓ 0.02·dispersion` times the
+   * green scale (the fringe grows with the lens); `'px'` displaces them `∓ dispersion` px from
+   * green (a fringe of fixed width, hyalite's convention).
    */
   dispersion: number;
+  dispersionUnit: DispersionUnit;
   // look
   blurKind: BlurKind;
   /**
@@ -74,6 +81,7 @@ export const DEFAULT_GLASS_PARAMS: Readonly<GlassParams> = Object.freeze({
   displacementScale: 180,
   physicalScale: false,
   dispersion: 0,
+  dispersionUnit: 'relative',
   blurKind: 'gauss',
   blurStage: 'after',
   blur: 0.2,
@@ -133,6 +141,7 @@ export function resolveGlassParams(
   if (!isSurfaceKind(p.surface)) throw new TypeError(`liquid-glass: unknown surface "${String(p.surface)}"`);
   if (!BLUR_KINDS.includes(p.blurKind)) throw new TypeError(`liquid-glass: unknown blurKind "${String(p.blurKind)}"`);
   if (!BLUR_STAGES.includes(p.blurStage)) throw new TypeError(`liquid-glass: unknown blurStage "${String(p.blurStage)}"`);
+  if (!DISPERSION_UNITS.includes(p.dispersionUnit)) throw new TypeError(`liquid-glass: unknown dispersionUnit "${String(p.dispersionUnit)}"`);
   p.specular = Boolean(p.specular);
   p.physicalScale = Boolean(p.physicalScale);
 
@@ -161,7 +170,7 @@ export function resolveGlassParams(
   clamp('refractiveIndex', 1, Infinity, 'min 1');
   clamp('glassThickness', 0, Infinity, 'min 0');
   clamp('displacementScale', 0, Infinity, 'min 0');
-  clamp('dispersion', 0, 50, '0..50');
+  clamp('dispersion', 0, p.dispersionUnit === 'px' ? 64 : 50, p.dispersionUnit === 'px' ? '0..64 px' : '0..50');
   clamp('blur', 0, Infinity, 'min 0');
   clamp('specularStrength', 0, Infinity, 'min 0');
   clamp('shade', 0, 1, '0..1');
