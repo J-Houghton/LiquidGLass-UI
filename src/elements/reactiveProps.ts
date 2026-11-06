@@ -38,6 +38,7 @@ export const GLASS_PROP_SCHEMA: readonly PropDef<keyof GlassParams>[] = [
   { key: 'specular', attr: 'specular', type: 'boolean', aliases: ['show-specular'] },
   { key: 'specularAngleDeg', attr: 'specular-angle-deg', type: 'number' },
   { key: 'specularStrength', attr: 'specular-strength', type: 'number' },
+  { key: 'shade', attr: 'shade', type: 'number' },
   { key: 'tint', attr: 'tint', type: 'number', aliases: ['frost'] },
   { key: 'saturation', attr: 'saturation', type: 'number' },
 ];

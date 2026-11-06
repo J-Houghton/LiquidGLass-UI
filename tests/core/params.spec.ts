@@ -50,6 +50,12 @@ describe('resolveGlassParams', () => {
     expect(() => resolveGlassParams({ blurStage: 'middle' as never })).toThrow(/unknown blurStage/);
   });
 
+  it('shade defaults to 0 and clamps to 0..1', () => {
+    expect(resolveGlassParams().shade).toBe(0);
+    expect(resolveGlassParams({ shade: 5 }).shade).toBe(1);
+    expect(resolveGlassParams({ shade: -1 }).shade).toBe(0);
+  });
+
   it('blurStage defaults to after and accepts before', () => {
     expect(resolveGlassParams().blurStage).toBe('after');
     expect(resolveGlassParams({ blurStage: 'before' }).blurStage).toBe('before');

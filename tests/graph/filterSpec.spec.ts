@@ -136,12 +136,27 @@ describe('buildFilterSpec', () => {
     expect(gauss[3].attrs.in).toBe('blurred');
   });
 
-  it('rim stage lifts the map blue channel to white with alpha = strength x B, once', () => {
+  it('rim stage: white with alpha = strength x (B above neutral), screened, once', () => {
     const spec = buildFilterSpec(resolveGlassParams({ specularStrength: 0.81 }), REFS);
-    const rim = spec.dynamic.find((p) => p.tag === 'feColorMatrix' && p.attrs.in === 'map')!;
-    expect(rim.attrs.values).toBe('0 0 1 0 0  0 0 1 0 0  0 0 1 0 0  0 0 0.81 0 0');
-    expect(rim.attrs.result).toBe('rim');
+    const rim = spec.dynamic.find((p) => p.tag === 'feColorMatrix' && p.attrs.result === 'rim')!;
+    // (255b - 128)/127 x 0.81 = 1.6264 b - 0.8164
+    expect(rim.attrs.values).toBe('0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 1.6264 0 -0.8164');
+    expect(spec.dynamic.find((p) => p.tag === 'feBlend' && p.attrs.in2 === 'rim')!.attrs.mode).toBe('screen');
     expect(spec.dynamic.some((p) => p.tag === 'feComponentTransfer')).toBe(false);
+  });
+
+  it('shade stage: black with alpha = shade x (B below neutral), multiplied in before the rim', () => {
+    const none = buildFilterSpec(resolveGlassParams({ shade: 0 }), REFS);
+    expect(none.dynamic.some((p) => p.attrs.result === 'shade')).toBe(false);
+    const spec = buildFilterSpec(resolveGlassParams({ shade: 1 }), REFS);
+    const shade = spec.dynamic.find((p) => p.tag === 'feColorMatrix' && p.attrs.result === 'shade')!;
+    // k = 1: (128 - 255b)/127 = -2.0079 b + 1.0079
+    expect(shade.attrs.values).toBe('0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 -2.0079 0 1.0079');
+    const blend = spec.dynamic.find((p) => p.tag === 'feBlend' && p.attrs.in2 === 'shade')!;
+    expect(blend.attrs).toMatchObject({ in: 'blurred', mode: 'multiply', result: 'shaded' });
+    expect(spec.dynamic.find((p) => p.tag === 'feBlend' && p.attrs.in2 === 'rim')!.attrs.in).toBe('shaded');
+    expect(spec.structureKey).not.toBe(none.structureKey);
+    expect(spec.structureKey).toBe(buildFilterSpec(resolveGlassParams({ shade: 0.3 }), REFS).structureKey);
   });
 
   it('noise scale follows blur x 20/40', () => {

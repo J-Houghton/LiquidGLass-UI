@@ -17,7 +17,14 @@ type PaneParams = GlassParams & {
   appearMs: number;
   compare: boolean;
   twinBlurStage: BlurStage;
+  twinShadeOn: boolean;
+  twinShade: number;
 };
+
+const twinOverride = (p: PaneParams): Partial<GlassParams> => ({
+  blurStage: p.twinBlurStage,
+  ...(p.twinShadeOn ? { shade: p.twinShade } : {}),
+});
 
 const BLUR_STAGE_OPTIONS: { text: string; value: BlurStage }[] = [
   { text: 'After displacement', value: 'after' },
@@ -44,7 +51,9 @@ function syncParamsFromEntry(entry: StageEntry, params: PaneParams, bindings: Pa
   for (const k of GLASS_PARAM_KEYS) (params as unknown as Record<string, unknown>)[k] = p[k];
   params.debug = entry.debug;
   params.compare = entry.twin !== null;
-  params.twinBlurStage = entry.twin?.override.blurStage ?? (p.blurStage === 'after' ? 'before' : 'after');
+  params.twinBlurStage = entry.twin?.override.blurStage ?? p.blurStage;
+  params.twinShadeOn = entry.twin?.override.shade !== undefined;
+  params.twinShade = entry.twin?.override.shade ?? 0.35;
   bindings.forEach((binding) => binding.refresh());
 }
 
@@ -64,7 +73,9 @@ function init() {
     debug: false,
     appearMs: APPEAR_MS,
     compare: false,
-    twinBlurStage: 'before',
+    twinBlurStage: 'after',
+    twinShadeOn: true,
+    twinShade: 0.35,
   };
 
   const host = document.createElement('div');
@@ -183,6 +194,7 @@ function init() {
   bindParam(specular, 'specular', { label: 'Enable' });
   bindParam(specular, 'specularAngleDeg', { min: 0, max: 180, step: 1, label: 'Angle°' });
   bindParam(specular, 'specularStrength', { min: 0, max: 2, step: 0.01, label: 'Strength' });
+  bindParam(specular, 'shade', { min: 0, max: 1, step: 0.01, label: 'Shade (edge darkening)' });
 
   const look = pane.addFolder({ title: 'Tint & Saturation' });
   bindParam(look, 'tint', { min: 0, max: 1, step: 0.01 });
@@ -200,15 +212,22 @@ function init() {
   const compareBinding = compare.addBinding(params, 'compare', { label: 'Show twin' });
   compareBinding.on('change', () => {
     if (isSyncing || !activeEntry) return;
-    setTwin(activeEntry, params.compare ? { blurStage: params.twinBlurStage } : null);
+    setTwin(activeEntry, params.compare ? twinOverride(params) : null);
   });
   bindings.push(compareBinding);
-  const twinBinding = compare.addBinding(params, 'twinBlurStage', { label: 'Twin blur stage', options: BLUR_STAGE_OPTIONS });
-  twinBinding.on('change', () => {
+  const retwin = () => {
     if (isSyncing || !activeEntry || !params.compare) return;
-    setTwin(activeEntry, { blurStage: params.twinBlurStage });
-  });
-  bindings.push(twinBinding);
+    setTwin(activeEntry, twinOverride(params));
+  };
+  for (const [key, config] of [
+    ['twinBlurStage', { label: 'Twin blur stage', options: BLUR_STAGE_OPTIONS }],
+    ['twinShadeOn', { label: 'Twin overrides shade' }],
+    ['twinShade', { min: 0, max: 1, step: 0.05, label: 'Twin shade' }],
+  ] as const) {
+    const b = compare.addBinding(params, key, config as never);
+    b.on('change', retwin);
+    bindings.push(b);
+  }
 
   function updateActiveEntry(newTarget: string) {
     if (!newTarget) {

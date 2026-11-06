@@ -254,7 +254,7 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
 
     const scale = (p.physicalScale ? debug.physicalMaxDisplacementPx : p.displacementScale) * intensity;
     const next = buildFilterSpec(
-      { ...p, displacementScale: scale, specularStrength: p.specularStrength * intensity },
+      { ...p, displacementScale: scale, specularStrength: p.specularStrength * intensity, shade: p.shade * intensity },
       { id, mapHref: mapSlot.url! },
       { padding: regionPadding },
     );

@@ -86,6 +86,11 @@ export function buildFilterSpec(p: ResolvedGlassParams, refs: FilterRefs, opts: 
     dynamic.push(...blurred.prims);
     input = blurred.result;
   }
+  const shade = p.shade;
+  if (shade > 0) {
+    dynamic.push(...shadeStage(input, shade));
+    input = 'shaded';
+  }
   if (p.specular) dynamic.push(...rimStage(input, p.specularStrength));
 
   return {
@@ -95,7 +100,7 @@ export function buildFilterSpec(p: ResolvedGlassParams, refs: FilterRefs, opts: 
     padding,
     static: staticPrims,
     dynamic,
-    structureKey: `${chromatic ? 'dispersion' : 'single'}|${p.blurStage}:${p.blurKind}|${p.specular ? 'rim' : '-'}|pad:${padding > 0 ? 'px' : 'box'}`,
+    structureKey: `${chromatic ? 'dispersion' : 'single'}|${p.blurStage}:${p.blurKind}|${shade > 0 ? 'shade' : '-'}|${p.specular ? 'rim' : '-'}|pad:${padding > 0 ? 'px' : 'box'}`,
   };
 }
 
@@ -208,15 +213,43 @@ function blurStage(input: string, kind: BlurKind, blur: number): { prims: Filter
   };
 }
 
+// The blue channel is signed around 128: light above, shade below. In normalized terms
+// (b = B/255) the light amount is (255b − 128)/127 and the shade amount is (128 − 255b)/127;
+// feColorMatrix clamps negative alpha to 0, which separates the two halves.
+const B_GAIN = 255 / 127;
+const B_BIAS = 128 / 127;
+const num4 = (v: number): string => String(Math.round(v * 10000) / 10000);
+
 /**
- * Rim light: lift the map's blue channel to white with alpha = strength × B and screen it over
- * the refracted image. Strength is applied here only.
+ * Rim light: white with alpha = strength × light, screened over the refracted image. Strength is
+ * applied here only.
  */
 function rimStage(input: string, strength: number): FilterPrimitive[] {
-  const s = num(strength);
   return [
-    prim('feColorMatrix', { in: 'map', type: 'matrix', values: `0 0 1 0 0  0 0 1 0 0  0 0 1 0 0  0 0 ${s} 0 0`, result: 'rim' }),
+    prim('feColorMatrix', {
+      in: 'map',
+      type: 'matrix',
+      values: `0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 ${num4(B_GAIN * strength)} 0 ${num4(-B_BIAS * strength)}`,
+      result: 'rim',
+    }),
     prim('feBlend', { in: input, in2: 'rim', mode: 'screen', result: 'final' }),
+  ];
+}
+
+/**
+ * Shade: black with alpha = k × (B below neutral), multiplied into the refracted image, which
+ * darkens an opaque backdrop by that alpha. k is the `shade` parameter: the darkening where the
+ * lens thins the backdrop the most.
+ */
+function shadeStage(input: string, k: number): FilterPrimitive[] {
+  return [
+    prim('feColorMatrix', {
+      in: 'map',
+      type: 'matrix',
+      values: `0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 ${num4(-B_GAIN * k)} 0 ${num4(B_BIAS * k)}`,
+      result: 'shade',
+    }),
+    prim('feBlend', { in: input, in2: 'shade', mode: 'multiply', result: 'shaded' }),
   ];
 }
 

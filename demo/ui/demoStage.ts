@@ -85,7 +85,7 @@ export function setGlassDebug(entry: StageEntry, on: boolean): void {
 }
 
 const captionFor = (p: Partial<GlassParams>, prefix: string) =>
-  `${prefix} · blur ${p.blurStage ?? DEFAULT_GLASS_PARAMS.blurStage}`;
+  `${prefix} · blur ${p.blurStage ?? DEFAULT_GLASS_PARAMS.blurStage} · shade ${p.shade ?? DEFAULT_GLASS_PARAMS.shade}`;
 
 /**
  * Show (override != null) or remove (null) the A/B twin. The twin copies the primary's current

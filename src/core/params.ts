@@ -52,6 +52,12 @@ export interface GlassParams {
   specularAngleDeg: number;
   /** Rim-light brightness; applied once, in the filter. */
   specularStrength: number;
+  /**
+   * Edge darkening, 0..1: how dark the glass gets where the lens thins the backdrop the most
+   * (the steepest part of the bezel profile, just inside the rim), fading to nothing where the
+   * glass is flat. Reads as the thickness of the edge. 0 (default) disables the stage.
+   */
+  shade: number;
   /** Black tint over the glass, 0..1 alpha. */
   tint: number;
   saturation: number;
@@ -74,6 +80,7 @@ export const DEFAULT_GLASS_PARAMS: Readonly<GlassParams> = Object.freeze({
   specular: true,
   specularAngleDeg: 60,
   specularStrength: 0.81, // the 1.x 0.9, which 1.x applied twice
+  shade: 0,
   tint: 0.05,
   saturation: 1,
 } satisfies GlassParams);
@@ -102,6 +109,7 @@ const NUMERIC_KEYS: readonly NumericKey[] = [
   'blur',
   'specularAngleDeg',
   'specularStrength',
+  'shade',
   'tint',
   'saturation',
 ];
@@ -156,6 +164,7 @@ export function resolveGlassParams(
   clamp('dispersion', 0, 50, '0..50');
   clamp('blur', 0, Infinity, 'min 0');
   clamp('specularStrength', 0, Infinity, 'min 0');
+  clamp('shade', 0, 1, '0..1');
   clamp('tint', 0, 1, '0..1');
   clamp('saturation', 0, Infinity, 'min 0');
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { displacementCurve } from '../../src/core/optics/disp1d';
-import { displacementMap } from '../../src/core/optics/disp2d';
+import { displacementMap, densityGain, stretchProfile, RIM_NEUTRAL } from '../../src/core/optics/disp2d';
 import { specularMap } from '../../src/core/optics/specularLight';
 import type { SurfaceKind } from '../../src/core/optics/surfaces';
 import { expectToMatchFixture } from '../helpers/fixtures';
@@ -16,7 +16,7 @@ type Case = {
   surface?: SurfaceKind;
   ior?: number;
   glass?: number;
-  /** Rim light angle; undefined = no rim (B stays 0). */
+  /** Rim light angle; undefined = no rim (B stays neutral). */
   angle?: number;
 };
 
@@ -29,27 +29,30 @@ const CASES: Case[] = [
   { name: 'rect-300x120-r60-b60-norim-dpr1', w: 300, h: 120, r: 60, b: 60, dpr: 1 },
 ];
 
-function build(c: Case): ImageLike {
-  const curve = displacementCurve({
+function curveFor(c: Case) {
+  return displacementCurve({
     glassThickness: c.glass ?? 31.25,
     bezelWidth: c.b,
     refractiveIndex: c.ior ?? 1.5,
     surface: c.surface ?? 'convex_squircle',
   });
+}
+
+function build(c: Case, shade = true): ImageLike {
   return displacementMap({
     width: c.w,
     height: c.h,
     radius: c.r,
     bezelWidth: c.b,
     dpr: c.dpr,
-    curve,
-    rim: c.angle === undefined ? undefined : { angleDeg: c.angle },
+    curve: curveFor(c),
+    rim: c.angle === undefined ? undefined : { angleDeg: c.angle, shade },
   });
 }
 
-const NEUTRAL = [128, 128, 0, 255];
+const NEUTRAL = [128, 128, RIM_NEUTRAL, 255];
 
-describe('displacementMap: rounded-rect displacement + rim map', () => {
+describe('displacementMap: rounded-rect displacement + lighting map', () => {
   for (const c of CASES) {
     describe(c.name, () => {
       const img = build(c);
@@ -80,7 +83,7 @@ describe('displacementMap: rounded-rect displacement + rim map', () => {
           // at the flat inner end of the profile, so they are neutral within rounding
           expect(Math.abs(center[0] - 128)).toBeLessThanOrEqual(2);
           expect(Math.abs(center[1] - 128)).toBeLessThanOrEqual(2);
-          expect(center[2]).toBe(0);
+          expect(Math.abs(center[2] - RIM_NEUTRAL)).toBeLessThanOrEqual(8); // the profile is almost flat there
           expect(center[3]).toBe(255);
         }
       });
@@ -103,7 +106,7 @@ describe('displacementMap: rounded-rect displacement + rim map', () => {
         expect(Math.abs(left[0] + right[0] - 256)).toBeLessThanOrEqual(1);
       });
 
-      it('displacement is an exact mirror image across both axes; rim light is point-symmetric', () => {
+      it('displacement is an exact mirror image across both axes; lighting is point-symmetric', () => {
         for (let y = 0; y < H; y += 7) {
           for (let x = 0; x < W; x += 5) {
             const a = pixel(img, x, y);
@@ -114,7 +117,7 @@ describe('displacementMap: rounded-rect displacement + rim map', () => {
             expect(Math.abs(a[1] - h[1])).toBeLessThanOrEqual(1);
             expect(Math.abs(a[1] + v[1] - 256)).toBeLessThanOrEqual(1); // G flips across the horizontal axis
             expect(Math.abs(a[0] - v[0])).toBeLessThanOrEqual(1);
-            expect(a[2]).toBe(o[2]); // |n·light| is invariant under n → -n
+            expect(a[2]).toBe(o[2]); // |n·light| and the field slope are invariant under n → -n
           }
         }
       });
@@ -129,43 +132,87 @@ describe('displacementMap: rounded-rect displacement + rim map', () => {
       });
 
       if (c.angle === undefined) {
-        it('blue channel is zero everywhere without a rim', () => {
-          expect(everyPixel(img, (_r, _g, b) => b === 0)).toBe(true);
+        it('blue channel is neutral everywhere without a rim', () => {
+          expect(everyPixel(img, (_r, _g, b) => b === RIM_NEUTRAL)).toBe(true);
         });
       } else {
-        it('rim light sits within 3 sigma of the outer edge and peaks facing the light', () => {
-          // top-middle pixel: normal (0,-1) on a straight edge, a hair off on a circle (corner sector)
-          const expectedTop = Math.floor(255 * Math.min(1, Math.abs(Math.sin((c.angle! * Math.PI) / 180)) * Math.exp(-0.25 / (2 * T * T))));
-          expect(Math.abs(pixel(img, W >> 1, 0)[2] - expectedTop)).toBeLessThanOrEqual(1);
-          expect(pixel(img, W >> 1, 10 * c.dpr)[2]).toBe(0);
-          expect(pixel(img, 10 * c.dpr, H >> 1)[2]).toBe(0);
-          expect(pixel(img, W >> 1, H >> 1)[2]).toBe(0);
+        const lightOnly = build(c, false);
+
+        it('light only: sits within 3 sigma of the outer edge, peaks facing the light, never below neutral', () => {
+          const expectedTop = RIM_NEUTRAL + Math.round(127 * Math.min(1, Math.abs(Math.sin((c.angle! * Math.PI) / 180)) * Math.exp(-0.25 / (2 * T * T))));
+          expect(Math.abs(pixel(lightOnly, W >> 1, 0)[2] - expectedTop)).toBeLessThanOrEqual(1);
+          expect(pixel(lightOnly, W >> 1, 10 * c.dpr)[2]).toBe(RIM_NEUTRAL);
+          expect(pixel(lightOnly, 10 * c.dpr, H >> 1)[2]).toBe(RIM_NEUTRAL);
+          expect(everyPixel(lightOnly, (_r, _g, b) => b >= RIM_NEUTRAL)).toBe(true);
         });
 
-        it('blue channel equals the standalone specular map at strength 1', () => {
+        it('light only: equals the standalone specular map at strength 1 (127-level quantization)', () => {
           const spec = specularMap({ width: c.w, height: c.h, radius: c.r, bezelWidth: c.b, dpr: c.dpr, angleDeg: c.angle!, strength: 1 });
-          expect(everyPixel(img, (_r, _g, b, _a, x, y) => b === spec.data[(y * W + x) * 4])).toBe(true);
+          expect(
+            everyPixel(lightOnly, (_r, _g, b, _a, x, y) => Math.abs((b - RIM_NEUTRAL) / 127 - spec.data[(y * W + x) * 4] / 255) <= 2 / 127),
+          ).toBe(true);
+        });
+
+        it('shade only darkens: never above the light-only value, below neutral somewhere in the band', () => {
+          expect(everyPixel(img, (_r, _g, b, _a, x, y) => b <= pixel(lightOnly, x, y)[2])).toBe(true);
+          let shaded = 0;
+          for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (img.data[(y * W + x) * 4 + 2] < RIM_NEUTRAL) shaded++;
+          if ((c.surface ?? 'convex_squircle') !== 'concave') expect(shaded).toBeGreaterThan(0);
         });
       }
     });
   }
 
-  it('a vertical light gives a left/right symmetric rim', () => {
+  it('a vertical light gives a left/right symmetric lighting channel', () => {
     const img = build(CASES[4]);
     const W = img.width;
     const H = img.height;
     for (let y = 0; y < H; y += 3) {
       for (let x = 0; x < W; x += 5) expect(pixel(img, x, y)[2]).toBe(pixel(img, W - 1 - x, y)[2]);
     }
-    expect(pixel(img, W >> 1, 0)[2]).toBeGreaterThan(200);
-    expect(pixel(img, 0, H >> 1)[2]).toBeLessThan(10);
+    expect(pixel(build(CASES[4], false), W >> 1, 0)[2]).toBeGreaterThan(RIM_NEUTRAL + 90);
+    expect(Math.abs(pixel(build(CASES[4], false), 0, H >> 1)[2] - RIM_NEUTRAL)).toBeLessThan(6);
   });
 
-  it('maxDisplacement normalizes the vector channels; the rim channel is unaffected', () => {
+  it('maxDisplacement normalizes the vector channels; the lighting channel is unaffected', () => {
     const base = build(CASES[0]);
-    const curve = displacementCurve({ glassThickness: 31.25, bezelWidth: 60, refractiveIndex: 1.5, surface: 'convex_squircle' });
-    const half = displacementMap({ width: 300, height: 120, radius: 60, bezelWidth: 60, dpr: 1, curve, maxDisplacement: 1e9, rim: { angleDeg: 60 } });
+    const half = displacementMap({ width: 300, height: 120, radius: 60, bezelWidth: 60, dpr: 1, curve: curveFor(CASES[0]), maxDisplacement: 1e9, rim: { angleDeg: 60 } });
     expect(everyPixel(half, (r, g) => r === 128 && g === 128)).toBe(true);
     expect(everyPixel(half, (_r, _g, b, _a, x, y) => b === base.data[(y * 300 + x) * 4 + 2])).toBe(true);
+  });
+});
+
+describe('densityGain', () => {
+  it('is 1 + slope of the curve per CSS px, 1 for a flat curve', () => {
+    expect(Array.from(densityGain([0, 0, 0], 10))).toEqual([1, 1]);
+    const g = densityGain([0, 5, 5, 0], 30); // 10 px between samples
+    expect(g[0]).toBeCloseTo(1.5, 12);
+    expect(g[1]).toBeCloseTo(1, 12);
+    expect(g[2]).toBeCloseTo(0.5, 12);
+    expect(Array.from(densityGain([3], 10))).toEqual([1]);
+  });
+
+  it('a convex squircle stretches the backdrop just inside the rim (gain < 1) and flattens out inward', () => {
+    const curve = displacementCurve({ glassThickness: 31.25, bezelWidth: 60, refractiveIndex: 1.5, surface: 'convex_squircle' });
+    const g = densityGain(curve, 60);
+    const nearRim = g.subarray(2, 40);
+    expect(Math.min(...nearRim)).toBeLessThan(1);
+    expect(Math.abs(g[g.length - 1] - 1)).toBeLessThan(0.05);
+  });
+});
+
+describe('stretchProfile', () => {
+  it('normalizes the inward decrease of the curve to [0,1], zero where flat or increasing', () => {
+    expect(Array.from(stretchProfile([0, 0, 0]))).toEqual([0, 0]);
+    expect(Array.from(stretchProfile([10, 6, 6, 8, 0]))).toEqual([0.5, 0, 0, 1]);
+    expect(Array.from(stretchProfile([3]))).toEqual([0]);
+  });
+
+  it('peaks near the rim for a convex squircle and is near zero at the inner edge', () => {
+    const curve = displacementCurve({ glassThickness: 31.25, bezelWidth: 60, refractiveIndex: 1.5, surface: 'convex_squircle' });
+    const s = stretchProfile(curve);
+    const peak = s.indexOf(1);
+    expect(peak).toBeLessThan(s.length * 0.2);
+    expect(s[s.length - 1]).toBeLessThan(0.05);
   });
 });

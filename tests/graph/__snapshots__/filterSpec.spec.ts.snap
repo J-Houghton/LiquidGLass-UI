@@ -36,7 +36,7 @@ exports[`buildFilterSpec > blurStage 'before' > dispersion=0 blur=gauss: spec is
         "in": "map",
         "result": "rim",
         "type": "matrix",
-        "values": "0 0 1 0 0  0 0 1 0 0  0 0 1 0 0  0 0 0.81 0 0",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 1.6264 0 -0.8164",
       },
       "tag": "feColorMatrix",
     },
@@ -63,7 +63,7 @@ exports[`buildFilterSpec > blurStage 'before' > dispersion=0 blur=gauss: spec is
       "tag": "feImage",
     },
   ],
-  "structureKey": "single|before:gauss|rim|pad:box",
+  "structureKey": "single|before:gauss|-|rim|pad:box",
   "width": 300,
 }
 `;
@@ -126,7 +126,7 @@ exports[`buildFilterSpec > blurStage 'before' > dispersion=0 blur=noise1: spec i
         "in": "map",
         "result": "rim",
         "type": "matrix",
-        "values": "0 0 1 0 0  0 0 1 0 0  0 0 1 0 0  0 0 0.81 0 0",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 1.6264 0 -0.8164",
       },
       "tag": "feColorMatrix",
     },
@@ -153,7 +153,7 @@ exports[`buildFilterSpec > blurStage 'before' > dispersion=0 blur=noise1: spec i
       "tag": "feImage",
     },
   ],
-  "structureKey": "single|before:noise1|rim|pad:box",
+  "structureKey": "single|before:noise1|-|rim|pad:box",
   "width": 300,
 }
 `;
@@ -269,7 +269,7 @@ exports[`buildFilterSpec > blurStage 'before' > dispersion=1 blur=gauss: spec is
         "in": "map",
         "result": "rim",
         "type": "matrix",
-        "values": "0 0 1 0 0  0 0 1 0 0  0 0 1 0 0  0 0 0.81 0 0",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 1.6264 0 -0.8164",
       },
       "tag": "feColorMatrix",
     },
@@ -296,7 +296,7 @@ exports[`buildFilterSpec > blurStage 'before' > dispersion=1 blur=gauss: spec is
       "tag": "feImage",
     },
   ],
-  "structureKey": "dispersion|before:gauss|rim|pad:box",
+  "structureKey": "dispersion|before:gauss|-|rim|pad:box",
   "width": 300,
 }
 `;
@@ -434,7 +434,7 @@ exports[`buildFilterSpec > blurStage 'before' > dispersion=1 blur=noise2: spec i
         "in": "map",
         "result": "rim",
         "type": "matrix",
-        "values": "0 0 1 0 0  0 0 1 0 0  0 0 1 0 0  0 0 0.81 0 0",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 1.6264 0 -0.8164",
       },
       "tag": "feColorMatrix",
     },
@@ -461,7 +461,7 @@ exports[`buildFilterSpec > blurStage 'before' > dispersion=1 blur=noise2: spec i
       "tag": "feImage",
     },
   ],
-  "structureKey": "dispersion|before:noise2|rim|pad:box",
+  "structureKey": "dispersion|before:noise2|-|rim|pad:box",
   "width": 300,
 }
 `;
@@ -502,7 +502,7 @@ exports[`buildFilterSpec > dispersion=0 blur=gauss specular=false: spec is pinne
       "tag": "feImage",
     },
   ],
-  "structureKey": "single|after:gauss|-|pad:box",
+  "structureKey": "single|after:gauss|-|-|pad:box",
   "width": 300,
 }
 `;
@@ -534,7 +534,7 @@ exports[`buildFilterSpec > dispersion=0 blur=gauss specular=true: spec is pinned
         "in": "map",
         "result": "rim",
         "type": "matrix",
-        "values": "0 0 1 0 0  0 0 1 0 0  0 0 1 0 0  0 0 1.1 0 0",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 2.2087 0 -1.1087",
       },
       "tag": "feColorMatrix",
     },
@@ -561,7 +561,7 @@ exports[`buildFilterSpec > dispersion=0 blur=gauss specular=true: spec is pinned
       "tag": "feImage",
     },
   ],
-  "structureKey": "single|after:gauss|rim|pad:box",
+  "structureKey": "single|after:gauss|-|rim|pad:box",
   "width": 300,
 }
 `;
@@ -624,7 +624,7 @@ exports[`buildFilterSpec > dispersion=0 blur=noise1 specular=false: spec is pinn
       "tag": "feImage",
     },
   ],
-  "structureKey": "single|after:noise1|-|pad:box",
+  "structureKey": "single|after:noise1|-|-|pad:box",
   "width": 300,
 }
 `;
@@ -678,7 +678,7 @@ exports[`buildFilterSpec > dispersion=0 blur=noise1 specular=true: spec is pinne
         "in": "map",
         "result": "rim",
         "type": "matrix",
-        "values": "0 0 1 0 0  0 0 1 0 0  0 0 1 0 0  0 0 1.1 0 0",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 2.2087 0 -1.1087",
       },
       "tag": "feColorMatrix",
     },
@@ -705,7 +705,7 @@ exports[`buildFilterSpec > dispersion=0 blur=noise1 specular=true: spec is pinne
       "tag": "feImage",
     },
   ],
-  "structureKey": "single|after:noise1|rim|pad:box",
+  "structureKey": "single|after:noise1|-|rim|pad:box",
   "width": 300,
 }
 `;
@@ -768,7 +768,7 @@ exports[`buildFilterSpec > dispersion=0 blur=noise2 specular=false: spec is pinn
       "tag": "feImage",
     },
   ],
-  "structureKey": "single|after:noise2|-|pad:box",
+  "structureKey": "single|after:noise2|-|-|pad:box",
   "width": 300,
 }
 `;
@@ -822,7 +822,7 @@ exports[`buildFilterSpec > dispersion=0 blur=noise2 specular=true: spec is pinne
         "in": "map",
         "result": "rim",
         "type": "matrix",
-        "values": "0 0 1 0 0  0 0 1 0 0  0 0 1 0 0  0 0 1.1 0 0",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 2.2087 0 -1.1087",
       },
       "tag": "feColorMatrix",
     },
@@ -849,7 +849,7 @@ exports[`buildFilterSpec > dispersion=0 blur=noise2 specular=true: spec is pinne
       "tag": "feImage",
     },
   ],
-  "structureKey": "single|after:noise2|rim|pad:box",
+  "structureKey": "single|after:noise2|-|rim|pad:box",
   "width": 300,
 }
 `;
@@ -965,7 +965,7 @@ exports[`buildFilterSpec > dispersion=1 blur=gauss specular=false: spec is pinne
       "tag": "feImage",
     },
   ],
-  "structureKey": "dispersion|after:gauss|-|pad:box",
+  "structureKey": "dispersion|after:gauss|-|-|pad:box",
   "width": 300,
 }
 `;
@@ -1072,7 +1072,7 @@ exports[`buildFilterSpec > dispersion=1 blur=gauss specular=true: spec is pinned
         "in": "map",
         "result": "rim",
         "type": "matrix",
-        "values": "0 0 1 0 0  0 0 1 0 0  0 0 1 0 0  0 0 1.1 0 0",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 2.2087 0 -1.1087",
       },
       "tag": "feColorMatrix",
     },
@@ -1099,7 +1099,7 @@ exports[`buildFilterSpec > dispersion=1 blur=gauss specular=true: spec is pinned
       "tag": "feImage",
     },
   ],
-  "structureKey": "dispersion|after:gauss|rim|pad:box",
+  "structureKey": "dispersion|after:gauss|-|rim|pad:box",
   "width": 300,
 }
 `;
@@ -1237,7 +1237,7 @@ exports[`buildFilterSpec > dispersion=1 blur=noise1 specular=false: spec is pinn
       "tag": "feImage",
     },
   ],
-  "structureKey": "dispersion|after:noise1|-|pad:box",
+  "structureKey": "dispersion|after:noise1|-|-|pad:box",
   "width": 300,
 }
 `;
@@ -1366,7 +1366,7 @@ exports[`buildFilterSpec > dispersion=1 blur=noise1 specular=true: spec is pinne
         "in": "map",
         "result": "rim",
         "type": "matrix",
-        "values": "0 0 1 0 0  0 0 1 0 0  0 0 1 0 0  0 0 1.1 0 0",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 2.2087 0 -1.1087",
       },
       "tag": "feColorMatrix",
     },
@@ -1393,7 +1393,7 @@ exports[`buildFilterSpec > dispersion=1 blur=noise1 specular=true: spec is pinne
       "tag": "feImage",
     },
   ],
-  "structureKey": "dispersion|after:noise1|rim|pad:box",
+  "structureKey": "dispersion|after:noise1|-|rim|pad:box",
   "width": 300,
 }
 `;
@@ -1531,7 +1531,7 @@ exports[`buildFilterSpec > dispersion=1 blur=noise2 specular=false: spec is pinn
       "tag": "feImage",
     },
   ],
-  "structureKey": "dispersion|after:noise2|-|pad:box",
+  "structureKey": "dispersion|after:noise2|-|-|pad:box",
   "width": 300,
 }
 `;
@@ -1660,7 +1660,7 @@ exports[`buildFilterSpec > dispersion=1 blur=noise2 specular=true: spec is pinne
         "in": "map",
         "result": "rim",
         "type": "matrix",
-        "values": "0 0 1 0 0  0 0 1 0 0  0 0 1 0 0  0 0 1.1 0 0",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 2.2087 0 -1.1087",
       },
       "tag": "feColorMatrix",
     },
@@ -1687,9 +1687,9 @@ exports[`buildFilterSpec > dispersion=1 blur=noise2 specular=true: spec is pinne
       "tag": "feImage",
     },
   ],
-  "structureKey": "dispersion|after:noise2|rim|pad:box",
+  "structureKey": "dispersion|after:noise2|-|rim|pad:box",
   "width": 300,
 }
 `;
 
-exports[`buildFilterSpec > serializes to well-formed, escaped SVG markup 1`] = `"<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute;width:0;height:0;overflow:hidden;pointer-events:none"><defs><filter id="lg-test" filterUnits="objectBoundingBox" primitiveUnits="userSpaceOnUse" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB"><feImage preserveAspectRatio="none" href="data:x/y;base64,AA==&amp;&quot;&lt;" result="map"/><feDisplacementMap in="SourceGraphic" in2="map" xChannelSelector="R" yChannelSelector="G" scale="176.4" result="dispR"/><feColorMatrix in="dispR" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="chR"/><feDisplacementMap in="SourceGraphic" in2="map" xChannelSelector="R" yChannelSelector="G" scale="180" result="dispG"/><feColorMatrix in="dispG" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="chG"/><feDisplacementMap in="SourceGraphic" in2="map" xChannelSelector="R" yChannelSelector="G" scale="183.6" result="dispB"/><feColorMatrix in="dispB" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="chB"/><feComposite in="chR" in2="chG" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="chRG"/><feComposite in="chRG" in2="chB" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="refr"/><feGaussianBlur in="refr" stdDeviation="0.20" result="blurred"/><feColorMatrix in="map" type="matrix" values="0 0 1 0 0  0 0 1 0 0  0 0 1 0 0  0 0 0.81 0 0" result="rim"/><feBlend in="blurred" in2="rim" mode="screen" result="final"/></filter></defs></svg>"`;
+exports[`buildFilterSpec > serializes to well-formed, escaped SVG markup 1`] = `"<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute;width:0;height:0;overflow:hidden;pointer-events:none"><defs><filter id="lg-test" filterUnits="objectBoundingBox" primitiveUnits="userSpaceOnUse" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB"><feImage preserveAspectRatio="none" href="data:x/y;base64,AA==&amp;&quot;&lt;" result="map"/><feDisplacementMap in="SourceGraphic" in2="map" xChannelSelector="R" yChannelSelector="G" scale="176.4" result="dispR"/><feColorMatrix in="dispR" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="chR"/><feDisplacementMap in="SourceGraphic" in2="map" xChannelSelector="R" yChannelSelector="G" scale="180" result="dispG"/><feColorMatrix in="dispG" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="chG"/><feDisplacementMap in="SourceGraphic" in2="map" xChannelSelector="R" yChannelSelector="G" scale="183.6" result="dispB"/><feColorMatrix in="dispB" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="chB"/><feComposite in="chR" in2="chG" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="chRG"/><feComposite in="chRG" in2="chB" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="refr"/><feGaussianBlur in="refr" stdDeviation="0.20" result="blurred"/><feColorMatrix in="map" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 1.6264 0 -0.8164" result="rim"/><feBlend in="blurred" in2="rim" mode="screen" result="final"/></filter></defs></svg>"`;

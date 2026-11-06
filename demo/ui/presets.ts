@@ -10,7 +10,8 @@ export type Preset = {
 // glassThickness is literal px in 2.0. The 1.x presets went through a smoothstep
 // (mapGlassThickness): 50 -> 31.25, 60 -> 43.2, 40 -> 20.8, 80 -> 70.4, 100 -> 100.
 // specularStrength was applied twice in 1.x; 2.0 applies it once, so s -> s*min(1,s):
-// 0.9 -> 0.81, 0.5 -> 0.25. The values below are those outputs, so every preset renders as in 1.x.
+// 0.9 -> 0.81, 0.5 -> 0.25. The values below are those outputs, so every preset renders as in 1.x,
+// plus shade 0.35 (edge darkening, new in 2.0; the API default is 0).
 export const PRESETS: Preset[] = [
   {
     id: 'surface-squircle',
@@ -24,6 +25,7 @@ export const PRESETS: Preset[] = [
       refractiveIndex: 1.5,
       displacementScale: 180,
       tint: 0.05,
+      shade: 0.35,
       specularStrength: 0.81,
     },
   },
@@ -43,6 +45,7 @@ export const PRESETS: Preset[] = [
       specular: true,
       specularStrength: 1.2,
       tint: 0,
+      shade: 0.35,
     },
   },
   {
@@ -58,6 +61,7 @@ export const PRESETS: Preset[] = [
       displacementScale: 122,
       specularStrength: 0.25,
       tint: 0.1,
+      shade: 0.35,
     },
   },
   {
@@ -73,6 +77,7 @@ export const PRESETS: Preset[] = [
       displacementScale: 180,
       specularStrength: 1.0,
       tint: 0.05,
+      shade: 0.35,
     },
   },
   {
@@ -88,6 +93,7 @@ export const PRESETS: Preset[] = [
       blurKind: 'noise1',
       blur: 0.8,
       tint: 0.1,
+      shade: 0.35,
       displacementScale: 100,
     },
   },
@@ -104,6 +110,7 @@ export const PRESETS: Preset[] = [
       blurKind: 'noise2',
       blur: 0.33,
       tint: 0.1,
+      shade: 0.35,
       displacementScale: 60,
     },
   },

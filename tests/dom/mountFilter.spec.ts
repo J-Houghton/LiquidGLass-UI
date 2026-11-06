@@ -46,7 +46,7 @@ describe('mountFilter', () => {
     expect(f.children[0].getAttribute('href')).toBe('blob:b'); // map
     expect(f.children[1].getAttribute('scale')).toBe('42'); // displacement
     expect(f.children[2].getAttribute('stdDeviation')).toBe('1.25'); // blur
-    expect(f.children[3].getAttribute('values')).toContain(' 0.3 0 0'); // rim alpha row
+    expect(f.children[3].getAttribute('values')).toContain(' 0.6024 0 -0.3024'); // rim alpha row at strength 0.3
   });
 
   it('different structure: rebuilds the children', () => {

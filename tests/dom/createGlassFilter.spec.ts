@@ -96,11 +96,11 @@ describe('createGlassFilter', () => {
     const kids = (h.filterElement as unknown as FakeElement).children;
     expect(h.intensity).toBe(0.5);
     expect(kids[1].getAttribute('scale')).toBe('90');
-    expect(kids[3].getAttribute('values')).toContain(' 0.405 0 0');
+    expect(kids[3].getAttribute('values')).toContain(' 0.8132 0 -0.4082'); // rim alpha row at 0.405
     expect(h.debug.displacementPx).toBe(90);
     await h.setIntensity(1);
     expect(kids[1].getAttribute('scale')).toBe('180');
-    expect(kids[3].getAttribute('values')).toContain(' 0.81 0 0');
+    expect(kids[3].getAttribute('values')).toContain(' 1.6264 0 -0.8164');
     await h.setIntensity(2); // clamped
     expect(h.intensity).toBe(1);
     await h.setIntensity(0);
@@ -123,6 +123,20 @@ describe('createGlassFilter', () => {
     const uncapped = create({ width: 400, height: 300, dpr: 2, maxMapPixels: Infinity });
     await uncapped.ready;
     expect(encoded[2].width).toBe(800);
+  });
+
+  it('shade adds a multiply stage scaled by the parameter and by intensity', async () => {
+    const { create } = env();
+    const h = create({ shade: 0.5 });
+    await h.ready;
+    const kids = (h.filterElement as unknown as FakeElement).children;
+    const shade = kids.find((k) => k.getAttribute('result') === 'shade')!;
+    expect(shade.getAttribute('values')).toContain(' -1.0039 0 0.5039'); // k = 0.5
+    await h.setIntensity(0.5);
+    expect(shade.getAttribute('values')).toContain(' -0.502 0 0.252'); // k = 0.25
+    await h.setIntensity(1);
+    await h.update({ shade: 0 });
+    expect(kids.some((k) => k.getAttribute('result') === 'shade')).toBe(false);
   });
 
   it('regionPadding enlarges the filter region', async () => {

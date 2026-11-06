@@ -12,7 +12,7 @@ export interface DisplacementMapOptions {
   bezelWidth: number;
   /** Device pixel ratio. Required: core never reads `window`. */
   dpr: number;
-  /** 1D displacement curve across the bezel (see displacementCurve), indexed 0 = rim. */
+  /** 1D displacement curve across the bezel (see displacementCurve), in CSS px, indexed 0 = rim. */
   curve: ArrayLike<number>;
   /**
    * Value the curve is normalized by so the map fits 8 bits. Defaults to max(1, max|curve|).
@@ -21,17 +21,24 @@ export interface DisplacementMapOptions {
    */
   maxDisplacement?: number;
   /**
-   * Bake a rim light into the blue channel (full strength; the filter scales it). Omit for B = 0.
+   * Bake lighting into the blue channel (128 = neutral). Light above 128: the Gaussian rim facing
+   * the light, at full strength (the filter scales it). Shade below 128 (unless `shade: false`):
+   * the normalized stretch profile of the lens, 1 where the backdrop is thinned the most
+   * (the steepest part of the curve, just inside the rim) fading to 0 where the glass is flat.
+   * The filter scales it by the `shade` parameter. Omit `rim` for B = 128 everywhere.
    */
-  rim?: { angleDeg: number; rimPx?: number };
+  rim?: { angleDeg: number; rimPx?: number; shade?: boolean };
 }
+
+/** Blue-channel value for "no light, no shade". */
+export const RIM_NEUTRAL = 128;
 
 /**
  * Rasterize the 1D curve into a rounded-rectangle bezel band.
  *
- * Per pixel: R,G = displacement vector pointing inward (128 bias, 127 scale), B = rim light
- * (0 when `rim` is omitted), A = 255. Pixels outside the band (the flat center and outside the
- * shape) stay neutral (128,128,0,255), so the map never introduces transparency.
+ * Per pixel: R,G = displacement vector pointing inward (128 bias, 127 scale), B = signed lighting
+ * (128 neutral, see `rim`), A = 255. Pixels outside the band (the flat center and outside the
+ * shape) stay neutral (128,128,128,255), so the map never introduces transparency.
  */
 export function displacementMap(opts: DisplacementMapOptions): RGBAImage {
   const { dpr, curve } = opts;
@@ -44,10 +51,12 @@ export function displacementMap(opts: DisplacementMapOptions): RGBAImage {
   const rim = opts.rim;
   const T = rim ? rimThickness(rim.rimPx, dpr) : 0;
   const [vx, vy] = rim ? lightVector(rim.angleDeg) : [0, 0];
+  const withShade = !!rim && rim.shade !== false;
+  const stretch = withShade ? stretchProfile(curve) : null;
 
   const img = createRGBAImage(W, H);
-  // R=128, G=128 (zero vector), B=0 (no rim), A=255. Little-endian ABGR.
-  new Uint32Array(img.data.buffer).fill(0xff008080);
+  // R=128, G=128 (zero vector), B=128 (neutral light), A=255. Little-endian ABGR.
+  new Uint32Array(img.data.buffer).fill(0xff808080);
   const data = img.data;
 
   forEachBandPixel(W, H, R, B, (p) => {
@@ -66,10 +75,49 @@ export function displacementMap(opts: DisplacementMapOptions): RGBAImage {
     const dY = (-p.ny * disp) / maxDisp;
     data[p.idx] = 128 + dX * 127;
     data[p.idx + 1] = 128 + dY * 127;
-    data[p.idx + 2] = rim ? Math.floor(255 * rimCoefficient(p.nx, p.ny, p.t, vx, vy, T)) : 0;
+
+    const lit = rim ? rimCoefficient(p.nx, p.ny, p.t, vx, vy, T) : 0;
+    const shadeTerm = stretch ? stretch[Math.min(stretch.length - 1, i0)] : 0;
+    data[p.idx + 2] = Math.round(RIM_NEUTRAL + 127 * Math.max(-1, Math.min(1, lit - shadeTerm)));
     data[p.idx + 3] = 255;
   });
   return img;
+}
+
+/**
+ * For each curve interval, 1 + dΔ/dt: the ratio between backdrop spacing and screen spacing when
+ * the physical displacement Δ(t) is applied along the inward axis t (both in CSS px). Below 1 the
+ * backdrop is stretched (thinned), above 1 compressed. Informational; the baked shade uses the
+ * normalized {@link stretchProfile} because raw gains saturate near the rim.
+ */
+export function densityGain(curve: ArrayLike<number>, bezelWidthCssPx: number): Float64Array {
+  const n = curve.length;
+  const out = new Float64Array(Math.max(1, n - 1));
+  if (n < 2) {
+    out[0] = 1;
+    return out;
+  }
+  const du = bezelWidthCssPx / (n - 1); // CSS px between consecutive samples
+  for (let i = 0; i < n - 1; i++) out[i] = 1 + (curve[i + 1] - curve[i]) / Math.max(1e-6, du);
+  return out;
+}
+
+/**
+ * How much the lens thins the backdrop at each curve interval, normalized to [0, 1]: the inward
+ * decrease of the displacement, divided by its largest decrease. 0 where the curve is flat or
+ * compressing. A flat curve gives all zeros.
+ */
+export function stretchProfile(curve: ArrayLike<number>): Float64Array {
+  const n = curve.length;
+  const out = new Float64Array(Math.max(1, n - 1));
+  let max = 0;
+  for (let i = 0; i < n - 1; i++) {
+    const v = Math.max(0, curve[i] - curve[i + 1]);
+    out[i] = v;
+    if (v > max) max = v;
+  }
+  if (max > 0) for (let i = 0; i < out.length; i++) out[i] /= max;
+  return out;
 }
 
 /** max(1, max |v|): the normalization the engine applies to a curve. */

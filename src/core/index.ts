@@ -22,7 +22,7 @@ export { SURFACE_FNS, SURFACE_KINDS, isSurfaceKind, asSurfaceKind } from './opti
 export type { DisplacementCurveOptions } from './optics/disp1d.js';
 export { displacementCurve } from './optics/disp1d.js';
 export type { DisplacementMapOptions } from './optics/disp2d.js';
-export { displacementMap, maxAbs } from './optics/disp2d.js';
+export { displacementMap, maxAbs, densityGain, stretchProfile, RIM_NEUTRAL } from './optics/disp2d.js';
 export type { SpecularMapOptions } from './optics/specularLight.js';
 export { specularMap } from './optics/specularLight.js';
 export { lightVector, rimCoefficient, rimThickness } from './optics/rim.js';
