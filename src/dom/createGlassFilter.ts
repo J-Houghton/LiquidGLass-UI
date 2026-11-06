@@ -29,6 +29,11 @@ export interface GlassFilterOptions extends Partial<GlassParams> {
    * outside it (useful with concave profiles). The output is still clipped to the box. Default 0.
    */
   regionPadding?: number;
+  /**
+   * Multiplier in [0, 1] on the displacement scale and the rim strength (graph attributes only,
+   * never a map regeneration). The appear animation ramps it from 0 to 1. Default 1.
+   */
+  intensity?: number;
   /** Pixel buffer → URL. Default: PNG blob URL via canvas. Seam for tests and workers. */
   encodeImage?: ImageEncoder;
   /** Releases URLs from `encodeImage`. Default: `URL.revokeObjectURL` for blob URLs. */
@@ -64,6 +69,8 @@ export interface GlassFilterHandle {
   /** Current parameters after validation and clamping. */
   readonly params: ResolvedGlassParams;
   readonly dpr: number;
+  /** Current intensity multiplier, 0..1 (see `setIntensity`). */
+  readonly intensity: number;
   readonly destroyed: boolean;
   /** Resolves after the first render has been applied to the DOM. */
   readonly ready: Promise<void>;
@@ -77,9 +84,13 @@ export interface GlassFilterHandle {
   refresh(): Promise<void>;
   /** Change the device pixel ratio the maps are generated at. */
   setDpr(dpr: number): Promise<void>;
+  /** Scale displacement and rim by k in [0, 1] without touching the map (cheap per frame). */
+  setIntensity(k: number): Promise<void>;
   /** Revoke URLs, remove the `<svg>`, stop observers. Idempotent. */
   destroy(): void;
 }
+
+const clamp01 = (v: number): number => (Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 1);
 
 let idCounter = 0;
 /** Unique-per-page filter id (`lg-1`, `lg-2`, …). */
@@ -120,6 +131,7 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
   const rimPx = options.rimPx;
   const regionPadding = options.regionPadding ?? 0;
   let dpr = options.dpr ?? defaultDpr();
+  let intensity = clamp01(options.intensity ?? 1);
 
   const { params: initial } = splitGlassOptions(options);
   let raw: GlassParams = { ...DEFAULT_GLASS_PARAMS, ...initial };
@@ -220,9 +232,9 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
       debug.physicalMaxDisplacementPx = physical;
     }
 
-    const scale = p.physicalScale ? debug.physicalMaxDisplacementPx : p.displacementScale;
+    const scale = (p.physicalScale ? debug.physicalMaxDisplacementPx : p.displacementScale) * intensity;
     const next = buildFilterSpec(
-      p.physicalScale ? { ...p, displacementScale: scale } : p,
+      { ...p, displacementScale: scale, specularStrength: p.specularStrength * intensity },
       { id, mapHref: mapSlot.url! },
       { padding: regionPadding },
     );
@@ -301,6 +313,9 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
     get dpr() {
       return dpr;
     },
+    get intensity() {
+      return intensity;
+    },
     get destroyed() {
       return destroyed;
     },
@@ -311,6 +326,12 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
     setDpr(next: number) {
       if (!Number.isFinite(next) || next <= 0 || next === dpr) return request();
       dpr = next;
+      return request();
+    },
+    setIntensity(k: number) {
+      const next = clamp01(k);
+      if (next === intensity) return spec ? Promise.resolve() : request();
+      intensity = next;
       return request();
     },
     destroy,

@@ -433,3 +433,23 @@ body.show-grid::before {
   background: #b45309;
   color: #fff;
 }
+
+/* A/B twin: primary and twin sit side by side in the same draggable wrapper */
+.demo-stage__draggable.has-twin {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+.demo-glass__caption {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 6px;
+  font: 600 11px/1.2 var(--font-display, system-ui, sans-serif);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: 0.75;
+  color: var(--demo-color-text);
+  pointer-events: none;
+}

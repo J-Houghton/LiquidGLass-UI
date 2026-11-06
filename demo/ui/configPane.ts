@@ -5,15 +5,24 @@ import {
   SURFACE_FNS,
   SURFACE_KINDS,
   type BlurKind,
+  type BlurStage,
   type GlassParams,
 } from '../../src/index.js';
 import { CONTAINERS_CHANGED_EVENT, REMOVE_CONTAINER_EVENT, SELECT_CONTAINER_EVENT } from './events.js';
-import { stage, updateGlass, setGlassDebug, type StageEntry } from './demoStage.js';
+import { stage, updateEntry, setGlassDebug, setTwin, replayAppear, APPEAR_MS, type StageEntry } from './demoStage.js';
 
 type PaneParams = GlassParams & {
   target: string;
   debug: boolean;
+  appearMs: number;
+  compare: boolean;
+  twinBlurStage: BlurStage;
 };
+
+const BLUR_STAGE_OPTIONS: { text: string; value: BlurStage }[] = [
+  { text: 'After displacement', value: 'after' },
+  { text: 'Before displacement', value: 'before' },
+];
 
 const BLUR_OPTIONS: { text: string; value: BlurKind }[] = [
   { text: 'Gauss', value: 'gauss' },
@@ -34,6 +43,8 @@ function syncParamsFromEntry(entry: StageEntry, params: PaneParams, bindings: Pa
   const p = entry.handle.params;
   for (const k of GLASS_PARAM_KEYS) (params as unknown as Record<string, unknown>)[k] = p[k];
   params.debug = entry.debug;
+  params.compare = entry.twin !== null;
+  params.twinBlurStage = entry.twin?.override.blurStage ?? (p.blurStage === 'after' ? 'before' : 'after');
   bindings.forEach((binding) => binding.refresh());
 }
 
@@ -51,6 +62,9 @@ function init() {
     ...DEFAULT_GLASS_PARAMS,
     target: options[0]?.value ?? '',
     debug: false,
+    appearMs: APPEAR_MS,
+    compare: false,
+    twinBlurStage: 'before',
   };
 
   const host = document.createElement('div');
@@ -73,7 +87,7 @@ function init() {
     const binding = target.addBinding(params, key, config as never);
     binding.on('change', () => {
       if (isSyncing || !activeEntry) return;
-      void updateGlass(activeEntry, { [key]: params[key] } as Partial<GlassParams>);
+      void updateEntry(activeEntry, { [key]: params[key] } as Partial<GlassParams>);
     });
     bindings.push(binding);
     return binding;
@@ -153,6 +167,7 @@ function init() {
   bindParam(optics, 'displacementScale', { min: 0, max: 400, step: 1, label: 'Displacement px' });
   bindParam(optics, 'physicalScale', { label: 'Physical scale' });
   bindParam(optics, 'blurKind', { label: 'Blur kind', options: BLUR_OPTIONS });
+  bindParam(optics, 'blurStage', { label: 'Blur stage', options: BLUR_STAGE_OPTIONS });
   bindParam(optics, 'blur', { min: 0, max: 3, step: 0.01, label: 'Blur' });
   const debugBinding = optics.addBinding(params, 'debug', { label: 'Show Map (Debug)' });
   debugBinding.on('change', () => {
@@ -172,6 +187,28 @@ function init() {
   const look = pane.addFolder({ title: 'Tint & Saturation' });
   bindParam(look, 'tint', { min: 0, max: 1, step: 0.01 });
   bindParam(look, 'saturation', { min: 0, max: 3, step: 0.05 });
+
+  // --- Entrance animation: tune the duration, replay on the active glass (and its twin) ---
+  const motion = pane.addFolder({ title: 'Appear' });
+  bindings.push(motion.addBinding(params, 'appearMs', { min: 0, max: 2000, step: 50, label: 'Duration ms' }));
+  motion.addButton({ title: 'Replay appear' }).on('click', () => {
+    if (activeEntry) void replayAppear(activeEntry, params.appearMs);
+  });
+
+  // --- A/B twin: a second glass that mirrors every control above except the override ---
+  const compare = pane.addFolder({ title: 'Compare (A/B twin)' });
+  const compareBinding = compare.addBinding(params, 'compare', { label: 'Show twin' });
+  compareBinding.on('change', () => {
+    if (isSyncing || !activeEntry) return;
+    setTwin(activeEntry, params.compare ? { blurStage: params.twinBlurStage } : null);
+  });
+  bindings.push(compareBinding);
+  const twinBinding = compare.addBinding(params, 'twinBlurStage', { label: 'Twin blur stage', options: BLUR_STAGE_OPTIONS });
+  twinBinding.on('change', () => {
+    if (isSyncing || !activeEntry || !params.compare) return;
+    setTwin(activeEntry, { blurStage: params.twinBlurStage });
+  });
+  bindings.push(twinBinding);
 
   function updateActiveEntry(newTarget: string) {
     if (!newTarget) {

@@ -89,6 +89,25 @@ describe('createGlassFilter', () => {
     expect(kids[1].getAttribute('scale')).toBe('180');
   });
 
+  it('intensity scales displacement and rim through attributes only, never the map', async () => {
+    const { create, encoded } = env();
+    const h = create({ intensity: 0.5 });
+    await h.ready;
+    const kids = (h.filterElement as unknown as FakeElement).children;
+    expect(h.intensity).toBe(0.5);
+    expect(kids[1].getAttribute('scale')).toBe('90');
+    expect(kids[3].getAttribute('values')).toContain(' 0.405 0 0');
+    expect(h.debug.displacementPx).toBe(90);
+    await h.setIntensity(1);
+    expect(kids[1].getAttribute('scale')).toBe('180');
+    expect(kids[3].getAttribute('values')).toContain(' 0.81 0 0');
+    await h.setIntensity(2); // clamped
+    expect(h.intensity).toBe(1);
+    await h.setIntensity(0);
+    expect(kids[1].getAttribute('scale')).toBe('0');
+    expect(encoded).toHaveLength(1);
+  });
+
   it('regionPadding enlarges the filter region', async () => {
     const { create } = env();
     const h = create({ width: 100, height: 50, regionPadding: 8 });

@@ -44,9 +44,15 @@ describe('resolveGlassParams', () => {
     expect(r2.dispersion).toBe(2);
   });
 
-  it('throws on an unknown surface or blurKind', () => {
+  it('throws on an unknown surface, blurKind or blurStage', () => {
     expect(() => resolveGlassParams({ surface: 'dome' as never })).toThrow(/unknown surface/);
     expect(() => resolveGlassParams({ blurKind: 'box' as never })).toThrow(/unknown blurKind/);
+    expect(() => resolveGlassParams({ blurStage: 'middle' as never })).toThrow(/unknown blurStage/);
+  });
+
+  it('blurStage defaults to after and accepts before', () => {
+    expect(resolveGlassParams().blurStage).toBe('after');
+    expect(resolveGlassParams({ blurStage: 'before' }).blurStage).toBe('before');
   });
 
   it('clamps geometry to the shape and records notes', () => {

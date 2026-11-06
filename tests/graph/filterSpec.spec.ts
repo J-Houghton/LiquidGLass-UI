@@ -55,6 +55,47 @@ describe('buildFilterSpec', () => {
     for (const s of sums) expect(s.attrs).toMatchObject({ operator: 'arithmetic', k1: '0', k2: '1', k3: '1', k4: '0' });
   });
 
+  describe("blurStage 'before'", () => {
+    for (const combo of [
+      { dispersion: 0, blurKind: 'gauss' as BlurKind },
+      { dispersion: 1, blurKind: 'gauss' as BlurKind },
+      { dispersion: 0, blurKind: 'noise1' as BlurKind },
+      { dispersion: 1, blurKind: 'noise2' as BlurKind },
+    ]) {
+      it(`dispersion=${combo.dispersion} blur=${combo.blurKind}: spec is pinned`, () => {
+        const spec = buildFilterSpec(resolveGlassParams({ ...combo, blurStage: 'before', blur: 0.5 }), REFS);
+        expect(spec).toMatchSnapshot();
+      });
+    }
+
+    it('blurs SourceGraphic, pins alpha to 1, then displaces the opaque result', () => {
+      const d = buildFilterSpec(resolveGlassParams({ blurStage: 'before', blur: 0.7 }), REFS).dynamic;
+      expect(d[0].attrs).toMatchObject({ in: 'SourceGraphic', stdDeviation: '0.70', result: 'blurred' });
+      expect(d[1].tag).toBe('feColorMatrix');
+      expect(d[1].attrs).toMatchObject({ in: 'blurred', values: '1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0 1', result: 'soft' });
+      expect(d[2].attrs).toMatchObject({ in: 'soft', in2: 'map', result: 'refr' });
+      expect(d[d.length - 1].attrs).toMatchObject({ in: 'refr', in2: 'rim', result: 'final' });
+      expect(d.filter((p) => p.tag === 'feGaussianBlur')).toHaveLength(1);
+    });
+
+    it('with dispersion all three passes read the pinned blur; noise blur also feeds displacement', () => {
+      const d = buildFilterSpec(resolveGlassParams({ blurStage: 'before', dispersion: 1, blurKind: 'noise1' }), REFS).dynamic;
+      const noise = d.find((p) => p.tag === 'feDisplacementMap' && p.attrs.in2 === 'quant_low')!;
+      expect(noise.attrs.in).toBe('SourceGraphic');
+      expect(d[d.indexOf(noise) + 1].attrs).toMatchObject({ in: 'refrNoise_low', result: 'soft' });
+      const passes = d.filter((p) => p.tag === 'feDisplacementMap' && p.attrs.in2 === 'map');
+      expect(passes).toHaveLength(3);
+      for (const p of passes) expect(p.attrs.in).toBe('soft');
+    });
+
+    it('is a different structure from after', () => {
+      const before = buildFilterSpec(resolveGlassParams({ blurStage: 'before' }), REFS);
+      const after = buildFilterSpec(resolveGlassParams({ blurStage: 'after' }), REFS);
+      expect(before.structureKey).not.toBe(after.structureKey);
+      expect(before.dynamic.length).toBe(after.dynamic.length + 1); // the alpha pin
+    });
+  });
+
   it('structureKey depends only on the enabled stages', () => {
     const a = buildFilterSpec(resolveGlassParams({ dispersion: 1, blur: 0.1 }), REFS);
     const b = buildFilterSpec(resolveGlassParams({ dispersion: 3, blur: 2, specularStrength: 2 }), REFS);

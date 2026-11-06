@@ -4,6 +4,10 @@ import { mapGlassThickness } from './validation/geometry.js';
 export type BlurKind = 'gauss' | 'noise1' | 'noise2';
 export const BLUR_KINDS: readonly BlurKind[] = ['gauss', 'noise1', 'noise2'];
 
+/** Where the blur sits in the graph: on the backdrop before displacement, or on the refracted result. */
+export type BlurStage = 'before' | 'after';
+export const BLUR_STAGES: readonly BlurStage[] = ['before', 'after'];
+
 /** The full parameter set of one glass surface. All lengths are CSS px. */
 export interface GlassParams {
   // geometry
@@ -30,6 +34,11 @@ export interface GlassParams {
   dispersion: number;
   // look
   blurKind: BlurKind;
+  /**
+   * 'after' (default): blur the refracted result. 'before': blur the backdrop first, then
+   * displace it, which keeps the rim and the dispersion fringe crisp (what most 2026 libraries do).
+   */
+  blurStage: BlurStage;
   /** Blur amount: Gaussian standard deviation, or noise displacement scale for noise kinds. */
   blur: number;
   specular: boolean;
@@ -53,6 +62,7 @@ export const DEFAULT_GLASS_PARAMS: Readonly<GlassParams> = Object.freeze({
   physicalScale: false,
   dispersion: 0,
   blurKind: 'gauss',
+  blurStage: 'after',
   blur: 0.2,
   specular: true,
   specularAngleDeg: 60,
@@ -107,6 +117,7 @@ export function resolveGlassParams(
 
   if (!isSurfaceKind(p.surface)) throw new TypeError(`liquid-glass: unknown surface "${String(p.surface)}"`);
   if (!BLUR_KINDS.includes(p.blurKind)) throw new TypeError(`liquid-glass: unknown blurKind "${String(p.blurKind)}"`);
+  if (!BLUR_STAGES.includes(p.blurStage)) throw new TypeError(`liquid-glass: unknown blurStage "${String(p.blurStage)}"`);
   p.specular = Boolean(p.specular);
   p.physicalScale = Boolean(p.physicalScale);
 

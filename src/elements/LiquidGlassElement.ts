@@ -10,10 +10,11 @@ export const ElementBase: typeof HTMLElement =
  * `<liquid-glass-container>`: applies the glass effect to itself. Children render crisp above
  * the glass. Size comes from CSS (or the `width`/`height` attributes, which set the inline
  * size); the effect follows it. Attributes mirror `GlassParams` in kebab-case; 1.x names
- * (`scale-px`, `blur-std-dev`, `show-specular`, `frost`, `chromatic-bezel-factor`) still work.
+ * (`scale-px`, `blur-std-dev`, `show-specular`, `frost`) still work. `appear="400"` plays an
+ * entrance of that many ms on connect; `replayAppear()` plays it again.
  */
 export class LiquidGlassElement extends ElementBase {
-  static readonly observedAttributes: readonly string[] = [...observedAttributesOf(GLASS_PROP_SCHEMA), 'debug'];
+  static readonly observedAttributes: readonly string[] = [...observedAttributesOf(GLASS_PROP_SCHEMA), 'debug', 'appear'];
   /** Options merged into every instance's `attachLiquidGlass` call (set via defineLiquidGlassElements). */
   static defaults: Partial<LiquidGlassOptions> = {};
 
@@ -22,6 +23,7 @@ export class LiquidGlassElement extends ElementBase {
   private _debug = false;
   private _debugEl: HTMLElement | null = null;
   private _pending: Record<string, unknown> | null = null;
+  private _appearMs: number | undefined;
 
   constructor() {
     super();
@@ -42,6 +44,19 @@ export class LiquidGlassElement extends ElementBase {
     this._syncDebugOverlay();
   }
 
+  /** Entrance duration in ms (the `appear` attribute); undefined = no entrance. */
+  get appearMs(): number | undefined {
+    return this._appearMs;
+  }
+  set appearMs(v: number | undefined) {
+    this._appearMs = typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : undefined;
+  }
+
+  /** Play the entrance again (or for the first time). */
+  replayAppear(durationMs?: number): Promise<void> {
+    return this._glass?.appear(durationMs ?? this._appearMs) ?? Promise.resolve();
+  }
+
   connectedCallback(): void {
     if (this._glass) return;
     this._applyBoxStyles();
@@ -52,6 +67,7 @@ export class LiquidGlassElement extends ElementBase {
       ...props,
       size: 'observe',
       radius: props.radius ?? defaults.radius ?? 'css',
+      ...(this._appearMs !== undefined ? { appear: this._appearMs } : {}),
       onRender: (h) => {
         if (this._debugEl) this._debugEl.style.backgroundImage = h.debug.mapUrl ? `url(${h.debug.mapUrl})` : '';
         this.dispatchEvent(new CustomEvent('liquid-glass:render', { detail: { handle: h }, bubbles: false }));
@@ -69,6 +85,10 @@ export class LiquidGlassElement extends ElementBase {
   attributeChangedCallback(name: string, _old: string | null, value: string | null): void {
     if (name === 'debug') {
       this.debug = value !== null && value !== 'false';
+      return;
+    }
+    if (name === 'appear') {
+      this.appearMs = value === null ? undefined : parseFloat(value);
       return;
     }
     const patch = attrPatch(GLASS_PROP_SCHEMA, name, value);

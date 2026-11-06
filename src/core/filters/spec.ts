@@ -5,8 +5,9 @@ import type { BlurKind, ResolvedGlassParams } from '../params.js';
  * `filterSpecToSvg` serializes it to markup. No DOM types in here.
  *
  * One image feeds everything: R,G = displacement, B = rim light. Stages, in order:
- *   displacement (1 pass, or 3 channel-isolated passes at staggered scales for dispersion)
- *   → blur (Gaussian or noise) → rim light (B lifted to white-with-alpha, screen-blended).
+ *   blurStage 'after':  displacement → blur → rim
+ *   blurStage 'before': blur(SourceGraphic) → pin alpha → displacement → rim
+ * where displacement is 1 pass, or 3 channel-isolated passes at staggered scales for dispersion.
  */
 
 export interface FilterPrimitive {
@@ -23,7 +24,7 @@ export interface FilterSpec {
   padding: number;
   /** The map image: always present, always first. */
   static: readonly FilterPrimitive[];
-  /** Displacement → blur → rim stages, only those enabled. */
+  /** Blur / displacement / rim stages in graph order, only those enabled. */
   dynamic: readonly FilterPrimitive[];
   /** Same key ⇒ same primitive sequence; only attribute values may differ. */
   structureKey: string;
@@ -59,10 +60,27 @@ export function buildFilterSpec(p: ResolvedGlassParams, refs: FilterRefs, opts: 
 
   const dynamic: FilterPrimitive[] = [];
   const chromatic = p.dispersion > 0;
-  dynamic.push(...(chromatic ? dispersionStage(p.displacementScale, p.dispersion) : displacementStage(p.displacementScale)));
+  const before = p.blurStage === 'before';
+
+  let source = 'SourceGraphic';
+  if (before) {
+    const blurred = blurStage('SourceGraphic', p.blurKind, p.blur);
+    dynamic.push(...blurred.prims);
+    // The blur sampled past the region edge, so edge pixels are translucent; pinned to opaque they
+    // keep their (correctly averaged) colour instead of leaving a pale hairline after the
+    // dispersion sum (hyalite's "rule 7").
+    dynamic.push(prim('feColorMatrix', { in: blurred.result, type: 'matrix', values: OPAQUE, result: 'soft' }));
+    source = 'soft';
+  }
+
+  dynamic.push(...(chromatic ? dispersionStage(source, p.displacementScale, p.dispersion) : displacementStage(source, p.displacementScale)));
+
   let input = 'refr';
-  dynamic.push(...blurStage(input, p.blurKind, p.blur));
-  input = p.blurKind === 'gauss' ? 'blurred' : `refrNoise_${noiseSuffix(p.blurKind)}`;
+  if (!before) {
+    const blurred = blurStage(input, p.blurKind, p.blur);
+    dynamic.push(...blurred.prims);
+    input = blurred.result;
+  }
   if (p.specular) dynamic.push(...rimStage(input, p.specularStrength));
 
   return {
@@ -72,7 +90,7 @@ export function buildFilterSpec(p: ResolvedGlassParams, refs: FilterRefs, opts: 
     padding: Math.max(0, opts.padding ?? 0),
     static: staticPrims,
     dynamic,
-    structureKey: `${chromatic ? 'dispersion' : 'single'}|${p.blurKind}|${p.specular ? 'rim' : '-'}`,
+    structureKey: `${chromatic ? 'dispersion' : 'single'}|${p.blurStage}:${p.blurKind}|${p.specular ? 'rim' : '-'}`,
   };
 }
 
@@ -93,9 +111,14 @@ export function filterElementAttrs(spec: FilterSpec): Record<string, string> {
 
 // ---- stages -------------------------------------------------------------------------------
 
-const displace = (scale: number, result: string): FilterPrimitive =>
+const OPAQUE = '1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0 1';
+const KEEP_R = '1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0';
+const KEEP_G = '0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0';
+const KEEP_B = '0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0';
+
+const displace = (source: string, scale: number, result: string): FilterPrimitive =>
   prim('feDisplacementMap', {
-    in: 'SourceGraphic',
+    in: source,
     in2: 'map',
     xChannelSelector: 'R',
     yChannelSelector: 'G',
@@ -103,27 +126,23 @@ const displace = (scale: number, result: string): FilterPrimitive =>
     result,
   });
 
-function displacementStage(scale: number): FilterPrimitive[] {
-  return [displace(scale, 'refr')];
+function displacementStage(source: string, scale: number): FilterPrimitive[] {
+  return [displace(source, scale, 'refr')];
 }
-
-const KEEP_R = '1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0';
-const KEEP_G = '0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0';
-const KEEP_B = '0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0';
 
 /**
  * Chromatic dispersion as three displacement passes: red at a slightly smaller scale, blue at
  * a slightly larger one, each channel isolated and the three summed (valid because the backdrop
  * is opaque). The fringe is radial and scales with the lens.
  */
-function dispersionStage(scale: number, dispersion: number): FilterPrimitive[] {
+function dispersionStage(source: string, scale: number, dispersion: number): FilterPrimitive[] {
   const k = DISPERSION_SPREAD * dispersion;
   return [
-    displace(scale * (1 - k), 'dispR'),
+    displace(source, scale * (1 - k), 'dispR'),
     prim('feColorMatrix', { in: 'dispR', type: 'matrix', values: KEEP_R, result: 'chR' }),
-    displace(scale, 'dispG'),
+    displace(source, scale, 'dispG'),
     prim('feColorMatrix', { in: 'dispG', type: 'matrix', values: KEEP_G, result: 'chG' }),
-    displace(scale * (1 + k), 'dispB'),
+    displace(source, scale * (1 + k), 'dispB'),
     prim('feColorMatrix', { in: 'dispB', type: 'matrix', values: KEEP_B, result: 'chB' }),
     prim('feComposite', { in: 'chR', in2: 'chG', operator: 'arithmetic', k1: '0', k2: '1', k3: '1', k4: '0', result: 'chRG' }),
     prim('feComposite', { in: 'chRG', in2: 'chB', operator: 'arithmetic', k1: '0', k2: '1', k3: '1', k4: '0', result: 'refr' }),
@@ -132,36 +151,40 @@ function dispersionStage(scale: number, dispersion: number): FilterPrimitive[] {
 
 const noiseSuffix = (kind: BlurKind): 'low' | 'high' => (kind === 'noise1' ? 'low' : 'high');
 
-function blurStage(input: string, kind: BlurKind, blur: number): FilterPrimitive[] {
+function blurStage(input: string, kind: BlurKind, blur: number): { prims: FilterPrimitive[]; result: string } {
   if (kind === 'gauss') {
-    return [prim('feGaussianBlur', { in: input, stdDeviation: blur.toFixed(2), result: 'blurred' })];
+    return { prims: [prim('feGaussianBlur', { in: input, stdDeviation: blur.toFixed(2), result: 'blurred' })], result: 'blurred' };
   }
   const suffix = noiseSuffix(kind);
   const baseFrequency = kind === 'noise1' ? 0.035 : 0.4;
   const numOctaves = kind === 'noise1' ? 5 : 4;
-  return [
-    prim('feTurbulence', {
-      type: 'fractalNoise',
-      baseFrequency: String(baseFrequency),
-      numOctaves: String(numOctaves),
-      seed: '7',
-      result: `noise_${suffix}`,
-    }),
-    prim('feColorMatrix', {
-      in: `noise_${suffix}`,
-      type: 'matrix',
-      values: '1.8 0 0 0 -0.4  0 1.8 0 0 -0.4  0 0 1.8 0 -0.4  0 0 0 1 0',
-      result: `quant_${suffix}`,
-    }),
-    prim('feDisplacementMap', {
-      in: input,
-      in2: `quant_${suffix}`,
-      xChannelSelector: 'R',
-      yChannelSelector: 'G',
-      scale: (blur * NOISE_SCALE_FACTOR[kind]).toFixed(2),
-      result: `refrNoise_${suffix}`,
-    }),
-  ];
+  const result = `refrNoise_${suffix}`;
+  return {
+    prims: [
+      prim('feTurbulence', {
+        type: 'fractalNoise',
+        baseFrequency: String(baseFrequency),
+        numOctaves: String(numOctaves),
+        seed: '7',
+        result: `noise_${suffix}`,
+      }),
+      prim('feColorMatrix', {
+        in: `noise_${suffix}`,
+        type: 'matrix',
+        values: '1.8 0 0 0 -0.4  0 1.8 0 0 -0.4  0 0 1.8 0 -0.4  0 0 0 1 0',
+        result: `quant_${suffix}`,
+      }),
+      prim('feDisplacementMap', {
+        in: input,
+        in2: `quant_${suffix}`,
+        xChannelSelector: 'R',
+        yChannelSelector: 'G',
+        scale: (blur * NOISE_SCALE_FACTOR[kind]).toFixed(2),
+        result,
+      }),
+    ],
+    result,
+  };
 }
 
 /**

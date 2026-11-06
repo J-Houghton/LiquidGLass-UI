@@ -92,6 +92,18 @@ describe('<liquid-glass-container>', () => {
     expect(el.querySelector('svg')).not.toBeNull();
   });
 
+  it('reads blur-stage and appear attributes; replayAppear(0) completes instantly', async () => {
+    document.body.innerHTML = `<liquid-glass-container id="k" blur-stage="before" appear="300"></liquid-glass-container>`;
+    const el = document.getElementById('k') as LiquidGlassElement;
+    expect(el.appearMs).toBe(300);
+    await el.glass!.ready;
+    expect(el.glass!.params.blurStage).toBe('before');
+    await el.replayAppear(0);
+    expect(el.glass!.intensity).toBe(1);
+    el.setAttribute('appear', 'nope');
+    expect(el.appearMs).toBeUndefined();
+  });
+
   it('emits liquid-glass:render after each render', async () => {
     document.body.innerHTML = `<liquid-glass-container id="e"></liquid-glass-container>`;
     const el = document.getElementById('e') as LiquidGlassElement;

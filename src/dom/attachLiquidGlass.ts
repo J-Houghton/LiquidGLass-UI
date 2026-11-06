@@ -9,6 +9,13 @@ export type GlassFallback =
   /** Attach the SVG filter regardless of detection. */
   | 'none';
 
+export interface AppearOptions {
+  /** Duration of the entrance, ms. */
+  duration: number;
+  /** Easing on [0,1]. Default: ease-out cubic. */
+  easing?: (t: number) => number;
+}
+
 export interface LiquidGlassOptions extends Omit<GlassFilterOptions, 'radius' | 'onRender'> {
   /**
    * Where the effect size comes from. `'observe'` (default) measures the target's border box
@@ -38,10 +45,20 @@ export interface LiquidGlassOptions extends Omit<GlassFilterOptions, 'radius' | 
    * it (Chromium; Safari does not); pass a boolean to drive it from your own setting.
    */
   reducedTransparency?: boolean | 'auto';
+  /**
+   * Entrance animation: the lens eases in from flat glass over this many ms (a number, or
+   * `{ duration, easing }`). Attribute-only updates, no map work. Skipped under
+   * `prefers-reduced-motion`. Re-run any time with `handle.appear()`. Default: none.
+   */
+  appear?: number | AppearOptions;
   /** ResizeObserver implementation (test seam). Default: the global one, if any. */
   resizeObserver?: typeof ResizeObserver;
   /** `matchMedia` implementation (test seam). Default: `window.matchMedia`, if any. */
   matchMedia?: (query: string) => MediaQueryList;
+  /** `requestAnimationFrame` implementation (test seam). Default: the global one, if any. */
+  animationFrame?: (callback: (time: number) => void) => unknown;
+  /** Clock for animations (test seam). Default: `performance.now`. */
+  now?: () => number;
   onRender?: (handle: LiquidGlassHandle) => void;
 }
 
@@ -57,11 +74,17 @@ export interface LiquidGlassHandle extends GlassFilterHandle {
    * Useful with `applyStyles: false`, e.g. React `style={handle.getStyle()}`.
    */
   getStyle(): Readonly<Record<string, string>>;
+  /**
+   * Play the entrance: intensity 0 → 1 over `durationMs` (default: the `appear` option's duration,
+   * or 400). Resolves when it finishes or is superseded. Instant under reduced motion / frost mode.
+   */
+  appear(durationMs?: number): Promise<void>;
 }
 
 const STYLE_KEYS = ['backdropFilter', 'WebkitBackdropFilter', 'backgroundColor', 'boxShadow', 'borderRadius'] as const;
 type StyleKey = (typeof STYLE_KEYS)[number];
 const DATA_ATTR = 'data-liquid-glass';
+const DEFAULT_APPEAR_MS = 400;
 
 /** Parameter overlay for reduced transparency. */
 export function reducedTransparencyParams(p: Partial<GlassParams>): Partial<GlassParams> {
@@ -72,6 +95,9 @@ export function reducedTransparencyParams(p: Partial<GlassParams>): Partial<Glas
     dispersion: 0,
   };
 }
+
+/** Ease-out cubic, the entrance curve hyalite and most UI toolkits use. */
+export const easeOutCubic = (t: number): number => 1 - (1 - t) ** 3;
 
 function readCssRadius(target: HTMLElement): number | undefined {
   if (typeof getComputedStyle !== 'function') return undefined;
@@ -98,8 +124,11 @@ export function attachLiquidGlass(target: HTMLElement, options: LiquidGlassOptio
     fallback = 'frost',
     frostBlurPx = 12,
     reducedTransparency = 'auto',
+    appear: appearOption,
     resizeObserver,
     matchMedia: mm,
+    animationFrame,
+    now: nowOption,
     onRender,
     ...filterOptions
   } = options;
@@ -116,6 +145,13 @@ export function attachLiquidGlass(target: HTMLElement, options: LiquidGlassOptio
   } else {
     reduced = reducedTransparency;
   }
+
+  const appearConfig: AppearOptions | null =
+    appearOption === undefined ? null : typeof appearOption === 'number' ? { duration: appearOption } : appearOption;
+  const raf =
+    animationFrame ??
+    (typeof requestAnimationFrame === 'function' ? (cb: (time: number) => void) => requestAnimationFrame(cb) : undefined);
+  const now = nowOption ?? (() => (typeof performance !== 'undefined' ? performance.now() : Date.now()));
 
   const radiusPx = typeof radius === 'number' ? radius : (readCssRadius(target) ?? DEFAULT_GLASS_PARAMS.radius);
   let initialSize = size === 'observe' ? measure(target) : size;
@@ -168,6 +204,8 @@ export function attachLiquidGlass(target: HTMLElement, options: LiquidGlassOptio
       ? createGlassFilter(target, {
           ...(rest as GlassFilterOptions),
           ...effective(userParams),
+          // start flat when an entrance is requested, so the first paint has nothing to undo
+          intensity: appearConfig && appearConfig.duration > 0 ? 0 : (rest as GlassFilterOptions).intensity,
           onRender: () => {
             applyTargetStyles(inner.params, inner.url);
             onRender?.(handle);
@@ -198,6 +236,29 @@ export function attachLiquidGlass(target: HTMLElement, options: LiquidGlassOptio
   };
   reducedQuery?.addEventListener('change', onReducedChange);
 
+  // ---- entrance animation
+  let appearToken = 0;
+  function appear(durationMs: number = appearConfig?.duration ?? DEFAULT_APPEAR_MS): Promise<void> {
+    const token = ++appearToken;
+    if (inner.destroyed) return Promise.resolve();
+    const reducedMotion = matchMediaFn?.('(prefers-reduced-motion: reduce)')?.matches ?? false;
+    if (mode !== 'glass' || !raf || !(durationMs > 0) || reducedMotion) return inner.setIntensity(1);
+    const easing = appearConfig?.easing ?? easeOutCubic;
+    const start = now();
+    void inner.setIntensity(0);
+    return new Promise<void>((resolve) => {
+      const step = () => {
+        if (token !== appearToken || inner.destroyed) return resolve();
+        const t = Math.min(1, (now() - start) / durationMs);
+        void inner.setIntensity(easing(t));
+        if (t < 1) raf(step);
+        else resolve();
+      };
+      raf(step);
+    });
+  }
+  if (appearConfig && appearConfig.duration > 0) void inner.ready.then(() => appear(appearConfig.duration));
+
   let observer: ResizeObserver | null = null;
   const RO = resizeObserver ?? (typeof ResizeObserver !== 'undefined' ? ResizeObserver : undefined);
   if (mode === 'glass' && size === 'observe' && RO) {
@@ -212,6 +273,7 @@ export function attachLiquidGlass(target: HTMLElement, options: LiquidGlassOptio
 
   function destroy(): void {
     if (inner.destroyed) return;
+    appearToken += 1;
     observer?.disconnect();
     observer = null;
     reducedQuery?.removeEventListener('change', onReducedChange);
@@ -241,6 +303,9 @@ export function attachLiquidGlass(target: HTMLElement, options: LiquidGlassOptio
     get dpr() {
       return inner.dpr;
     },
+    get intensity() {
+      return inner.intensity;
+    },
     get destroyed() {
       return inner.destroyed;
     },
@@ -252,6 +317,11 @@ export function attachLiquidGlass(target: HTMLElement, options: LiquidGlassOptio
     update,
     refresh: () => inner.refresh(),
     setDpr: (d) => inner.setDpr(d),
+    setIntensity: (k) => {
+      appearToken += 1; // a manual intensity wins over a running entrance
+      return inner.setIntensity(k);
+    },
+    appear,
     getStyle: () => styleFor(inner.params, inner.url),
     destroy,
   };
@@ -277,6 +347,7 @@ function createFrostHandle(
   let params = resolveGlassParams(raw);
   let destroyed = false;
   let dpr = options.dpr ?? 1;
+  let intensity = 1;
   const debug = { mapUrl: null, physicalMaxDisplacementPx: 0, displacementPx: 0, renders: 0 };
 
   let scheduled: Promise<void> | null = null;
@@ -304,6 +375,9 @@ function createFrostHandle(
     get dpr() {
       return dpr;
     },
+    get intensity() {
+      return intensity;
+    },
     get destroyed() {
       return destroyed;
     },
@@ -328,6 +402,10 @@ function createFrostHandle(
     refresh: render,
     setDpr(next) {
       if (Number.isFinite(next) && next > 0) dpr = next;
+      return Promise.resolve();
+    },
+    setIntensity(k) {
+      intensity = Number.isFinite(k) ? Math.min(1, Math.max(0, k)) : 1;
       return Promise.resolve();
     },
     destroy() {

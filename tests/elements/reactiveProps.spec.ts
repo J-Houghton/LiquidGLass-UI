@@ -17,7 +17,7 @@ describe('reactiveProps schema', () => {
 
   it('observes canonical attributes and 1.x aliases', () => {
     const attrs = observedAttributesOf(GLASS_PROP_SCHEMA);
-    for (const a of ['width', 'bezel-width', 'refractive-index', 'displacement-scale', 'physical-scale', 'blur', 'specular', 'tint']) expect(attrs).toContain(a);
+    for (const a of ['width', 'bezel-width', 'refractive-index', 'displacement-scale', 'physical-scale', 'blur-stage', 'blur', 'specular', 'tint']) expect(attrs).toContain(a);
     for (const a of ['scale-px', 'blur-std-dev', 'show-specular', 'frost']) expect(attrs).toContain(a);
     expect(new Set(attrs).size).toBe(attrs.length);
   });

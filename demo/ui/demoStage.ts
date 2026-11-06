@@ -8,19 +8,21 @@ import {
 import { CONTAINERS_CHANGED_EVENT, REMOVE_CONTAINER_EVENT, SELECT_CONTAINER_EVENT } from './events.js';
 import { PRESETS, BACKGROUNDS, type Preset } from './presets.js';
 
+/** Entrance duration used when a preset is dropped on the stage (replayable from the pane). */
+export const APPEAR_MS = 400;
+
+type Glass = { el: HTMLDivElement; debugEl: HTMLDivElement; captionEl: HTMLDivElement; handle: LiquidGlassHandle };
+
 /**
- * One glass surface on the stage. The demo drives the headless API directly: a plain <div>
- * sized by CSS, `attachLiquidGlass` on it (size: 'observe' follows the CSS size), and a debug
- * overlay that shows the displacement map.
+ * One glass surface on the stage, optionally with an A/B twin: a second glass in the same
+ * draggable wrapper that mirrors every parameter of the primary except `twin.override`.
  */
-export type StageEntry = {
+export type StageEntry = Glass & {
   id: string;
   label: string;
   wrapper: HTMLDivElement;
-  el: HTMLDivElement;
-  debugEl: HTMLDivElement;
-  handle: LiquidGlassHandle;
   debug: boolean;
+  twin: (Glass & { override: Partial<GlassParams> }) | null;
 };
 
 /** Registry read by the config pane. */
@@ -29,9 +31,7 @@ export const stage = {
   activeId: undefined as string | undefined,
 };
 
-type Glass = Pick<StageEntry, 'el' | 'debugEl' | 'handle'>;
-
-function createGlass(config: GlassParams, parent: HTMLElement, id: string): Glass {
+function createGlass(config: GlassParams, parent: HTMLElement, id: string, caption: string, appear = APPEAR_MS): Glass {
   const el = document.createElement('div');
   el.className = 'demo-glass';
   el.id = id;
@@ -42,19 +42,79 @@ function createGlass(config: GlassParams, parent: HTMLElement, id: string): Glas
   debugEl.className = 'demo-glass__debug';
   debugEl.hidden = true;
   el.appendChild(debugEl);
+
+  const captionEl = document.createElement('div');
+  captionEl.className = 'demo-glass__caption';
+  captionEl.textContent = caption;
+  el.appendChild(captionEl);
   parent.appendChild(el);
 
   const handle = attachLiquidGlass(el, {
     ...config,
     id: `${id}-filter`,
     radius: config.radius,
+    appear,
     onRender: (h) => {
       const url = h.debug.mapUrl;
       debugEl.style.backgroundImage = url ? `url(${url})` : '';
     },
   });
   showRenderMode(handle);
-  return { el, debugEl, handle };
+  return { el, debugEl, captionEl, handle };
+}
+
+/** Apply a parameter patch to one glass: size through CSS (the observer follows), the rest through the handle. */
+function updateGlass(glass: Pick<Glass, 'el' | 'handle'>, patch: Partial<GlassParams>): Promise<void> {
+  const { width, height, ...rest } = patch;
+  if (width !== undefined) glass.el.style.width = `${width}px`;
+  if (height !== undefined) glass.el.style.height = `${height}px`;
+  return glass.handle.update(rest);
+}
+
+/** Patch the primary and, if present, its twin (twin keeps its override on top). */
+export function updateEntry(entry: StageEntry, patch: Partial<GlassParams>): Promise<void> {
+  const tasks = [updateGlass(entry, patch)];
+  if (entry.twin) tasks.push(updateGlass(entry.twin, { ...patch, ...entry.twin.override }));
+  return Promise.all(tasks).then(() => undefined);
+}
+
+export function setGlassDebug(entry: StageEntry, on: boolean): void {
+  entry.debug = on;
+  entry.debugEl.hidden = !on;
+  if (entry.twin) entry.twin.debugEl.hidden = !on;
+}
+
+const captionFor = (p: Partial<GlassParams>, prefix: string) =>
+  `${prefix} · blur ${p.blurStage ?? DEFAULT_GLASS_PARAMS.blurStage}`;
+
+/**
+ * Show (override != null) or remove (null) the A/B twin. The twin copies the primary's current
+ * parameters, applies the override, and from then on mirrors every patch sent to the primary.
+ */
+export function setTwin(entry: StageEntry, override: Partial<GlassParams> | null): void {
+  if (entry.twin) {
+    entry.twin.handle.destroy();
+    entry.twin.el.remove();
+    entry.twin = null;
+    entry.wrapper.classList.remove('has-twin');
+  }
+  entry.captionEl.textContent = '';
+  if (!override) return;
+
+  const base = entry.handle.params;
+  const config = resolveGlassParams({ ...base, ...override }, DEFAULT_GLASS_PARAMS);
+  const twin = createGlass(config, entry.wrapper, `${entry.id}-twin`, captionFor(config, 'B'), 0);
+  twin.debugEl.hidden = !entry.debug;
+  entry.twin = { ...twin, override };
+  entry.wrapper.classList.add('has-twin');
+  entry.captionEl.textContent = captionFor(base, 'A');
+}
+
+/** Re-run the entrance on the primary and its twin together, so the two can be compared mid-flight. */
+export function replayAppear(entry: StageEntry, durationMs = APPEAR_MS): Promise<void> {
+  const tasks = [entry.handle.appear(durationMs)];
+  if (entry.twin) tasks.push(entry.twin.handle.appear(durationMs));
+  return Promise.all(tasks).then(() => undefined);
 }
 
 /** Toolbar badge: which path this browser got (SVG lens in Chromium, CSS frost elsewhere). */
@@ -67,19 +127,6 @@ function showRenderMode(handle: LiquidGlassHandle): void {
     handle.mode === 'glass'
       ? 'backdrop-filter: url(#svg) renders in this engine'
       : `detectGlassSupport() = "${handle.support}": this engine does not render SVG backdrop filters, so you see the CSS fallback`;
-}
-
-/** Apply a parameter patch: size goes through CSS (the observer follows), the rest through the handle. */
-export function updateGlass(glass: Pick<StageEntry, 'el' | 'handle'>, patch: Partial<GlassParams>): Promise<void> {
-  const { width, height, ...rest } = patch;
-  if (width !== undefined) glass.el.style.width = `${width}px`;
-  if (height !== undefined) glass.el.style.height = `${height}px`;
-  return glass.handle.update(rest);
-}
-
-export function setGlassDebug(entry: StageEntry, on: boolean): void {
-  entry.debug = on;
-  entry.debugEl.hidden = !on;
 }
 
 export class DemoStageController {
@@ -127,7 +174,7 @@ export class DemoStageController {
       this.ghostWrapper = document.createElement('div');
       this.ghostWrapper.className = 'preview-ghost';
       document.body.appendChild(this.ghostWrapper);
-      this.ghost = createGlass(config, this.ghostWrapper, 'demo-ghost');
+      this.ghost = createGlass(config, this.ghostWrapper, 'demo-ghost', '', 0);
     } else if (this.ghost) {
       void updateGlass(this.ghost, config);
     }
@@ -230,9 +277,9 @@ export class DemoStageController {
     wrapper.setAttribute('aria-label', label);
     document.body.append(wrapper);
 
-    const glass = createGlass(config, wrapper, id);
+    const glass = createGlass(config, wrapper, id, '');
     this.makeDraggable(wrapper, id);
-    const entry: StageEntry = { id, label, wrapper, ...glass, debug: false };
+    const entry: StageEntry = { id, label, wrapper, ...glass, debug: false, twin: null };
     stage.entries.set(id, entry);
     return entry;
   }
@@ -285,6 +332,7 @@ export class DemoStageController {
     const id = event.detail?.id;
     const entry = id ? stage.entries.get(id) : undefined;
     if (!id || !entry) return;
+    entry.twin?.handle.destroy();
     entry.handle.destroy();
     entry.wrapper.remove();
     stage.entries.delete(id);

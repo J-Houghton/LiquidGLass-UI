@@ -224,6 +224,106 @@ describe('attachLiquidGlass (frost fallback)', () => {
   });
 });
 
+describe('attachLiquidGlass (appear)', () => {
+  /** Manual clock + frame queue standing in for performance.now / requestAnimationFrame. */
+  function clock() {
+    let t = 0;
+    const frames: Array<(time: number) => void> = [];
+    return {
+      now: () => t,
+      animationFrame: (cb: (time: number) => void) => {
+        frames.push(cb);
+        return frames.length;
+      },
+      advance(ms: number) {
+        t += ms;
+        for (const f of frames.splice(0)) f(t);
+      },
+      get pending() {
+        return frames.length;
+      },
+    };
+  }
+
+  it('starts flat and eases the intensity in over the duration (attribute-only updates)', async () => {
+    const { attach, encoded } = env();
+    const c = clock();
+    const h = attach({ appear: 400, now: c.now, animationFrame: c.animationFrame });
+    await h.ready;
+    const kids = (h.filterElement as unknown as FakeElement).children;
+    expect(h.intensity).toBe(0);
+    expect(kids[1].getAttribute('scale')).toBe('0');
+    expect(c.pending).toBe(1); // the entrance queued its first frame on ready
+    c.advance(200);
+    await h.refresh();
+    expect(h.intensity).toBeCloseTo(0.875, 6); // ease-out cubic at t = 0.5
+    expect(kids[1].getAttribute('scale')).toBe('157.5');
+    c.advance(200);
+    await h.refresh();
+    expect(h.intensity).toBe(1);
+    expect(kids[1].getAttribute('scale')).toBe('180');
+    expect(c.pending).toBe(0);
+    expect(encoded).toHaveLength(1);
+  });
+
+  it('appear() replays; a manual setIntensity supersedes a running entrance', async () => {
+    const { attach } = env();
+    const c = clock();
+    const h = attach({ now: c.now, animationFrame: c.animationFrame });
+    await h.ready;
+    expect(h.intensity).toBe(1);
+    const done = h.appear(100);
+    await h.refresh();
+    expect(h.intensity).toBe(0);
+    c.advance(50);
+    await h.refresh();
+    expect(h.intensity).toBeCloseTo(0.875, 6);
+    await h.setIntensity(1);
+    c.advance(50); // the stale frame runs but must not touch intensity
+    await done;
+    await h.refresh();
+    expect(h.intensity).toBe(1);
+    expect(c.pending).toBe(0);
+  });
+
+  it('respects prefers-reduced-motion by snapping to full intensity', async () => {
+    const { attach } = env();
+    const c = clock();
+    const h = attach({
+      appear: 400,
+      now: c.now,
+      animationFrame: c.animationFrame,
+      matchMedia: (q) => new FakeMediaQueryList(q.includes('reduced-motion')) as unknown as MediaQueryList,
+    });
+    await h.ready;
+    await h.refresh();
+    expect(h.intensity).toBe(1);
+    expect(c.pending).toBe(0);
+  });
+
+  it('frost mode has no entrance to play', async () => {
+    const { attach } = env();
+    const c = clock();
+    const h = attach({ support: 'frost', appear: 400, now: c.now, animationFrame: c.animationFrame });
+    await h.ready;
+    await h.appear(400);
+    expect(h.intensity).toBe(1);
+    expect(c.pending).toBe(0);
+  });
+
+  it('destroy during the entrance stops it cleanly', async () => {
+    const { attach } = env();
+    const c = clock();
+    const h = attach({ appear: 400, now: c.now, animationFrame: c.animationFrame });
+    await h.ready;
+    c.advance(100);
+    h.destroy();
+    c.advance(300);
+    expect(c.pending).toBe(0);
+    expect(h.destroyed).toBe(true);
+  });
+});
+
 describe('attachLiquidGlass (reduced transparency)', () => {
   it('overlays more tint and blur and no dispersion; follows the media query', async () => {
     const { attach } = env();
