@@ -8,7 +8,8 @@ fixture-pinned ways listed under "Rendering changes".
 ### Breaking
 
 - **Package shape.** ESM only. Entries: `.` (headless API), `./core` (pure engine), `./elements`
-  (custom elements). The CJS build and the `lit` peer dependency are gone. `sideEffects: false`.
+  (custom elements), `./motion` (pure motion model). The CJS build and the `lit` peer dependency
+  are gone. `sideEffects: false`.
 - **No elements are registered on import.** Call `defineLiquidGlassElements()` from
   `liquid-glass-filter/elements` on the client.
 - **Parameter names.** `scalePx` → `displacementScale`, `blurStdDev` → `blur`, `showSpecular` →
@@ -64,6 +65,13 @@ fixture-pinned ways listed under "Rendering changes".
   `<liquid-glass-container content="selector" mode="content">`. In Chrome the content lens matches
   the backdrop lens pixel for pixel outside a one-pixel anti-aliasing ring at the shape edge (and
   the rectangle corners when `blur` ≥ 1 px); Safari and Firefox need a manual check.
+- Motion: `liquid-glass-filter/motion` (closed-form spring with Apple-style `{ duration, bounce }`
+  or physical constants, `springLinearEasing()` to a CSS `linear()` string, velocity squash with
+  hard caps; pure, caller supplies time) and `attachGlassMotion(handle, { press, drag, hover })` in
+  the main entry: one rAF loop that sleeps at rest, `scale`/`skewX` on the target, lens dim while
+  pressed, pointer wiring or `press()`/`release()`/`impulse()` for your own drag code,
+  reduced-motion snapping. `<liquid-glass-container motion="press drag hover">`. Playground
+  "Motion" folder; `demo/visual.html?motion=press|release|drag&t=` freezes a mid-spring frame.
 - `MapRegistry` keeps up to `maxIdle` released maps warm (page registry: 16); `clearIdle()`.
 - `detectGlassSupport()` also requires `backdrop-filter: url()` to parse and honours
   `<html data-liquid-glass-support="force|off">`.

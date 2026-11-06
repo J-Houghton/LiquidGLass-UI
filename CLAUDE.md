@@ -17,7 +17,7 @@ The design, audit, status and open decisions are in `docs/modernization-plan.md`
 | Tests (once) | `npm test` | Vitest. Node environment by default; `tests/elements` opt into happy-dom per file. |
 | Tests (watch) | `npm run test:watch` | |
 | Typecheck | `npm run typecheck` | Whole repo (`tsconfig.test.json`) plus `src/core` with no DOM lib (`tsconfig.core.json`). Must pass before a PR. |
-| Library build | `npm run build` | `dist/`: `index`, `core`, `elements` as ESM with bundled `.d.ts`. |
+| Library build | `npm run build` | `dist/`: `index`, `core`, `elements`, `motion` as ESM with `.d.ts`; `scripts/check-dist.mjs` guards it. |
 | Demo build | `npm run build:demo` | `dist-demo/`; GitHub Pages deploys this on push to `main`. |
 | Benchmark | `BENCH=1 npx vitest run tests/bench` | Banding metrics vs. the original algorithm. Not a gate. |
 | Regenerate fixtures | `UPDATE_FIXTURES=1 npm test` | Only in a commit that explains the intended visual change. |
@@ -30,19 +30,23 @@ The design, audit, status and open decisions are in `docs/modernization-plan.md`
 src/core/       Pure engine. Parameters (params.ts), optics (optics/: band walk, 1D curve, map with
                 rim in B, standalone specular), filter description as data (filters/spec.ts).
                 Returns RGBAImage / Float64Array / FilterSpec. No DOM, no globals.
+src/motion/     Pure motion model: closed-form spring (spring.ts), velocity squash (squash.ts). No DOM,
+                no clock; the caller supplies dt. Own entry `./motion`.
 src/dom/        Browser glue, framework-free: createGlassFilter, attachLiquidGlass (support detection,
-                frost fallback, reduced transparency), mountFilter, encodeImage, mapCache (shared
-                refcounted registry), support. Touches document/canvas/URL/ResizeObserver only inside functions.
+                frost fallback, reduced transparency, content-side mode), attachGlassMotion (rAF loop
+                over src/motion), mountFilter, encodeImage, mapCache (shared refcounted registry),
+                support. Touches document/canvas/URL/ResizeObserver only inside functions.
 src/elements/   Hand-rolled custom elements over src/dom. Separate entry; registers nothing on import.
 demo/           Playground (Tweakpane). Entry is demo/main.ts; it calls exported init functions.
 tests/          Vitest. tests/fixtures = golden data; tests/helpers/fakeDom.ts = tiny DOM stand-in;
                 tests/bench = benchmark + the original algorithm as baseline.
 ```
 
-Import direction is one-way: `core` ← `dom` ← `elements` ← `demo`. `src/core` imports nothing
-outside itself and must compile with `lib: ["ES2022"]` and no ambient types (`npm run typecheck`
-enforces it). If core code needs `document`, `window`, `ImageData`, `URL` or `devicePixelRatio`,
-it belongs in `src/dom`; core takes numbers and returns data.
+Import direction is one-way: `core`, `motion` ← `dom` ← `elements` ← `demo`. `src/core` and
+`src/motion` import nothing outside themselves and must compile with `lib: ["ES2022"]` and no
+ambient types (`npm run typecheck` enforces it). If such code needs `document`, `window`,
+`ImageData`, `URL`, `devicePixelRatio` or `requestAnimationFrame`, it belongs in `src/dom`; core
+and motion take numbers and return data.
 
 ## Hard rules
 
@@ -106,6 +110,11 @@ it belongs in `src/dom`; core takes numbers and returns data.
   a move is `setLens()`, attribute writes only, never a map; Safari < 27 needs `bumpFilterId`, which
   makes `handle.id`/`handle.url` change per render. Tests force it with `mode: 'content'` or
   `support: 'frost', contentSupport: true`.
+- Motion (`attachGlassMotion`): the rAF loop must sleep at rest (tests assert `running` is false and
+  no frame is pending) and the transform must be removed at rest, not left as an identity. Springs
+  are closed-form; never add an integrator with a fixed step. In content mode no transform is
+  written by default. Tests drive it with the `now`/`animationFrame` seams and happy-dom pointer
+  events; the harness freezes frames with `motion=press|release|drag&t=`.
 
 ## Workflow
 

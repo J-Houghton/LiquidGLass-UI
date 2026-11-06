@@ -104,6 +104,36 @@ downscales filtered content over 4096 device px per side (the handle warns once)
 needs a fresh filter id per update (done automatically); Firefox filters on the CPU. Filter the
 smallest element that sits behind the glass, not the page.
 
+### Motion (press, drag, hover)
+
+What makes glass read as liquid is motion more than optics: a spring that overshoots on release and
+a squash that follows the pointer's velocity. `attachGlassMotion` drives a glass with both from one
+`requestAnimationFrame` loop that sleeps at rest:
+
+```ts
+import { attachLiquidGlass, attachGlassMotion } from 'liquid-glass-filter';
+
+const glass = attachLiquidGlass(button);
+const motion = attachGlassMotion(glass, {
+  press: { scale: 1.045, dim: 0.85, spring: { duration: 0.35, bounce: 0.3 } }, // the defaults
+  drag: true, // squash/stretch from pointer velocity while pressed; caps: 12 % stretch, 14° skew
+  hover: false, // or { scale: 1.02 }
+});
+// drive it yourself if your drag code owns the pointer: motion.press(), motion.release(),
+// motion.impulse(vx, vy) in px/s, motion.hover(on); motion.frame has the current numbers
+```
+
+The transform (`scale`, `skewX`) is written to the target and removed at rest; while pressed the
+lens relaxes to `dim` through `setIntensity`. Springs are closed-form, parameterised like Apple's
+`Spring` (`{ duration, bounce }`) or physically (`{ stiffness, damping, mass }`), so a release
+mid-press keeps its velocity. Under `prefers-reduced-motion` presses snap and the squash is off.
+In content mode nothing is transformed by default (the lens would not follow the target), only
+the dim applies; pass `element` to transform something else. The pure model is its own entry,
+`liquid-glass-filter/motion`: `stepSpring`, `springPhysics`, `springLinearEasing` (a CSS `linear()`
+string plus duration for plain transitions), `squashSample`, `squashDecay`, `squashDeformation`.
+On the element: `<liquid-glass-container motion="press drag hover">` (any subset; the bare
+attribute means press and drag).
+
 ### HTML custom elements
 
 ```ts

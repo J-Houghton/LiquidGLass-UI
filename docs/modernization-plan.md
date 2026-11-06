@@ -23,7 +23,7 @@ per the recommendations in §4 (OQ-13: not on npm, so 2.0.0 with no deprecation 
 | 2 Filter graph as data | done | Equivalence against the Lit-era graph was proven for all 12 structures before that code was deleted (commit "Phase 2.1 + 2.3"). |
 | 3 Headless API | done | `createGlassFilter`, `attachLiquidGlass`, ESM-only package with `.`/`./core` entries. Demo dogfoods the API (3.6). |
 | 4 Elements, Lit removal | done | `./elements` entry; lifecycle tests run under `happy-dom` (dev-only, the addition OQ-4 reserved). 4.3 landed early to fix a real break: `sideEffects:false` made Rollup drop the demo's side-effect-only imports, so the demo now has an explicit entry (`demo/main.ts`). `blur` is exposed as the `blurAmount` element property because `HTMLElement.blur()` exists. |
-| 5 Research-dependent | done for the "clear win" items; the rest are decisions (below) | Driven by `docs/research-liquid-glass-2026.md` (its §5 ranks 14 items). Landed: item 1 real support detection + item 4(i) frost fallback + item 7 reduced transparency (5.1); item 2 three-pass dispersion + item 8 rim-in-blue-channel and region padding + item 6 `physicalScale` (5.3); item 3 quadrant-mirrored band walk + item 10 shared refcounted map registry (5.5). OQ-17 and OQ-18 were fixed on the way. Decision for 5.2 (renderer): stay SVG-only, handle remains renderer-neutral (research items 11, 14 are "not worth it now"). 5.4 (shapes) and 5.6 (vocabulary) are deferred/settled: see OQ-19 to OQ-23; OQ-20 (content-side refraction) landed 2026-11-06 (section 7.2); OQ-19 (motion) is planned in section 7.1 and not started. |
+| 5 Research-dependent | done for the "clear win" items; the rest are decisions (below) | Driven by `docs/research-liquid-glass-2026.md` (its §5 ranks 14 items). Landed: item 1 real support detection + item 4(i) frost fallback + item 7 reduced transparency (5.1); item 2 three-pass dispersion + item 8 rim-in-blue-channel and region padding + item 6 `physicalScale` (5.3); item 3 quadrant-mirrored band walk + item 10 shared refcounted map registry (5.5). OQ-17 and OQ-18 were fixed on the way. Decision for 5.2 (renderer): stay SVG-only, handle remains renderer-neutral (research items 11, 14 are "not worth it now"). 5.4 (shapes) and 5.6 (vocabulary) are deferred/settled: see OQ-19 to OQ-23; OQ-20 (content-side refraction) landed 2026-11-06 (section 7.2); OQ-19 (motion) landed the same day (section 7.1). |
 | 6 Release | done except 6.3 (deferred) | README, CHANGELOG, 2.0.0. 6.2 bumped to TypeScript 6.0, Vite 8.3, Vitest 5.1, happy-dom 21, Node 22 in both workflows. TypeScript 7 (native compiler) and vite-plugin-dts 5 (rewrite over unplugin-dts, `rollupTypes` → `bundleTypes`) were tried and deliberately not taken yet. 6.3: a publish workflow was added and then deferred at the owner's request on 2026-11-06 (no npm publishing planned for now; the consumer imports the built package locally). The workflow lives in history (commit a2aa16d) if wanted later; the `package.json` metadata (repository, keywords, `publishConfig`, `prepublishOnly`) stayed. |
 
 Visual check: done by the owner in a browser on 2026-11-05 after the Phase 5 rendering changes
@@ -540,7 +540,7 @@ Dependencies: 0 → 1 → 2 → 3 → 4 → 6. Phase 5 items slot in after 3 (5.
 | OQ-16 | The banding benchmark's thresholds: delete, keep as reporting, or re-tune after research? | Keep as reporting only (0.5). Re-tune only if 5.3 changes the map encoding; otherwise they measure a trade-off you already accepted. |
 | OQ-17 | Fix the two pinned geometry quirks found during Phase 1 (one-pixel corner offset in `band.ts`; flipped corner normal in `specularLight.ts`)? | **Done** (commit "OQ-17: sample the band at pixel centers"). The fix went further than the one-liners: pixel-center sampling makes corners and edges agree and the map an exact mirror image, which tests now assert. Not yet eyeballed in a browser. |
 | OQ-18 | `specularStrength` applied twice (image clamp × filter slope)? | **Done** in 5.3: the rim is baked at strength 1 into the map's blue channel and the filter applies the strength once. Default 0.9 → 0.81 and presets re-tuned so the look is unchanged. |
-| OQ-19 | Motion module (closed-form spring + velocity squash, pure, caller supplies time): research item 5, tagged "trade-off, my call". | Not now. It is what makes 2026 libraries read as "liquid", but it is scope beyond a filter engine and consumers often have Motion or react-spring already. If wanted: a separate `./motion` entry, additive, with reduced-motion snapping; reference constants are in research §4.5. |
+| OQ-19 | Motion module (closed-form spring + velocity squash, pure, caller supplies time): research item 5, tagged "trade-off, my call". | **Done 2026-11-06**: `liquid-glass-filter/motion` (pure) plus `attachGlassMotion` in the main entry; section 7.1 has the design and the screenshot verdict. |
 | OQ-20 | A content-side `filter: url()` mode so Safari and Firefox refract owned content (research item 4(ii)). | **Done 2026-11-06**, experimental: `attachLiquidGlass(target, { content, mode })`, section 7.2 has the design and the screenshot verdict. |
 | OQ-21 | SDF-driven geometry for per-corner radii, superellipse corners matching `corner-shape`, and merging (research items 9, 13, 14). | Defer until a shape need exists. `corner-shape: squircle` alone would make the CSS clip disagree with the circular-corner map, so it needs item 9 first. |
 | OQ-22 | HTML-in-Canvas / WebGPU renderer for lensing beyond the box (research item 11). | No. Chromium-only like the SVG path, young reference libraries, read-back gaps. The handle stays renderer-neutral in case WebKit changes the picture. |
@@ -593,9 +593,30 @@ Done in this pass: the build check found and fixed empty `.d.ts` output (Vite 8 
 ## 7. Plans for OQ-19 (motion) and OQ-20 (content-side refraction)
 
 Both are additive. Neither touches `src/core`'s optics or the filter spec, so neither needs new
-fixtures; both need the screenshot harness for their own looks. Written 2026-11-06. OQ-20 landed the same day (status under 7.2); OQ-19 is not started.
+fixtures; both need the screenshot harness for their own looks. Written 2026-11-06. Both landed the same day; status under 7.1 and 7.2.
 
 ### 7.1 OQ-19: motion module
+
+**Status: done 2026-11-06**, as planned with four deviations. (1) The pure model is the `./motion`
+entry (`src/motion/spring.ts`, `squash.ts`, typechecked with no DOM lib like core); the browser
+glue `attachGlassMotion` ships from the main entry, not a separate one, since it imports the
+handle types anyway. (2) Press and hover are two unit springs (0..1) combined into one lift
+(`1 + 0.045·press + 0.02·hover`) rather than per-axis scale springs; the release overshoot is the
+spring dipping below 0. The lens dims to 0.85 while pressed through `setIntensity`. (3) The
+squash uses direction cosines, so diagonal motion degrades to a mild uniform scale (axis-aligned
+scales cannot express a diagonal stretch); hard caps 12 % and 14° as in the references. (4)
+`impulse(vx, vy)`, `press()`, `release()`, `hover()` exist because the playground wrapper owns the
+pointer capture, which is the common case for drag code; the motion also wires pointer events
+itself when given a `pointerTarget` (default: the target). Content mode writes no transform by
+default, since the lens is painted by the content element and would not follow. `springLinearEasing`
+serialises a settled spring to CSS `linear()` for consumers who want a transition instead of a loop.
+Tests: closed-form exactness (one step equals many), Apple's documented constant pairs, branch
+continuity at critical damping, caps and symmetry of the squash, loop sleeping at rest, pointer
+wiring in happy-dom, reduced-motion snapping. Screenshot verdict (harness under the manual clock,
+each frame against the resting glass; repeat shots byte-identical): press at 120 ms changes 2.8 %
+of the scene, release overshoot at 100 ms 2.3 %, a 2000 px/s drag impulse at 48 ms 3.7 %, every
+differing pixel inside the glass's box plus the 4.5 % growth margin (x 403–776, y 186–394 for a
+360×180 glass at 410,190); nothing else on the page moves.
 
 **What it is.** The thing that makes 2026 "liquid glass" read as liquid is not the optics but the
 motion: a spring that overshoots on press/release and a velocity-driven squash while dragging
