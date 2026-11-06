@@ -60,7 +60,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.test.json && tsc -p tsconfig.core.json",
     "prepublishOnly": "npm run typecheck && npm test && npm run build",
-    "postbuild": "node scripts/check-dist.mjs"
+    "postbuild": "node scripts/check-dist.mjs",
+    "prepare": "npm run build"
   },
   "devDependencies": {
     "@tweakpane/core": "^2.0.5",
