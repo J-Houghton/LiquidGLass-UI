@@ -139,3 +139,5 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+# Demo build (GitHub Pages deploys it from CI)
+dist-demo/

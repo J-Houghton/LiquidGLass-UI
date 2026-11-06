@@ -124,7 +124,7 @@ All lengths are CSS pixels. Defaults in parentheses.
 | `glassThickness` (31.25) | Thickness of the flat glass; longer path, more displacement. |
 | `displacementScale` (180) | Maximum displacement in px. The optics set the shape, this sets the strength. |
 | `physicalScale` (false) | Ignore `displacementScale` and use the displacement the optics actually produce, so IOR and thickness set the strength. |
-| `dispersion` (0) | Chromatic dispersion: red and blue are displaced at `1 ∓ 0.02·dispersion` times the green scale. 0 disables the three-pass stage. |
+| `dispersion` (0), `dispersionUnit` (`relative`) | Chromatic dispersion, three displacement passes; 0 disables. `relative`: red and blue at `1 ∓ 0.02·dispersion` times the green scale (the fringe grows with the lens). `px`: `∓ dispersion` px from green (a fringe of fixed width). |
 | `blurKind` (`gauss`), `blur` (0.2) | Gaussian blur, or `noise1`/`noise2` for a textured, organic distortion. |
 | `blurStage` (`after`) | `after` blurs the refracted result; `before` blurs the backdrop first and then displaces it, which keeps the rim and the dispersion fringe crisp. The playground's A/B twin shows both side by side. |
 | `specular` (true), `specularAngleDeg` (60), `specularStrength` (0.81) | Rim highlight on/off, light direction, brightness. |
@@ -146,6 +146,7 @@ Values are validated and clamped; `handle.params.notes` lists anything that was 
 | `size`, `radius`, `applyStyles` | Sizing source, corner radius source, whether to write styles onto the target. |
 | `regionPadding` (0) | Enlarge the filter region around the box so displaced samples can come from just outside it (concave profiles). Output is still clipped to the box. |
 | `maxMapPixels` (320 000) | Pixel budget per map: above it the map is generated at a lower ratio and stretched by the filter (the rim keeps its CSS-px width). `Infinity` disables. |
+| `sizeBucket` (1.02) | Maps are generated for the element size rounded up to a 2 % geometric grid (exact below 64 px) and stretched to the exact box, so dragging a resize handle reuses maps instead of regenerating one per pixel. `1` disables. |
 | `rimPx` (2) | Width of the rim highlight. |
 | `mount`, `dpr`, `encodeImage`, `revokeImage`, `registry`, `document` | Where the `<svg>` goes, device pixel ratio, and seams for tests, workers and shared caches. |
 

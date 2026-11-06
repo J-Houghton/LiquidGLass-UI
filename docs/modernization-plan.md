@@ -23,7 +23,7 @@ per the recommendations in §4 (OQ-13: not on npm, so 2.0.0 with no deprecation 
 | 2 Filter graph as data | done | Equivalence against the Lit-era graph was proven for all 12 structures before that code was deleted (commit "Phase 2.1 + 2.3"). |
 | 3 Headless API | done | `createGlassFilter`, `attachLiquidGlass`, ESM-only package with `.`/`./core` entries. Demo dogfoods the API (3.6). |
 | 4 Elements, Lit removal | done | `./elements` entry; lifecycle tests run under `happy-dom` (dev-only, the addition OQ-4 reserved). 4.3 landed early to fix a real break: `sideEffects:false` made Rollup drop the demo's side-effect-only imports, so the demo now has an explicit entry (`demo/main.ts`). `blur` is exposed as the `blurAmount` element property because `HTMLElement.blur()` exists. |
-| 5 Research-dependent | done for the "clear win" items; the rest are decisions (below) | Driven by `docs/research-liquid-glass-2026.md` (its §5 ranks 14 items). Landed: item 1 real support detection + item 4(i) frost fallback + item 7 reduced transparency (5.1); item 2 three-pass dispersion + item 8 rim-in-blue-channel and region padding + item 6 `physicalScale` (5.3); item 3 quadrant-mirrored band walk + item 10 shared refcounted map registry (5.5). OQ-17 and OQ-18 were fixed on the way. Decision for 5.2 (renderer): stay SVG-only, handle remains renderer-neutral (research items 11, 14 are "not worth it now"). 5.4 (shapes) and 5.6 (vocabulary) are deferred/settled: see OQ-19 to OQ-23. |
+| 5 Research-dependent | done for the "clear win" items; the rest are decisions (below) | Driven by `docs/research-liquid-glass-2026.md` (its §5 ranks 14 items). Landed: item 1 real support detection + item 4(i) frost fallback + item 7 reduced transparency (5.1); item 2 three-pass dispersion + item 8 rim-in-blue-channel and region padding + item 6 `physicalScale` (5.3); item 3 quadrant-mirrored band walk + item 10 shared refcounted map registry (5.5). OQ-17 and OQ-18 were fixed on the way. Decision for 5.2 (renderer): stay SVG-only, handle remains renderer-neutral (research items 11, 14 are "not worth it now"). 5.4 (shapes) and 5.6 (vocabulary) are deferred/settled: see OQ-19 to OQ-23; section 7 holds the written plans for OQ-19 (motion) and OQ-20 (content-side refraction), not started. |
 | 6 Release | done except 6.3 (deferred) | README, CHANGELOG, 2.0.0. 6.2 bumped to TypeScript 6.0, Vite 8.3, Vitest 5.1, happy-dom 21, Node 22 in both workflows. TypeScript 7 (native compiler) and vite-plugin-dts 5 (rewrite over unplugin-dts, `rollupTypes` → `bundleTypes`) were tried and deliberately not taken yet. 6.3: a publish workflow was added and then deferred at the owner's request on 2026-11-06 (no npm publishing planned for now; the consumer imports the built package locally). The workflow lives in history (commit a2aa16d) if wanted later; the `package.json` metadata (repository, keywords, `publishConfig`, `prepublishOnly`) stayed. |
 
 Visual check: done by the owner in a browser on 2026-11-05 after the Phase 5 rendering changes
@@ -548,6 +548,10 @@ Dependencies: 0 → 1 → 2 → 3 → 4 → 6. Phase 5 items slot in after 3 (5.
 
 ---
 
+## 5. Draft `CLAUDE.md`
+
+Written to the repository root as `CLAUDE.md` (committed in Phase 0). It describes the commands as they exist after step 0.1, and the directory rules as they will be once `src/dom` and `src/elements` exist; the rules apply to new code immediately.
+
 ## 6. Package comparison and optimization backlog (2026-11-06)
 
 Source-level comparison against the four strongest current packages (hyalite 0.5.0, PallavAg
@@ -578,14 +582,109 @@ Backlog, ranked. "No visual change" items are safe to do without a browser pass.
 | B2 | **Done 2026-11-06.** `objectBoundingBox 0 0 1 1` region, px primitives, no feImage subregion without padding. Screenshot diff: identical. | S | none |
 | B4 | **Done 2026-11-06.** `MapRegistry({ maxIdle })`, page registry keeps 16 warm, `clearIdle()`. | S | none |
 | B8 | **Done 2026-11-06.** `url(#x)` parse probe required; `<html data-liquid-glass-support="force\|off">` override. | S | none |
-| B9 | Size bucketing on a 1.02 geometric grid for the map key (hyalite) so a resize burst hits the registry. Only if B1/B2 leave regen cost visible. | S | none |
+| B9 | **Done 2026-11-06.** `sizeBucket` (default 1.02, exact ≤ 64 px): the map is generated for the bucketed size and stretched by the filter; sizes 301–305 share one map. Screenshot diff: rim-band pixels move by the ≤ 2 % stretch (1.9 % of the scene); with `sizeBucket: 1` the scene is pixel-identical to before. | S | ≤ 2 % stretch of the rim band |
 | B5 | **Done 2026-11-06.** `blurStage: 'before' \| 'after'` (default stays `after`); `before` pins alpha to 1 after the blur. Compare both live in the playground: "Compare (A/B twin)" puts a second glass next to the active one that mirrors every control and differs only by the twin's blur stage. | S | only when switched |
 | B7 | **Done 2026-11-06.** `appear` option / `handle.appear()` / `setIntensity()`; `appear` attribute + `replayAppear()` on the element; "Replay appear" in the playground replays on the glass and its twin together. Reduced motion snaps. | S | opt-in |
 | B6 | **Done 2026-11-06.** Blue channel signed around 128: light above (unchanged model), shade below = the lens's *normalized stretch profile* (inward decrease of the displacement curve / its max). The first attempt baked the photometric density gain and saturated into a black frame at any strength (screenshots), so the amplitude lives in the `shade` parameter (0..1, API default 0, demo presets 0.35) and the map only carries the shape. Multiply blend in the graph, before the rim. Screenshots at 0 / 0.35 / 0.7 and on the lens/lip/concave presets look like a thicker edge without a frame. | M | only when `shade` > 0 |
-| B10 | `dispersionUnit: 'relative' \| 'px'` (hyalite's fixed-pixel fringe). | S | opt-in |
+| B10 | **Done 2026-11-06.** `dispersionUnit: 'relative' \| 'px'`; relative mode is pixel-identical to before (screenshot diff with bucketing disabled). | S | opt-in |
 
-Done in this pass: the build check found and fixed empty `.d.ts` output (Vite 8 + vite-plugin-dts 4), so types now come from `tsc` and `scripts/check-dist.mjs` guards every build. Visual verification now has tooling: `demo/visual.html` (deterministic scene, query-string variants), `scripts/visual-shot.mjs` (headless local Chrome/Edge; repeat shots are byte-identical) and `scripts/png-diff.mjs`. Remaining backlog: B9 (size bucketing, only if resize cost shows) and B10 (absolute-px dispersion unit).
+Done in this pass: the build check found and fixed empty `.d.ts` output (Vite 8 + vite-plugin-dts 4), so types now come from `tsc` and `scripts/check-dist.mjs` guards every build. Visual verification now has tooling: `demo/visual.html` (deterministic scene, query-string variants, `opts` for attach options), `scripts/visual-shot.mjs` (headless local Chrome/Edge; repeat shots are byte-identical) and `scripts/png-diff.mjs`. The backlog B1–B10 is complete.
 
-## 5. Draft `CLAUDE.md`
+## 7. Plans for OQ-19 (motion) and OQ-20 (content-side refraction)
 
-Written to the repository root as `CLAUDE.md` (uncommitted). It describes the commands as they exist after step 0.1, and the directory rules as they will be once `src/dom` and `src/elements` exist; the rules apply to new code immediately.
+Both are additive. Neither touches `src/core`'s optics or the filter spec, so neither needs new
+fixtures; both need the screenshot harness for their own looks. Written 2026-11-06; not started.
+
+### 7.1 OQ-19: motion module
+
+**What it is.** The thing that makes 2026 "liquid glass" read as liquid is not the optics but the
+motion: a spring that overshoots on press/release and a velocity-driven squash while dragging
+(research §4.5: glisse, LiquidGlassJS, clayharmon, the Oct-2026 tab bar). We have an `intensity`
+knob and an entrance; nothing continuous.
+
+**Shape.** A fourth entry, `liquid-glass-filter/motion`, in two layers like everything else:
+
+```
+src/motion/spring.ts      pure: closed-form damped spring (under/critical/over-damped branches),
+                          parameterised either as { stiffness, damping, mass } or Apple-style
+                          { duration, bounce } (k = (2π/T)², c = 2(1−b)√(km)); step(state, dt),
+                          retarget from current velocity; `toLinearEasing(spring, samples)` to
+                          serialise a settled spring to a CSS linear() string.
+src/motion/squash.ts      pure: velocity → { scaleX, scaleY, skewDeg } with an EMA on the velocity,
+                          hard caps (stretch ≤ 1 + 0.12, skew ≤ 14°), exponential decay; caller
+                          supplies time. Constants from clayharmon / hi-slava as defaults.
+src/dom/attachGlassMotion.ts
+                          browser: attachGlassMotion(handle, { press?: boolean, drag?: boolean,
+                          hover?: boolean, respectReducedMotion?: true })
+                          → pointer listeners on handle.target, one rAF loop while any spring is
+                          live (sleeps at rest), writes transform (scale/skew) on the target and,
+                          optionally, intensity (press dims refraction slightly, like Apple's
+                          "interactive" glass) through handle.setIntensity. Returns
+                          { press(), release(), impulse(vx, vy), destroy() }.
+src/elements              <liquid-glass-container motion="press drag"> opt-in attribute.
+```
+
+**Decisions baked in.** Closed-form spring (frame-rate independent, interruptible by re-solving
+from the current velocity), semi-implicit Euler only inside the squash integrator with a dt cap of
+1/30 s. No fluid simulation, no merging (research items 14 and 9 stay out). Reduced motion snaps
+springs to target and disables squash, per Apple's contract.
+
+**Steps.** (1) `spring.ts` + tests against known closed-form values (Apple's documented
+(duration 0.5, bounce 0.3) ⇒ stiffness 157.9, damping 17.6; critical damping; retarget mid-flight
+keeps velocity continuous). (2) `squash.ts` + tests (caps, decay to rest, symmetry). (3)
+`attachGlassMotion` with the fake DOM + manual clock (same pattern as the appear tests): press
+→ overshoot → settle; drag velocity → skew within caps; destroy stops the loop. (4) Element
+attribute and a "Motion" folder in the playground (press/drag toggles, bounce/duration sliders),
+plus `demo/visual.html?motion=press&t=120` to screenshot a frame mid-spring. (5) README section
+and a 'Motion' row in the comparison table. Size: about 400 lines of source, two days of care.
+
+**Risks.** Transforms on the target interact with `backdrop-filter`: a scaled element samples a
+scaled backdrop region (fine, that is what Apple does), but a skewed one makes the filter region
+non-axis-aligned, which Chromium handles and the frost fallback ignores. Keep skew small and
+test both modes in screenshots. The rAF loop must sleep at rest (hyalite/glisse mistakes).
+
+### 7.2 OQ-20: content-side refraction for Safari and Firefox
+
+**What it is.** `backdrop-filter: url()` never renders outside Chromium (research §3). The
+cross-engine workaround every 2026 library converged on (Aave, PallavAg, samasante, glisse,
+gentpan) is to apply the *same* graph with plain `filter: url()` to an element that owns the
+pixels, with the lens placed as a subregion over the glass's position. It refracts in all three
+engines, at the cost of an API that knows which content sits behind the glass.
+
+**Shape.** A second mode behind the existing handle, no new entry:
+
+```
+attachLiquidGlass(target, { content: HTMLElement, mode?: 'auto' | 'backdrop' | 'content' })
+  'auto' (default when `content` is given): backdrop on Chromium, content elsewhere.
+```
+
+Engine work, all in `src/dom`:
+
+1. `buildFilterSpec` gains `{ region: { x, y, width, height } }`: when set, every primitive that
+   must be confined to the lens (`feImage`, the displacement passes, the rim/shade matrices)
+   carries that subregion in user space, and the spec ends with a cut-out: `feComposite out`
+   of the source against the lens shape, `over` the refracted lens (PallavAg's chain). Pure,
+   snapshot-tested.
+2. `attachLiquidGlass` content mode: mounts the `<svg>` next to `content`, sets
+   `content.style.filter = url(#id)`, measures `target` relative to `content` and writes only
+   the subregion attributes on move (ResizeObserver + a position poll on rAF while the glass
+   is being dragged; never a map regeneration for a move). The target itself gets the tint and
+   rim styles as in frost mode, so the glass still has a body.
+3. WebKit specifics, all from the survey, each behind a check: filter id bump per attribute write
+   on Safari ≤ 26.x (fixed in 27.0, keep the bump on `isWebKit && version < 27`); a size guard
+   that refuses regions over 4096² device px with a console warning; `<video>` and WebGL canvases
+   inside `content` are not filtered on Safari (document it; the WebGL path is out of scope).
+4. Firefox renders this on the CPU blob path; document the cost and recommend small content.
+5. `detectGlassSupport()` grows a third dimension (`contentFilter: boolean`) so `mode: 'auto'`
+   can choose; the toolbar badge shows "SVG lens (content)".
+
+**Steps.** (1) spec: subregion + cut-out, snapshots. (2) `mountFilter`: write subregion attributes
+without rebuilding. (3) attach content mode with the fake DOM (position math, move = attributes
+only, destroy restores `content.style.filter`). (4) harness: `demo/visual.html?mode=content`
+screenshots in Chrome (the only engine the harness drives; Safari/Firefox need a manual pass,
+which the owner can do with the badge as the guide). (5) README "Bring your own content" section.
+Size: about 350 lines plus tests; the risk is entirely in WebKit behaviour nobody can automate
+here, so ship it as `experimental` and gate `mode: 'auto'` on an explicit opt-in first.
+
+**Order.** OQ-20 before OQ-19: it widens where the lens renders at all, while motion improves
+feel only where it already renders. Both after the branch is merged, each as its own PR.

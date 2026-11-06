@@ -51,6 +51,10 @@ fixture-pinned ways listed under "Rendering changes".
 - `shade` parameter (0..1, default 0): edge darkening from the lens's normalized stretch profile,
   baked below 128 in the map's blue channel and multiplied in by the filter. Demo presets use 0.35.
 - `maxMapPixels` option (default 320 000): pixel budget per map; `debug.mapDpr` reports the ratio.
+- `sizeBucket` option (default 1.02): map sizes round up to a geometric grid (exact below 64 px) and
+  the filter stretches them to the box, so a resize burst hits the map registry; `debug.mapWidth`,
+  `debug.mapHeight`. Rim-band pixels shift by up to 2 % versus exact maps; `sizeBucket: 1` restores them.
+- `dispersionUnit` parameter: `'relative'` (default, unchanged) or `'px'` for a fixed-width fringe.
 - `MapRegistry` keeps up to `maxIdle` released maps warm (page registry: 16); `clearIdle()`.
 - `detectGlassSupport()` also requires `backdrop-filter: url()` to parse and honours
   `<html data-liquid-glass-support="force|off">`.
