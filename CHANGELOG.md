@@ -41,6 +41,13 @@ fixture-pinned ways listed under "Rendering changes".
   blue channel), `specularMap`, `rimCoefficient`, `buildFilterSpec`, `filterSpecToSvg`, plain
   `RGBAImage` buffers. No DOM anywhere.
 - `physicalScale` parameter: use the optics' own maximum displacement instead of `displacementScale`.
+- `blurStage` parameter: `'after'` (default) blurs the refracted result, `'before'` blurs the backdrop
+  first (alpha pinned to 1) and then displaces it.
+- Entrance animation: `appear` option, `handle.appear(ms)`, `handle.setIntensity(k)` / `intensity`
+  (a 0..1 multiplier on displacement and rim, attribute-only); `appear` attribute and `replayAppear()`
+  on `<liquid-glass-container>`. Honours `prefers-reduced-motion`.
+- Playground: an A/B twin that mirrors the active glass with one override (blur stage), captions,
+  and a "Replay appear" control.
 - `<liquid-glass-container>` and `<liquid-glass-filter>` as hand-rolled custom elements with
   typed properties, attribute aliases, a `debug` overlay and a `liquid-glass:render` event.
 - Injectable seams (`encodeImage`, `revokeImage`, `registry`, `resizeObserver`, `matchMedia`,

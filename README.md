@@ -98,7 +98,8 @@ defineLiquidGlassElements();   // no-op on a server; idempotent
 
 Attributes are the parameter names in kebab-case. The 1.x attribute names (`scale-px`,
 `blur-std-dev`, `show-specular`, `frost`) are still accepted. On the element, the `blur` parameter is
-the `blurAmount` property because `HTMLElement.blur()` already exists.
+the `blurAmount` property because `HTMLElement.blur()` already exists. `appear="400"` plays the
+entrance on connect; `element.replayAppear()` plays it again.
 
 ### Engine only
 
@@ -125,6 +126,7 @@ All lengths are CSS pixels. Defaults in parentheses.
 | `physicalScale` (false) | Ignore `displacementScale` and use the displacement the optics actually produce, so IOR and thickness set the strength. |
 | `dispersion` (0) | Chromatic dispersion: red and blue are displaced at `1 ∓ 0.02·dispersion` times the green scale. 0 disables the three-pass stage. |
 | `blurKind` (`gauss`), `blur` (0.2) | Gaussian blur, or `noise1`/`noise2` for a textured, organic distortion. |
+| `blurStage` (`after`) | `after` blurs the refracted result; `before` blurs the backdrop first and then displaces it, which keeps the rim and the dispersion fringe crisp. The playground's A/B twin shows both side by side. |
 | `specular` (true), `specularAngleDeg` (60), `specularStrength` (0.81) | Rim highlight on/off, light direction, brightness. |
 | `tint` (0.05) | Black tint over the glass, 0 to 1. |
 | `saturation` (1) | Applied to the backdrop with the filter. |
@@ -139,6 +141,7 @@ Values are validated and clamped; `handle.params.notes` lists anything that was 
 | `support` | Override detection with `'full'`, `'frost'` or `'none'`. |
 | `frostBlurPx` (12) | Blur radius of the frost fallback. |
 | `reducedTransparency` (`'auto'`) | Frostier, higher-contrast glass: tint ≥ 0.35, blur ≥ 1.5, no dispersion. `'auto'` follows `prefers-reduced-transparency` where the browser exposes it (Chromium does, Safari does not), or pass a boolean from your own setting. |
+| `appear` (none) | Entrance: the lens eases in from flat glass over this many ms (or `{ duration, easing }`). Attribute-only updates, no map work; skipped under `prefers-reduced-motion`. Replay any time with `handle.appear()`. |
 | `size`, `radius`, `applyStyles` | Sizing source, corner radius source, whether to write styles onto the target. |
 | `regionPadding` (0) | Enlarge the filter region around the box so displaced samples can come from just outside it (concave profiles). Output is still clipped to the box. |
 | `rimPx` (2) | Width of the rim highlight. |
@@ -154,6 +157,7 @@ Values are validated and clamped; `handle.params.notes` lists anything that was 
 | `params` | Current, validated parameters. |
 | `url`, `id`, `filterElement`, `svgElement` | The filter reference and its elements. |
 | `setDpr(n)`, `refresh()` | Re-render at another device pixel ratio / with current parameters. |
+| `intensity`, `setIntensity(k)`, `appear(ms?)` | A 0..1 multiplier on displacement and rim (graph attributes only); `appear` eases it from 0 to 1. |
 | `debug` | `mapUrl` (one image: R,G displacement, B rim light), `physicalMaxDisplacementPx`, `displacementPx`, `renders`. |
 | `destroy()` | Removes everything the handle created. Idempotent. |
 | `getStyle()` (attach only) | The declarations the effect needs, for `applyStyles: false`. |

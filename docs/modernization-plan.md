@@ -579,8 +579,8 @@ Backlog, ranked. "No visual change" items are safe to do without a browser pass.
 | B4 | Idle cache in `MapRegistry`: keep the last N released maps (default 16) warm; revoke on eviction. | S | none |
 | B8 | Support: add `CSS.supports('backdrop-filter','url(#x)')` as a required signal and honour `<html data-liquid-glass-support="force\|off">`. | S | none |
 | B9 | Size bucketing on a 1.02 geometric grid for the map key (hyalite) so a resize burst hits the registry. Only if B1/B2 leave regen cost visible. | S | none |
-| B5 | `blurStage: 'before' \| 'after'` option (default stays `after`); recommend trying `before` with alpha pinned to 1. | S | only when switched |
-| B7 | `appear` (ms): ease `displacementScale` from 0 on attach via attribute-only updates. | S | opt-in |
+| B5 | **Done 2026-11-06.** `blurStage: 'before' \| 'after'` (default stays `after`); `before` pins alpha to 1 after the blur. Compare both live in the playground: "Compare (A/B twin)" puts a second glass next to the active one that mirrors every control and differs only by the twin's blur stage. | S | only when switched |
+| B7 | **Done 2026-11-06.** `appear` option / `handle.appear()` / `setIntensity()`; `appear` attribute + `replayAppear()` on the element; "Replay appear" in the playground replays on the glass and its twin together. Reduced motion snaps. | S | opt-in |
 | B6 | Signed rim: light **and** shade in the blue channel (128 neutral), multiply for shade, add for light, weights from the surface slope (hyalite's 0.78/0.30 as starting point). The one change that visibly deepens the glass. | M | yes, fixtures, needs an eyeball pass |
 | B10 | `dispersionUnit: 'relative' \| 'px'` (hyalite's fixed-pixel fringe). | S | opt-in |
 
