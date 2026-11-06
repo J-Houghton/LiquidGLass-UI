@@ -2,7 +2,7 @@
  * A deliberately tiny DOM stand-in for Node tests: enough of Element/Document for the SVG
  * filter builders and the attach/update/destroy layer (createElementNS, attributes, child
  * lists, a small querySelector grammar). Zero dependencies. If this needs to grow past
- * ~150 lines, switch the affected tests to happy-dom instead (plan OQ-4).
+ * ~150 lines, switch the affected tests to happy-dom instead.
  */
 export const SVG_NS = 'http://www.w3.org/2000/svg';
 

@@ -3,7 +3,7 @@
  *
  * Every step is solved analytically from the current value and velocity, so the result does not
  * depend on the frame rate and a target change mid-flight keeps the velocity continuous (the
- * interruption problem CSS `linear()` springs cannot solve, research §4.5). Parameterised either
+ * interruption problem CSS `linear()` springs cannot solve). Parameterised either
  * physically ({ mass, stiffness, damping }) or perceptually like Apple's `Spring(duration:bounce:)`
  * ({ duration, bounce }): `k = (2π/T)² m` and `c = 2(1 − b)√(km)` for b ≥ 0, `c = 2√(km)/(1 + b)`
  * for b < 0, which reproduces Apple's documented pairs: (0.5 s, 0.3) ⇔ (157.9, 17.6) and

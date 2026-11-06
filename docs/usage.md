@@ -254,8 +254,9 @@ attribute overlays it.
 ## 7. Browser support, fallback and the content-side lens
 
 The backdrop lens needs `backdrop-filter` to accept an SVG filter with `feImage` and
-`feDisplacementMap`. Verified against engine sources in November 2026
-(`docs/research-liquid-glass-2026.md`):
+`feDisplacementMap`. Verified against engine sources in November 2026 (WebCore
+`RenderLayerBacking.cpp` and bug 245510, Mozilla bugs 1961378 and 1883933, WebKit bugs 322588 and
+297770, WebCore `ImageBuffer.cpp`, the Safari 27.0 release notes):
 
 | Engine | Backdrop lens | Content-side lens (`filter: url()`) |
 |---|---|---|

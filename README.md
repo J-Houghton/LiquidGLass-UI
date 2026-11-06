@@ -101,10 +101,10 @@ The content element gets `filter: url(#id)`; the panel keeps its tint and radius
 size changes of both elements and scrolling; moving the panel needs `relayout()` (attribute writes,
 no map work). One lens per content element. In content mode the blur runs before displacement,
 the lens is saturated inside the filter, and the rectangle corners outside the rounded shape get
-the lens blur (invisible at the default 0.2 px). Caveats from the engines, all documented in
-`docs/research-liquid-glass-2026.md` §3 B: Safari leaves `<video>` and WebGL canvases unfiltered and
-downscales filtered content over 4096 device px per side (the handle warns once); Safari before 27
-needs a fresh filter id per update (done automatically); Firefox filters on the CPU. Filter the
+the lens blur (invisible at the default 0.2 px). Caveats from the engines: Safari leaves `<video>`
+and WebGL canvases unfiltered (WebKit bug 322588) and downscales filtered content over 4096 device
+px per side (the handle warns once); Safari before 27 needs a fresh filter id per update (done
+automatically; fixed in Safari 27.0); Firefox filters on the CPU (Mozilla bug 1883933). Filter the
 smallest element that sits behind the glass, not the page.
 
 ### Motion (press, drag, hover)
@@ -231,14 +231,16 @@ Values are validated and clamped; `handle.params.notes` lists anything that was 
 ## Browser support
 
 The lens needs `backdrop-filter` to accept an SVG filter with `feImage` + `feDisplacementMap`.
-Verified against engine sources and bug trackers in November 2026 (details and citations in
-`docs/research-liquid-glass-2026.md`):
+Verified against engine sources and bug trackers in November 2026:
 
-| Engine | Result |
-|---|---|
-| Chromium (Chrome, Edge, Opera, Brave, desktop and Android) | Renders the lens. |
-| WebKit (Safari, every iOS browser) through Safari 27.2 | Parses the value, drops the whole `backdrop-filter` list when it contains an SVG reference. Gets the frost fallback. |
-| Gecko (Firefox) through 159 | Parses the value, renders nothing for this graph. Gets the frost fallback. |
+| Engine | Result | Source |
+|---|---|---|
+| Chromium (Chrome, Edge, Opera, Brave, desktop and Android) | Renders the lens. | Blink `fe_displacement_map.cc`; the backdrop-filter explainer (M76) |
+| WebKit (Safari, every iOS browser) through Safari 27.2 | Parses the value, drops the whole `backdrop-filter` list when it contains an SVG reference. Gets the frost fallback. | WebCore `RenderLayerBacking.cpp`; WebKit bug 245510 |
+| Gecko (Firefox) through 159 | Parses the value, renders nothing for this graph. Gets the frost fallback. | Mozilla bug 1961378 |
+
+Plain `filter: url()` with the same graph renders in all three engines (Mozilla bug 1883933), which
+is what the content-side lens uses.
 
 `CSS.supports()` cannot tell these apart (support is defined at parse level), so
 `detectGlassSupport()` is a parse check for `url()` in `backdrop-filter` plus an engine check
@@ -271,7 +273,10 @@ node scripts/png-diff.mjs out/before.png out/after.png out/diff.png
 
 Layout: `src/core` (pure engine), `src/dom` (browser glue), `src/elements` (custom elements),
 `demo/` (playground), `tests/` (fixtures pin the maps; regenerate only on purpose with
-`UPDATE_FIXTURES=1`). See `CLAUDE.md` for the rules and `docs/modernization-plan.md` for the design.
+`UPDATE_FIXTURES=1`). Import direction is one-way: `core` and `motion` are pure and import nothing
+outside themselves, `dom` builds on them, `elements` on `dom`, `demo` on everything. Any change to
+the optics or the filter graph lands with a fixture or snapshot and, for anything visible, a
+before/after screenshot diff from the harness.
 
 ## Migrating from 1.x
 
@@ -288,7 +293,10 @@ the 1.x tag and attribute names, so HTML usage keeps working. The parameter name
 | `specularStrength` (applied twice) | `specularStrength` applied once; a 1.x value `s` is `s · min(1, s)` (0.9 → 0.81) |
 | `glassThickness` (passed through a smoothstep curve) | `glassThickness` (literal px; 1.x `50` is `31.25`) |
 
-`fromLegacyParams()` performs this mapping. See `CHANGELOG.md` for everything else.
+`fromLegacyParams()` performs this mapping. Other 2.0 changes worth knowing: ESM only, no
+elements registered on import (call `defineLiquidGlassElements()`), validation clamps instead of
+rejecting, the `displacement-updated` event is replaced by `onRender` / `liquid-glass:render`,
+and the band is sampled at pixel centers so the map is an exact mirror image across both axes.
 
 ## License
 

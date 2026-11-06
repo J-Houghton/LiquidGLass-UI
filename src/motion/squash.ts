@@ -1,5 +1,5 @@
 /**
- * Velocity-driven squash and stretch, the "gel" half of liquid motion (research §4.5: hi-slava,
+ * Velocity-driven squash and stretch, the "gel" half of liquid motion (after hi-slava,
  * clayharmon, the Oct-2026 tab bar). Pure. Feed pointer velocities with `squashSample`, decay
  * between samples with `squashDecay` (the caller supplies `dt`), read the deformation with
  * `squashDeformation`. Every output is hard-capped, as all three references do.

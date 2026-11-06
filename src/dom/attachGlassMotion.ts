@@ -16,7 +16,7 @@ import type { GlassFilterHandle } from './createGlassFilter.js';
  * little, overshoot back on release) and velocity squash while dragging. One requestAnimationFrame
  * loop runs while anything moves and sleeps at rest; the transform is written to the target and
  * removed again when everything is still. Reduced motion snaps the springs and disables the
- * squash, per Apple's contract (research §4.5).
+ * squash, as Apple's Reduce Motion contract asks.
  */
 
 export interface PressMotion {

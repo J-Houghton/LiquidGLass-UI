@@ -34,7 +34,7 @@ export interface LiquidGlassOptions extends Omit<GlassFilterOptions, 'radius' | 
   /**
    * Content-side mode (experimental): the element whose pixels the lens refracts. It gets
    * `filter: url(#id)` with the lens as a subregion at the target's offset inside its border box,
-   * which renders in Safari and Firefox as well as Chromium (research §3 B). The lens follows
+   * which renders in Safari and Firefox as well as Chromium. The lens follows
    * size changes of both elements and scrolling; after moving the target yourself call
    * `handle.relayout()`. Caveats, all WebKit/Gecko: Safari leaves `<video>` and WebGL canvases
    * unfiltered and downscales filtered content over 4096 device px per side (a warning is
@@ -125,7 +125,7 @@ const STYLE_KEYS = ['backdropFilter', 'WebkitBackdropFilter', 'backgroundColor',
 type StyleKey = (typeof STYLE_KEYS)[number];
 const DATA_ATTR = 'data-liquid-glass';
 const DEFAULT_APPEAR_MS = 400;
-/** WebKit downscales a filtered image buffer above this many device px per side (research §3 B). */
+/** WebKit downscales a filtered image buffer above this many device px per side (WebCore ImageBuffer.cpp). */
 export const CONTENT_FILTER_MAX_PX = 4096;
 
 /** Parameter overlay for reduced transparency. */

@@ -55,7 +55,7 @@ export interface GlassFilterOptions extends Partial<GlassParams> {
   lens?: LensPlacement;
   /**
    * Give the `<filter>` a fresh id on every re-render. Safari before 27.0 did not repaint a
-   * `filter: url(#id)` whose primitives changed (research §2); `attachLiquidGlass` turns this on
+   * `filter: url(#id)` whose primitives changed (fixed in Safari 27.0); `attachLiquidGlass` turns this on
    * there. Read the current id from `handle.id` / `handle.url` after each render. Default false.
    */
   bumpFilterId?: boolean;

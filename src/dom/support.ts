@@ -78,7 +78,7 @@ export function isLiquidGlassSupported(env?: SupportEnvironment): boolean {
   return detectGlassSupport(env) === 'full';
 }
 
-// ---- content-side `filter: url()` (research §3 B) --------------------------------------------
+// ---- content-side `filter: url()` --------------------------------------------------------------
 
 /** WebKit that is not Chromium: Safari and every iOS browser. */
 export function isWebKitEngine(env: SupportEnvironment): boolean {
@@ -95,7 +95,7 @@ export function safariMajorVersion(env: SupportEnvironment): number | null {
 
 /**
  * Does `filter: url(#id)` need a fresh id whenever its primitives change? Safari before 27.0 did
- * not repaint otherwise (fixed 2026-09-17, research §2); a WebKit of unknown version is assumed
+ * not repaint otherwise (fixed in Safari 27.0, 2026-09-17); a WebKit of unknown version is assumed
  * affected.
  */
 export function needsFilterIdBump(env: SupportEnvironment = browserSupportEnvironment()): boolean {

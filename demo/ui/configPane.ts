@@ -195,7 +195,7 @@ function init() {
     refreshContainerList(event.detail?.activeId);
   });
 
-  // --- Bindings (2.0 parameter names; see docs/modernization-plan.md OQ-5) ---
+  // --- Bindings (2.0 parameter names) ---
 
   const geometry = pane.addFolder({ title: 'Geometry' });
   bindParam(geometry, 'width', { min: 50, max: 900, step: 1 });
@@ -249,7 +249,7 @@ function init() {
     if (activeEntry) void replayAppear(activeEntry, params.appearMs);
   });
 
-  // --- Motion: spring on press/hover, velocity squash while dragging (research §4.5) ---
+  // --- Motion: spring on press/hover, velocity squash while dragging ---
   const motionFolder = pane.addFolder({ title: 'Motion' });
   const bindMotion = (key: 'motionPress' | 'motionDrag' | 'motionHover' | 'motionDuration' | 'motionBounce', config: Record<string, unknown>) => {
     const b = motionFolder.addBinding(params, key, config as never);
