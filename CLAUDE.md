@@ -94,9 +94,9 @@ it belongs in `src/dom`; core takes numbers and returns data.
 ## Workflow
 
 - Branch from `main`, PR back to `main`. Pushing to `main` deploys the demo to GitHub Pages.
-- Release: `npm version <patch|minor|major>` then `git push --follow-tags`. The Release workflow
-  typechecks, tests, builds and publishes to npm with provenance when the `vX.Y.Z` tag matches
-  `package.json`; it needs the `NPM_TOKEN` repository secret. Never publish from a laptop.
+- No npm publishing for now (plan 6.3 deferred). Other local projects consume the built package:
+  run `npm run build` here, then in the consumer `npm install <path-to-this-repo>` (npm symlinks
+  it and resolves `exports` to `dist/`), or point a Vite alias at `src/` for live source.
 - One plan step per commit, step number in the message (for example `Phase 5.1`).
 - Research findings live in `docs/research-liquid-glass-2026.md` and are referenced from the plan,
   not pasted into code comments. Cite the item number ("research item 2") in commits that act on it.
