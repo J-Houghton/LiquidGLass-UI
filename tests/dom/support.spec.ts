@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { detectGlassSupport, isChromiumEngine, isLiquidGlassSupported } from '../../src/dom/support';
+import {
+  detectGlassSupport,
+  isChromiumEngine,
+  isLiquidGlassSupported,
+  isWebKitEngine,
+  safariMajorVersion,
+  needsFilterIdBump,
+  detectContentFilterSupport,
+} from '../../src/dom/support';
 
 const yes = () => true;
 const no = () => false;
@@ -69,5 +77,44 @@ describe('detectGlassSupport', () => {
     expect(isLiquidGlassSupported({ userAgent: UA.safari, supports: yes })).toBe(false);
     expect(isLiquidGlassSupported()).toBe(false);
     expect(detectGlassSupport()).toBe('none');
+  });
+});
+
+describe('content-side filter helpers', () => {
+  const safari26 = UA.safari.replace('Version/27.2', 'Version/26.1');
+
+  it('isWebKitEngine: Safari and iOS browsers, not Chromium (even with AppleWebKit in the UA), not Gecko', () => {
+    expect(isWebKitEngine({ userAgent: UA.safari })).toBe(true);
+    expect(isWebKitEngine({ userAgent: UA.iosChrome })).toBe(true);
+    expect(isWebKitEngine({ userAgent: UA.chrome })).toBe(false);
+    expect(isWebKitEngine({ userAgent: UA.edge })).toBe(false);
+    expect(isWebKitEngine({ userAgent: UA.firefox })).toBe(false);
+    expect(isWebKitEngine({ userAgent: UA.safari, brands: ['Chromium'] })).toBe(false);
+    expect(isWebKitEngine({})).toBe(false);
+  });
+
+  it('safariMajorVersion reads the Version token', () => {
+    expect(safariMajorVersion({ userAgent: UA.safari })).toBe(27);
+    expect(safariMajorVersion({ userAgent: safari26 })).toBe(26);
+    expect(safariMajorVersion({ userAgent: UA.iosChrome })).toBeNull();
+    expect(safariMajorVersion({ userAgent: UA.chrome })).toBeNull();
+  });
+
+  it('needsFilterIdBump: WebKit before 27 or of unknown version; never Chromium or Gecko', () => {
+    expect(needsFilterIdBump({ userAgent: UA.safari })).toBe(false);
+    expect(needsFilterIdBump({ userAgent: safari26 })).toBe(true);
+    expect(needsFilterIdBump({ userAgent: UA.iosChrome })).toBe(true);
+    expect(needsFilterIdBump({ userAgent: UA.chrome })).toBe(false);
+    expect(needsFilterIdBump({ userAgent: UA.firefox })).toBe(false);
+  });
+
+  it('detectContentFilterSupport: filter: url() must parse; the page override wins', () => {
+    const filterUrl = (p: string, v: string) => p === 'filter' && v.startsWith('url(');
+    expect(detectContentFilterSupport({ userAgent: UA.safari, supports: filterUrl })).toBe(true);
+    expect(detectContentFilterSupport({ userAgent: UA.firefox, supports: yes })).toBe(true);
+    expect(detectContentFilterSupport({ userAgent: UA.chrome, supports: no })).toBe(false);
+    expect(detectContentFilterSupport({ userAgent: UA.chrome, supports: yes, override: 'off' })).toBe(false);
+    expect(detectContentFilterSupport({ userAgent: UA.chrome, supports: no, override: 'force' })).toBe(true);
+    expect(detectContentFilterSupport({})).toBe(false);
   });
 });

@@ -5,8 +5,10 @@
  *
  * `base` is merged into every variant; `a`, `b`, `c`, `d` are the variants (JSON patches of
  * GlassParams). `opts` is a JSON patch of attach options (e.g. `{"sizeBucket":1,"maxMapPixels":1e9}`)
- * applied to every glass. `debug=1` shows the map instead of the glass. The document gets
- * `data-ready="1"` once every glass has rendered, which is what the screenshot script waits for.
+ * applied to every glass. `mode=content` renders the (single) variant through `filter: url()` on
+ * the backdrop element instead of `backdrop-filter` (content-side mode; one lens per content
+ * element). `debug=1` shows the map instead of the glass. The document gets `data-ready="1"`
+ * once every glass has rendered, which is what the screenshot script waits for.
  */
 import { attachLiquidGlass, DEFAULT_GLASS_PARAMS, type GlassParams, type LiquidGlassHandle, type LiquidGlassOptions } from '../src/index.ts';
 
@@ -18,7 +20,10 @@ const parse = (key: string): Partial<GlassParams> => {
 const opts = (JSON.parse(q.get('opts') ?? '{}') as Partial<LiquidGlassOptions>) ?? {};
 
 const base: Partial<GlassParams> = { width: 360, height: 180, radius: 48, bezelWidth: 48, ...parse('base') };
-const variants = (['a', 'b', 'c', 'd'] as const).filter((k) => k === 'a' || q.has(k));
+const contentMode = q.get('mode') === 'content';
+const content = contentMode ? (document.querySelector('.backdrop') as HTMLElement) : null;
+// content mode filters one element, which can carry one lens: only the first variant renders
+const variants = (['a', 'b', 'c', 'd'] as const).filter((k) => k === 'a' || (!contentMode && q.has(k)));
 const stage = document.getElementById('stage')!;
 const handles: LiquidGlassHandle[] = [];
 
@@ -42,6 +47,7 @@ for (const key of variants) {
   const handle = attachLiquidGlass(el, {
     ...opts,
     ...params,
+    ...(content ? { content, mode: 'content' as const } : {}),
     radius: params.radius ?? DEFAULT_GLASS_PARAMS.radius,
     appear: 0,
     onRender: (h) => {

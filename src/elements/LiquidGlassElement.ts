@@ -11,10 +11,12 @@ export const ElementBase: typeof HTMLElement =
  * the glass. Size comes from CSS (or the `width`/`height` attributes, which set the inline
  * size); the effect follows it. Attributes mirror `GlassParams` in kebab-case; 1.x names
  * (`scale-px`, `blur-std-dev`, `show-specular`, `frost`) still work. `appear="400"` plays an
- * entrance of that many ms on connect; `replayAppear()` plays it again.
+ * entrance of that many ms on connect; `replayAppear()` plays it again. `content="<selector>"`
+ * names the element to refract through `filter: url()` where the backdrop lens does not render
+ * (resolved in the element's root on connect); `mode="content"` forces that path.
  */
 export class LiquidGlassElement extends ElementBase {
-  static readonly observedAttributes: readonly string[] = [...observedAttributesOf(GLASS_PROP_SCHEMA), 'debug', 'appear'];
+  static readonly observedAttributes: readonly string[] = [...observedAttributesOf(GLASS_PROP_SCHEMA), 'debug', 'appear', 'content', 'mode'];
   /** Options merged into every instance's `attachLiquidGlass` call (set via defineLiquidGlassElements). */
   static defaults: Partial<LiquidGlassOptions> = {};
 
@@ -62,11 +64,14 @@ export class LiquidGlassElement extends ElementBase {
     this._applyBoxStyles();
     const props = this._props as Partial<GlassParams>;
     const defaults = (this.constructor as typeof LiquidGlassElement).defaults;
+    const content = this._resolveContent();
     this._glass = attachLiquidGlass(this, {
       ...defaults,
       ...props,
       size: 'observe',
       radius: props.radius ?? defaults.radius ?? 'css',
+      ...(content ? { content } : {}),
+      ...(this.getAttribute('mode') === 'content' ? { mode: 'content' as const } : {}),
       ...(this._appearMs !== undefined ? { appear: this._appearMs } : {}),
       onRender: (h) => {
         if (this._debugEl) this._debugEl.style.backgroundImage = h.debug.mapUrl ? `url(${h.debug.mapUrl})` : '';
@@ -91,6 +96,14 @@ export class LiquidGlassElement extends ElementBase {
       this.appearMs = value === null ? undefined : parseFloat(value);
       return;
     }
+    if (name === 'content' || name === 'mode') {
+      // the render path is chosen at attach time: re-attach
+      if (this._glass && this.isConnected) {
+        this.disconnectedCallback();
+        this.connectedCallback();
+      }
+      return;
+    }
     const patch = attrPatch(GLASS_PROP_SCHEMA, name, value);
     if (!patch) return;
     if (this._props[patch.key] === patch.value) return;
@@ -111,6 +124,19 @@ export class LiquidGlassElement extends ElementBase {
     this._pending = null;
     if (!patch || !this._glass) return;
     void this._glass.update(patch as Partial<GlassParams>);
+  }
+
+  /** The `content` attribute as an element: a selector resolved in this element's root (shadow or document). */
+  private _resolveContent(): HTMLElement | undefined {
+    const selector = this.getAttribute('content');
+    if (!selector) return undefined;
+    const root = this.getRootNode() as ParentNode;
+    const scope = typeof root.querySelector === 'function' ? root : this.ownerDocument;
+    try {
+      return (scope.querySelector(selector) as HTMLElement | null) ?? undefined;
+    } catch {
+      return undefined;
+    }
   }
 
   private _applyBoxStyles(): void {

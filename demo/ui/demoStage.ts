@@ -121,7 +121,7 @@ export function replayAppear(entry: StageEntry, durationMs = APPEAR_MS): Promise
 function showRenderMode(handle: LiquidGlassHandle): void {
   const badge = document.getElementById('modeBadge');
   if (!badge) return;
-  badge.textContent = handle.mode === 'glass' ? 'SVG lens' : 'CSS frost fallback';
+  badge.textContent = handle.mode === 'glass' ? 'SVG lens' : handle.mode === 'content' ? 'SVG lens (content)' : 'CSS frost fallback';
   badge.dataset.mode = handle.mode;
   badge.title =
     handle.mode === 'glass'

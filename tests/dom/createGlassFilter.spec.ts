@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { FakeDocument, type FakeElement } from '../helpers/fakeDom';
+import { FakeDocument, type FakeElement, type FakeJson } from '../helpers/fakeDom';
 import { createGlassFilter, bucketSize } from '../../src/dom/createGlassFilter';
 import type { RGBAImage } from '../../src/core/image';
 
@@ -287,5 +287,64 @@ describe('createGlassFilter', () => {
     await h.ready;
     await h.update({ tint: 0.3 });
     expect(calls).toBe(2);
+  });
+});
+
+/** Attribute names that differ between two serialized trees of the same shape. */
+function changedAttrs(a: FakeJson, b: FakeJson): string[] {
+  const out = Object.keys({ ...a.attrs, ...b.attrs }).filter((k) => a.attrs[k] !== b.attrs[k]);
+  (a.children ?? []).forEach((c, i) => out.push(...changedAttrs(c, b.children![i])));
+  return out;
+}
+
+describe('createGlassFilter (content-side lens)', () => {
+  it('lens builds the content graph at the offset; setLens moves it by rewriting x/y only', async () => {
+    const { create, encoded, filterOf } = env();
+    const h = create({ id: 'lg-c', width: 200, height: 100, lens: { x: 40, y: 30 } });
+    await h.ready;
+    expect(h.lens).toEqual({ x: 40, y: 30 });
+    const f = filterOf(h);
+    expect(f.getAttribute('filterUnits')).toBe('objectBoundingBox');
+    const img = f.children[0];
+    expect([img.getAttribute('x'), img.getAttribute('y'), img.getAttribute('width'), img.getAttribute('height')]).toEqual(['40', '30', '200', '100']);
+    expect(f.children.slice(-2).map((c) => c.getAttribute('operator'))).toEqual(['out', 'over']);
+    const before = f.toJSON();
+    const kids = [...f.children];
+    await h.setLens({ x: 55.25, y: 30 });
+    expect(encoded).toHaveLength(1); // no map work for a move
+    expect([...f.children]).toEqual(kids); // diffed in place, same elements
+    expect(img.getAttribute('x')).toBe('55.25');
+    const changed = changedAttrs(before, f.toJSON());
+    expect(new Set(changed)).toEqual(new Set(['x']));
+    expect(changed).toHaveLength(f.children.length - 2); // every confined primitive, not the two composites
+  });
+
+  it('setLens on a backdrop handle switches to the content graph; same placement or NaN is a no-op', async () => {
+    const { create, filterOf } = env();
+    const h = create();
+    await h.ready;
+    expect(h.lens).toBeNull();
+    const n = h.debug.renders;
+    await h.setLens({ x: 0, y: 0 });
+    expect(h.lens).toEqual({ x: 0, y: 0 });
+    expect(h.debug.renders).toBe(n + 1);
+    expect(filterOf(h).children.at(-1)!.getAttribute('operator')).toBe('over');
+    await h.setLens({ x: 0, y: 0 });
+    await h.setLens({ x: NaN, y: 0 });
+    expect(h.debug.renders).toBe(n + 1);
+  });
+
+  it('bumpFilterId gives the filter a fresh id on every re-render; id and url follow', async () => {
+    const { create, filterOf } = env();
+    const h = create({ id: 'lg-b', bumpFilterId: true });
+    await h.ready;
+    expect(h.id).toBe('lg-b');
+    expect(filterOf(h).getAttribute('id')).toBe('lg-b');
+    await h.update({ displacementScale: 100 });
+    expect(h.id).toBe('lg-b-r1');
+    expect(h.url).toBe('url(#lg-b-r1)');
+    expect(filterOf(h).getAttribute('id')).toBe('lg-b-r1');
+    await h.setIntensity(0.5);
+    expect(h.id).toBe('lg-b-r2');
   });
 });

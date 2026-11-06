@@ -4,7 +4,7 @@
  */
 export * from './core/index.js';
 
-export type { GlassFilterOptions, GlassFilterHandle, GlassFilterDebug } from './dom/createGlassFilter.js';
+export type { GlassFilterOptions, GlassFilterHandle, GlassFilterDebug, LensPlacement } from './dom/createGlassFilter.js';
 export {
   createGlassFilter,
   nextGlassId,
@@ -16,8 +16,8 @@ export {
   SIZE_BUCKET_MIN,
 } from './dom/createGlassFilter.js';
 
-export type { LiquidGlassOptions, LiquidGlassHandle, GlassFallback, AppearOptions } from './dom/attachLiquidGlass.js';
-export { attachLiquidGlass, reducedTransparencyParams, easeOutCubic } from './dom/attachLiquidGlass.js';
+export type { LiquidGlassOptions, LiquidGlassHandle, GlassFallback, GlassMode, AppearOptions } from './dom/attachLiquidGlass.js';
+export { attachLiquidGlass, reducedTransparencyParams, easeOutCubic, CONTENT_FILTER_MAX_PX } from './dom/attachLiquidGlass.js';
 
 export type { ImageEncoder, UrlRevoker } from './dom/encodeImage.js';
 export { encodeImageToBlobUrl, revokeBlobUrl } from './dom/encodeImage.js';
@@ -29,4 +29,13 @@ export type { ElementFactory } from './dom/mountFilter.js';
 export { createFilterSvg, applyFilterSpec } from './dom/mountFilter.js';
 
 export type { GlassSupport, SupportEnvironment } from './dom/support.js';
-export { detectGlassSupport, isLiquidGlassSupported, isChromiumEngine, browserSupportEnvironment } from './dom/support.js';
+export {
+  detectGlassSupport,
+  isLiquidGlassSupported,
+  isChromiumEngine,
+  isWebKitEngine,
+  safariMajorVersion,
+  needsFilterIdBump,
+  detectContentFilterSupport,
+  browserSupportEnvironment,
+} from './dom/support.js';

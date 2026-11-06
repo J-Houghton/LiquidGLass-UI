@@ -77,3 +77,40 @@ export function detectGlassSupport(env: SupportEnvironment = browserSupportEnvir
 export function isLiquidGlassSupported(env?: SupportEnvironment): boolean {
   return detectGlassSupport(env) === 'full';
 }
+
+// ---- content-side `filter: url()` (research §3 B) --------------------------------------------
+
+/** WebKit that is not Chromium: Safari and every iOS browser. */
+export function isWebKitEngine(env: SupportEnvironment): boolean {
+  if (isChromiumEngine(env)) return false;
+  if (env.brands && env.brands.length > 0) return false; // Client Hints are a Chromium feature
+  return /\bAppleWebKit\//.test(env.userAgent ?? '');
+}
+
+/** Safari's major version from the `Version/N` UA token, or null (iOS WebViews omit it). */
+export function safariMajorVersion(env: SupportEnvironment): number | null {
+  const m = /\bVersion\/(\d+)/.exec(env.userAgent ?? '');
+  return m ? parseInt(m[1], 10) : null;
+}
+
+/**
+ * Does `filter: url(#id)` need a fresh id whenever its primitives change? Safari before 27.0 did
+ * not repaint otherwise (fixed 2026-09-17, research §2); a WebKit of unknown version is assumed
+ * affected.
+ */
+export function needsFilterIdBump(env: SupportEnvironment = browserSupportEnvironment()): boolean {
+  if (!isWebKitEngine(env)) return false;
+  const v = safariMajorVersion(env);
+  return v === null || v < 27;
+}
+
+/**
+ * Can the lens render through `filter: url()` on an element that owns the pixels? Chromium,
+ * WebKit and Gecko all do (the latter on a CPU path), so this is the parse check plus the page
+ * override.
+ */
+export function detectContentFilterSupport(env: SupportEnvironment = browserSupportEnvironment()): boolean {
+  if (env.override === 'force') return true;
+  if (env.override === 'off') return false;
+  return safeSupports(env, 'filter', 'url(#x)');
+}

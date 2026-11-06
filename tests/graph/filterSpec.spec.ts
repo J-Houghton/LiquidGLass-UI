@@ -181,6 +181,64 @@ describe('buildFilterSpec', () => {
     expect(spec.structureKey).not.toBe(buildFilterSpec(resolveGlassParams({ width: 300, height: 120 }), REFS).structureKey);
   });
 
+  describe('region (content-side filter: url())', () => {
+    const REGION = { x: 40, y: 30.5, width: 300, height: 120 };
+    const LENS = { x: '40', y: '30.5', width: '300', height: '120' };
+
+    for (const dispersion of [0, 1]) {
+      it(`dispersion=${dispersion}: spec is pinned`, () => {
+        const spec = buildFilterSpec(resolveGlassParams({ dispersion, blur: 0.5, shade: 0.3, saturation: 1.2 }), REFS, { region: REGION });
+        expect(spec).toMatchSnapshot();
+      });
+    }
+
+    it('confines the map and every lens stage to the region, then saturates, cuts out and composites', () => {
+      const spec = buildFilterSpec(resolveGlassParams({ dispersion: 1, shade: 0.3, saturation: 1.2 }), REFS, { region: REGION });
+      expect(spec.static[0].attrs).toEqual({ ...LENS, preserveAspectRatio: 'none', href: 'blob:map', result: 'map' });
+      const tail = spec.dynamic.slice(-4);
+      expect(tail.map((q) => q.tag)).toEqual(['feColorMatrix', 'feFlood', 'feComposite', 'feComposite']);
+      expect(tail[0].attrs).toEqual({ ...LENS, in: 'final', type: 'saturate', values: '1.2', result: 'lens' });
+      expect(tail[1].attrs).toEqual({ ...LENS, 'flood-color': '#000', result: 'hole' });
+      expect(tail[2].attrs).toEqual({ in: 'SourceGraphic', in2: 'hole', operator: 'out', result: 'ground' });
+      expect(tail[3].attrs).toEqual({ in: 'lens', in2: 'ground', operator: 'over', result: 'composed' });
+      for (const q of spec.dynamic.slice(0, -2)) expect(q.attrs).toMatchObject(LENS);
+      expect(spec.structureKey).toBe(buildFilterSpec(resolveGlassParams({ dispersion: 1, shade: 0.3, blurStage: 'before' }), REFS).structureKey + '|content');
+      expect(filterElementAttrs(spec)).toMatchObject({ filterUnits: 'objectBoundingBox', width: '1', height: '1' });
+    });
+
+    it('moving the lens changes only x and y on the confined primitives; padding is ignored', () => {
+      const p = resolveGlassParams({ dispersion: 1, shade: 0.3 });
+      const a = buildFilterSpec(p, REFS, { region: REGION, padding: 24 });
+      const b = buildFilterSpec(p, REFS, { region: { ...REGION, x: 100, y: 80 } });
+      expect(a.padding).toBe(0);
+      expect(a.structureKey).toBe(b.structureKey);
+      const all = (s: typeof a) => [...s.static, ...s.dynamic];
+      const changed: string[] = [];
+      all(a).forEach((q, i) => {
+        for (const k of Object.keys(q.attrs)) if (q.attrs[k] !== all(b)[i].attrs[k]) changed.push(k);
+      });
+      expect(new Set(changed)).toEqual(new Set(['x', 'y']));
+      expect(changed).toHaveLength(2 * (all(a).length - 2));
+    });
+
+    it('the saturate stage is the identity at saturation 1 and reads the last lens stage', () => {
+      const spec = buildFilterSpec(resolveGlassParams({ specular: false }), REFS, { region: REGION });
+      const sat = spec.dynamic.find((q) => q.attrs.type === 'saturate')!;
+      expect(sat.attrs.values).toBe('1');
+      expect(sat.attrs.in).toBe('refr');
+    });
+
+    it("always blurs before displacement (pinned opaque), whatever blurStage says", () => {
+      for (const blurStage of ['after', 'before'] as const) {
+        const spec = buildFilterSpec(resolveGlassParams({ blurStage, blur: 1 }), REFS, { region: REGION });
+        expect(spec.dynamic.slice(0, 3).map((q) => q.tag)).toEqual(['feGaussianBlur', 'feColorMatrix', 'feDisplacementMap']);
+        expect(spec.dynamic[0].attrs.in).toBe('SourceGraphic');
+        expect(spec.dynamic[2].attrs.in).toBe('soft');
+        expect(spec.structureKey).toContain('|before:gauss|');
+      }
+    });
+  });
+
   it('serializes to well-formed, escaped SVG markup', () => {
     const spec = buildFilterSpec(resolveGlassParams({ dispersion: 1 }), { ...REFS, mapHref: 'data:x/y;base64,AA==&"<' });
     const svg = filterSpecToSvg(spec);

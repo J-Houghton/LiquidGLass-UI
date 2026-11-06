@@ -46,6 +46,19 @@ export interface GlassFilterOptions extends Partial<GlassParams> {
    * never a map regeneration). The appear animation ramps it from 0 to 1. Default 1.
    */
   intensity?: number;
+  /**
+   * Content-side mode: build the graph for `filter: url()` on an element that owns the pixels
+   * (renders in Chromium, WebKit and Gecko), with the lens (`width` × `height`) placed at this
+   * offset inside that element's border box. Move it with `setLens` (attribute writes only).
+   * Default: the backdrop graph for `backdrop-filter: url()`.
+   */
+  lens?: LensPlacement;
+  /**
+   * Give the `<filter>` a fresh id on every re-render. Safari before 27.0 did not repaint a
+   * `filter: url(#id)` whose primitives changed (research §2); `attachLiquidGlass` turns this on
+   * there. Read the current id from `handle.id` / `handle.url` after each render. Default false.
+   */
+  bumpFilterId?: boolean;
   /** Pixel buffer → URL. Default: PNG blob URL via canvas. Seam for tests and workers. */
   encodeImage?: ImageEncoder;
   /** Releases URLs from `encodeImage`. Default: `URL.revokeObjectURL` for blob URLs. */
@@ -77,10 +90,19 @@ export interface GlassFilterDebug {
   renders: number;
 }
 
+/** Where the lens sits inside the filtered element's border box, CSS px (content-side mode). */
+export interface LensPlacement {
+  x: number;
+  y: number;
+}
+
 export interface GlassFilterHandle {
+  /** Current filter id (changes per render with `bumpFilterId`). */
   readonly id: string;
   /** `url(#id)`: drop into `backdrop-filter` or `filter`. */
   readonly url: string;
+  /** Lens offset in content-side mode, null in backdrop mode. */
+  readonly lens: LensPlacement | null;
   readonly filterElement: SVGFilterElement;
   readonly svgElement: SVGSVGElement;
   /** Current parameters after validation and clamping. */
@@ -103,6 +125,11 @@ export interface GlassFilterHandle {
   setDpr(dpr: number): Promise<void>;
   /** Scale displacement and rim by k in [0, 1] without touching the map (cheap per frame). */
   setIntensity(k: number): Promise<void>;
+  /**
+   * Move the lens (content-side mode): rewrites the subregion attributes only. Calling it on a
+   * backdrop-mode handle switches the graph to content-side mode.
+   */
+  setLens(placement: LensPlacement): Promise<void>;
   /** Revoke URLs, remove the `<svg>`, stop observers. Idempotent. */
   destroy(): void;
 }
@@ -170,8 +197,12 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
   const regionPadding = options.regionPadding ?? 0;
   const maxMapPixels = options.maxMapPixels ?? DEFAULT_MAX_MAP_PIXELS;
   const sizeBucket = options.sizeBucket ?? DEFAULT_SIZE_BUCKET;
+  const bumpFilterId = options.bumpFilterId ?? false;
   let dpr = options.dpr ?? defaultDpr();
   let intensity = clamp01(options.intensity ?? 1);
+  let lens: LensPlacement | null = options.lens ? { x: options.lens.x, y: options.lens.y } : null;
+  let currentId = id;
+  let idSerial = 0;
 
   const { params: initial } = splitGlassOptions(options);
   let raw: GlassParams = { ...DEFAULT_GLASS_PARAMS, ...initial };
@@ -279,6 +310,8 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
     }
 
     const scale = (p.physicalScale ? debug.physicalMaxDisplacementPx : p.displacementScale) * intensity;
+    // A fresh id per re-render where the engine will not repaint a changed filter otherwise.
+    if (bumpFilterId && spec !== null) currentId = `${id}-r${++idSerial}`;
     const next = buildFilterSpec(
       {
         ...p,
@@ -288,8 +321,8 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
         // a px fringe must shrink with the entrance too; a relative one follows the scale already
         dispersion: p.dispersionUnit === 'px' ? p.dispersion * intensity : p.dispersion,
       },
-      { id, mapHref: mapSlot.url! },
-      { padding: regionPadding },
+      { id: currentId, mapHref: mapSlot.url! },
+      lens ? { region: { x: lens.x, y: lens.y, width: p.width, height: p.height } } : { padding: regionPadding },
     );
     applyFilterSpec(doc, filter, spec, next);
     spec = next;
@@ -356,8 +389,15 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
   const ready = request();
 
   const handle: GlassFilterHandle = {
-    id,
-    url: `url(#${id})`,
+    get id() {
+      return currentId;
+    },
+    get url() {
+      return `url(#${currentId})`;
+    },
+    get lens() {
+      return lens;
+    },
     filterElement: filter,
     svgElement: svg,
     get params() {
@@ -385,6 +425,12 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
       const next = clamp01(k);
       if (next === intensity) return spec ? Promise.resolve() : request();
       intensity = next;
+      return request();
+    },
+    setLens(placement: LensPlacement) {
+      if (!Number.isFinite(placement.x) || !Number.isFinite(placement.y)) return Promise.resolve();
+      if (lens && lens.x === placement.x && lens.y === placement.y) return spec ? Promise.resolve() : request();
+      lens = { x: placement.x, y: placement.y };
       return request();
     },
     destroy,

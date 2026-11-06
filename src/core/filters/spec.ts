@@ -8,6 +8,8 @@ import type { BlurKind, DispersionUnit, ResolvedGlassParams } from '../params.js
  *   blurStage 'after':  displacement → blur → rim
  *   blurStage 'before': blur(SourceGraphic) → pin alpha → displacement → rim
  * where displacement is 1 pass, or 3 channel-isolated passes at staggered scales for dispersion.
+ * With `region` (content-side `filter: url()`), the stages are confined to the lens rectangle and
+ * the chain ends: saturate → hole in the source → lens over source.
  */
 
 export interface FilterPrimitive {
@@ -35,9 +37,27 @@ export interface FilterRefs {
   mapHref: string;
 }
 
+/** A rectangle in the filtered element's border-box coordinates, CSS px. */
+export interface LensRegion {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface FilterSpecOptions {
-  /** Extra filter region around the element box, px. Default 0. */
+  /** Extra filter region around the element box, px. Default 0. Ignored with `region`. */
   padding?: number;
+  /**
+   * Content-side mode: the graph is meant for `filter: url()` on an element that owns the pixels
+   * (the cross-engine route; `backdrop-filter: url()` renders only in Chromium), and the lens
+   * occupies this rectangle of that element's box. Every lens primitive is confined to it, the
+   * blur runs before displacement whatever `blurStage` says (see the note in `buildFilterSpec`),
+   * the lens is saturated in-graph, and the chain ends by cutting the lens out of the source and
+   * compositing the refracted lens over it, so the rest of the element passes through untouched.
+   * Moving the lens changes only these four attributes on each primitive.
+   */
+  region?: LensRegion;
 }
 
 /** Displacement scale per unit of blur for the two noise profiles. */
@@ -52,20 +72,31 @@ const prim = (tag: string, attrs: Record<string, string>, children?: FilterPrimi
 const num = (v: number): string => String(Math.round(v * 1000) / 1000);
 
 export function buildFilterSpec(p: ResolvedGlassParams, refs: FilterRefs, opts: FilterSpecOptions = {}): FilterSpec {
-  const padding = Math.max(0, opts.padding ?? 0);
+  const region = opts.region ?? null;
+  const padding = region ? 0 : Math.max(0, opts.padding ?? 0);
   // Without padding the filter region is the element's box in objectBoundingBox units and the
   // map image has no subregion, so it fills whatever the box is right now: a resized element
   // keeps a (stretched) lens while the sharper map is still encoding, and nothing size-dependent
   // has to be rewritten on the graph. With padding the region is explicit px (see filterElementAttrs).
+  // In content-side mode the map (and every lens primitive) is confined to the lens rectangle.
+  const lens: Record<string, string> = region
+    ? { x: num(region.x), y: num(region.y), width: num(region.width), height: num(region.height) }
+    : {};
   const staticPrims: FilterPrimitive[] = [
-    padding > 0
-      ? prim('feImage', { x: '0', y: '0', width: String(p.width), height: String(p.height), preserveAspectRatio: 'none', href: refs.mapHref, result: 'map' })
-      : prim('feImage', { preserveAspectRatio: 'none', href: refs.mapHref, result: 'map' }),
+    region
+      ? prim('feImage', { ...lens, preserveAspectRatio: 'none', href: refs.mapHref, result: 'map' })
+      : padding > 0
+        ? prim('feImage', { x: '0', y: '0', width: String(p.width), height: String(p.height), preserveAspectRatio: 'none', href: refs.mapHref, result: 'map' })
+        : prim('feImage', { preserveAspectRatio: 'none', href: refs.mapHref, result: 'map' }),
   ];
 
-  const dynamic: FilterPrimitive[] = [];
+  let dynamic: FilterPrimitive[] = [];
   const chromatic = p.dispersion > 0;
-  const before = p.blurStage === 'before';
+  // Content-side mode always blurs first: a blur after displacement would read transparent pixels
+  // beyond the lens rectangle and feather its edge, and the hole punched into the source below
+  // would show through that feather as an outline. Blurring the (pinned-opaque) source keeps the
+  // lens opaque to its rectangle, so the cut-out is exact.
+  const before = region !== null || p.blurStage === 'before';
 
   let source = 'SourceGraphic';
   if (before) {
@@ -95,7 +126,24 @@ export function buildFilterSpec(p: ResolvedGlassParams, refs: FilterRefs, opts: 
     dynamic.push(...shadeStage(input, shade));
     input = 'shaded';
   }
-  if (p.specular) dynamic.push(...rimStage(input, p.specularStrength));
+  if (p.specular) {
+    dynamic.push(...rimStage(input, p.specularStrength));
+    input = 'final';
+  }
+
+  if (region) {
+    // Confine the lens stages to the lens rectangle (a primitive's subregion clips its output;
+    // blur and displacement still read source pixels from just outside it, which is better than
+    // the backdrop path gets). Then: lens saturation, a hole punched into the source where the
+    // lens sits (so translucent content is not drawn twice), and the lens over the rest.
+    dynamic = dynamic.map((q) => ({ ...q, attrs: { ...lens, ...q.attrs } }));
+    dynamic.push(
+      prim('feColorMatrix', { ...lens, in: input, type: 'saturate', values: num(p.saturation), result: 'lens' }),
+      prim('feFlood', { ...lens, 'flood-color': '#000', result: 'hole' }),
+      prim('feComposite', { in: 'SourceGraphic', in2: 'hole', operator: 'out', result: 'ground' }),
+      prim('feComposite', { in: 'lens', in2: 'ground', operator: 'over', result: 'composed' }),
+    );
+  }
 
   return {
     id: refs.id,
@@ -104,7 +152,9 @@ export function buildFilterSpec(p: ResolvedGlassParams, refs: FilterRefs, opts: 
     padding,
     static: staticPrims,
     dynamic,
-    structureKey: `${chromatic ? 'dispersion' : 'single'}|${p.blurStage}:${p.blurKind}|${shade > 0 ? 'shade' : '-'}|${p.specular ? 'rim' : '-'}|pad:${padding > 0 ? 'px' : 'box'}`,
+    structureKey:
+      `${chromatic ? 'dispersion' : 'single'}|${before ? 'before' : 'after'}:${p.blurKind}|${shade > 0 ? 'shade' : '-'}|${p.specular ? 'rim' : '-'}|pad:${padding > 0 ? 'px' : 'box'}` +
+      (region ? '|content' : ''),
   };
 }
 

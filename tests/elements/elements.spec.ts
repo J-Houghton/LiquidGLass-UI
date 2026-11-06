@@ -153,3 +153,23 @@ describe('<liquid-glass-filter>', () => {
     expect(document.querySelector('filter#upd feGaussianBlur')!.getAttribute('stdDeviation')).toBe('2.00');
   });
 });
+
+describe('<liquid-glass-container content>', () => {
+  it('content="<selector>" with mode="content" filters that element and restores it on disconnect', async () => {
+    document.body.innerHTML = `<section id="bg"><p>behind the glass</p></section>
+      <liquid-glass-container id="e" content="#bg" mode="content" width="200" height="100"></liquid-glass-container>`;
+    const el = document.getElementById('e') as LiquidGlassElement;
+    const bg = document.getElementById('bg') as HTMLElement;
+    expect(el.glass!.mode).toBe('content');
+    expect(el.glass!.content).toBe(bg);
+    await el.glass!.ready;
+    expect(bg.style.filter).toBe(`url(#${el.glass!.id})`);
+    expect(el.style.backdropFilter).toBe('');
+    expect(el.getAttribute('data-liquid-glass')).toBe('content');
+    el.removeAttribute('mode'); // defaults say support:'full', so auto goes back to the backdrop lens
+    expect(el.glass!.mode).toBe('glass');
+    expect(bg.style.filter).toBe('');
+    el.remove();
+    expect(el.glass).toBeNull();
+  });
+});

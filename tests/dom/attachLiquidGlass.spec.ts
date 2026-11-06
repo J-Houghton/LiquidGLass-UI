@@ -366,3 +366,129 @@ describe('attachLiquidGlass (reduced transparency)', () => {
     expect(mql.listeners).toHaveLength(0);
   });
 });
+
+describe('attachLiquidGlass (content mode)', () => {
+  function contentEnv() {
+    const e = env();
+    const content = e.doc.body.appendChild(e.doc.createElement('section'));
+    content.rect = { x: 10, y: 20, top: 20, left: 10, width: 800, height: 600, right: 810, bottom: 620 };
+    e.target.rect = { x: 50, y: 60, top: 60, left: 50, width: 320, height: 100, right: 370, bottom: 160 };
+    const warnings: string[] = [];
+    const attach = (opts: Parameters<typeof attachLiquidGlass>[1] = {}) =>
+      e.attach({ support: 'frost', contentSupport: true, content: content as unknown as HTMLElement, warn: (m) => warnings.push(m), ...opts });
+    return { ...e, content, attach, warnings };
+  }
+  const lensAttrs = (h: { filterElement: unknown }) => {
+    const img = (h.filterElement as unknown as FakeElement).children[0];
+    return ['x', 'y', 'width', 'height'].map((k) => img.getAttribute(k));
+  };
+
+  it("'auto' takes the content lens where the backdrop lens does not render: filter on the content, body styles on the target", async () => {
+    const { target, content, attach, encoded } = contentEnv();
+    const h = attach({ id: 'lg-c' });
+    expect(h.mode).toBe('content');
+    expect(h.content).toBe(content);
+    await h.ready;
+    expect(encoded).toHaveLength(1);
+    expect(content.style.filter).toBe('url(#lg-c)');
+    expect(target.style.backdropFilter).toBe('');
+    expect(target.style.backgroundColor).toBe('rgba(0, 0, 0, 0.05)');
+    expect(target.style.borderRadius).toBe('24px');
+    expect(target.getAttribute('data-liquid-glass')).toBe('content');
+    expect(h.lens).toEqual({ x: 40, y: 40 });
+    expect(lensAttrs(h)).toEqual(['40', '40', '320', '100']);
+    const kids = (h.filterElement as unknown as FakeElement).children;
+    expect(kids.at(-1)!.getAttribute('operator')).toBe('over');
+    expect(h.getStyle()).toEqual({ backgroundColor: 'rgba(0, 0, 0, 0.05)', borderRadius: '24px' });
+    expect(h.getContentStyle()).toEqual({ filter: 'url(#lg-c)' });
+  });
+
+  it('relayout after a move rewrites the lens offset without touching the map', async () => {
+    const { target, attach, encoded } = contentEnv();
+    const h = attach();
+    await h.ready;
+    target.rect = { ...target.rect, x: 210, left: 210, y: 61.5, top: 61.5 };
+    await h.relayout();
+    expect(h.lens).toEqual({ x: 200, y: 41.5 });
+    expect(lensAttrs(h)).toEqual(['200', '41.5', '320', '100']);
+    expect(encoded).toHaveLength(1);
+    expect(h.debug.renders).toBe(2);
+    await h.relayout(); // nothing moved
+    expect(h.debug.renders).toBe(2);
+  });
+
+  it('observes both elements: a content resize re-measures the offset, a target resize re-sizes the lens', async () => {
+    const { target, content, attach, encoded } = contentEnv();
+    const h = attach();
+    await h.ready;
+    expect(FakeResizeObserver.instances.map((o) => o.observed[0])).toEqual([target, content]);
+    content.rect = { ...content.rect, x: 0, left: 0 };
+    FakeResizeObserver.instances[1].fire(810, 600);
+    await h.refresh();
+    expect(h.lens).toEqual({ x: 50, y: 40 });
+    target.rect = { ...target.rect, width: 400 };
+    FakeResizeObserver.instances[0].fire(400, 100);
+    await h.refresh();
+    expect(h.params.width).toBe(400);
+    expect(lensAttrs(h)).toEqual(['50', '40', '400', '100']);
+    expect(encoded).toHaveLength(2);
+  });
+
+  it('mode selection: forced by mode, skipped on Chromium under auto, needs filter: url() support', async () => {
+    const { attach } = contentEnv();
+    expect(attach({ support: 'full', mode: 'content' }).mode).toBe('content');
+    expect(attach({ support: 'full' }).mode).toBe('glass');
+    expect(attach({ support: 'frost', contentSupport: false }).mode).toBe('frost');
+    expect(attach({ support: 'frost', contentSupport: false, fallback: 'none' }).mode).toBe('glass');
+    expect(attach({ support: 'none' }).mode).toBe('content');
+    expect(attach({ content: undefined }).mode).toBe('frost');
+  });
+
+  it('bumpFilterId re-points the content filter at the fresh id after each render', async () => {
+    const { content, attach } = contentEnv();
+    const h = attach({ id: 'lg-s', bumpFilterId: true });
+    await h.ready;
+    expect(content.style.filter).toBe('url(#lg-s)');
+    await h.update({ displacementScale: 120 });
+    expect(h.id).toBe('lg-s-r1');
+    expect(content.style.filter).toBe('url(#lg-s-r1)');
+  });
+
+  it('warns once when the content exceeds the WebKit buffer limit', async () => {
+    const { content, attach, warnings } = contentEnv();
+    content.rect = { ...content.rect, width: 5000 };
+    const h = attach();
+    await h.ready;
+    await h.relayout();
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain('5000×600');
+  });
+
+  it('plays the entrance in content mode', async () => {
+    const { attach } = contentEnv();
+    let t = 0;
+    const frames: Array<(time: number) => void> = [];
+    const h = attach({ appear: 400, now: () => t, animationFrame: (cb) => frames.push(cb) });
+    await h.ready;
+    expect(h.intensity).toBe(0);
+    t = 400;
+    for (const f of frames.splice(0)) f(t);
+    await h.refresh();
+    expect(h.intensity).toBe(1);
+  });
+
+  it('destroy restores the content filter and the target styles, and disconnects both observers', async () => {
+    const { target, content, attach } = contentEnv();
+    content.style.filter = 'grayscale(1)';
+    target.style.backgroundColor = 'tomato';
+    const h = attach();
+    await h.ready;
+    expect(content.style.filter).toMatch(/^url\(#/);
+    h.destroy();
+    expect(content.style.filter).toBe('grayscale(1)');
+    expect(target.style.backgroundColor).toBe('tomato');
+    expect(target.getAttribute('data-liquid-glass')).toBeNull();
+    expect(FakeResizeObserver.instances.every((o) => o.disconnected)).toBe(true);
+    expect(target.children).toHaveLength(0);
+  });
+});
