@@ -1,6 +1,6 @@
 {
   "name": "liquid-glass-filter",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Physics-based liquid glass refraction for the web: a headless engine plus a tiny attach/update/destroy API. Zero dependencies.",
   "keywords": [
     "liquid-glass",
