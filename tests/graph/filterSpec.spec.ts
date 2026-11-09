@@ -13,7 +13,7 @@ for (const dispersion of [0, 1]) {
   }
 }
 
-const REFS = { id: 'lg-test', mapHref: 'blob:map' };
+const REFS = { id: 'lg-test', mapHref: 'blob:map', lightHref: 'blob:light' };
 
 describe('buildFilterSpec', () => {
   for (const combo of COMBOS) {
@@ -24,10 +24,11 @@ describe('buildFilterSpec', () => {
     });
   }
 
-  it('the only static primitive is the map image, filling an objectBoundingBox region by default', () => {
-    const spec = buildFilterSpec(resolveGlassParams({ width: 320, height: 200 }), { ...REFS, mapHref: 'blob:m' });
-    expect(spec.static.map((p) => p.tag)).toEqual(['feImage']);
+  it('the static primitives are the two images, filling an objectBoundingBox region by default', () => {
+    const spec = buildFilterSpec(resolveGlassParams({ width: 320, height: 200 }), { ...REFS, mapHref: 'blob:m', lightHref: 'blob:l' });
+    expect(spec.static.map((p) => p.tag)).toEqual(['feImage', 'feImage']);
     expect(spec.static[0].attrs).toEqual({ preserveAspectRatio: 'none', href: 'blob:m', result: 'map' });
+    expect(spec.static[1].attrs).toEqual({ preserveAspectRatio: 'none', href: 'blob:l', result: 'light' });
     expect(spec.width).toBe(320);
     expect(spec.height).toBe(200);
     expect(spec.padding).toBe(0);
@@ -66,7 +67,7 @@ describe('buildFilterSpec', () => {
     expect(passes.map((p) => p.attrs.result)).toEqual(['dispR', 'dispG', 'dispB']);
     const matrices = spec.dynamic.filter((p) => p.tag === 'feColorMatrix' && /^disp[RGB]$/.test(p.attrs.in));
     expect(matrices).toHaveLength(3);
-    const sums = spec.dynamic.filter((p) => p.tag === 'feComposite');
+    const sums = spec.dynamic.filter((p) => p.tag === 'feComposite' && /^ch/.test(p.attrs.in));
     expect(sums.map((p) => [p.attrs.in, p.attrs.in2, p.attrs.result])).toEqual([
       ['chR', 'chG', 'chRG'],
       ['chRG', 'chB', 'refr'],
@@ -142,25 +143,52 @@ describe('buildFilterSpec', () => {
     expect(d[d.length - 1].attrs).toMatchObject({ in: 'refrNoise_high', in2: 'rim', mode: 'screen', result: 'final' });
     const gauss = buildFilterSpec(resolveGlassParams({ blurKind: 'gauss' }), REFS).dynamic;
     expect(gauss[1].attrs).toMatchObject({ in: 'refr', result: 'blurred' });
-    expect(gauss[3].attrs.in).toBe('blurred');
+    expect(gauss.find((p) => p.tag === 'feBlend' && p.attrs.in2 === 'rim')!.attrs.in).toBe('blurred');
   });
 
-  it('rim stage: white with alpha = strength x (B above neutral), screened, once', () => {
-    const spec = buildFilterSpec(resolveGlassParams({ specularStrength: 0.81 }), REFS);
-    const rim = spec.dynamic.find((p) => p.tag === 'feColorMatrix' && p.attrs.result === 'rim')!;
-    // (255b - 128)/127 x 0.81 = 1.6264 b - 0.8164
-    expect(rim.attrs.values).toBe('0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 1.6264 0 -0.8164');
+  it('rim stage: the light vector applied to the light map, one matrix per side, summed, screened', () => {
+    const spec = buildFilterSpec(resolveGlassParams({ specularStrength: 0.81, specularAngleDeg: 60 }), REFS);
+    const a = spec.dynamic.find((p) => p.tag === 'feColorMatrix' && p.attrs.result === 'rimA')!;
+    const b = spec.dynamic.find((p) => p.tag === 'feColorMatrix' && p.attrs.result === 'rimB')!;
+    // L = (cos 60°, sin 60°) = (0.5, 0.866); alpha = GAIN·s·(Lx r + Ly g) − s·b − BIAS·s·(Lx + Ly)
+    // with GAIN = 255/127, BIAS = 128/127, s = 0.81: 0.8132 r + 1.4085 g − 0.81 b − 1.1152
+    expect(a.attrs.in).toBe('light');
+    expect(a.attrs.values).toBe('0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0.8132 1.4085 -0.81 0 -1.1152');
+    expect(b.attrs.values).toBe('0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  -0.8132 -1.4085 -0.81 0 1.1152');
+    const sum = spec.dynamic.find((p) => p.tag === 'feComposite' && p.attrs.result === 'rim')!;
+    expect(sum.attrs).toMatchObject({ in: 'rimA', in2: 'rimB', operator: 'arithmetic', k2: '1', k3: '1' });
     expect(spec.dynamic.find((p) => p.tag === 'feBlend' && p.attrs.in2 === 'rim')!.attrs.mode).toBe('screen');
     expect(spec.dynamic.some((p) => p.tag === 'feComponentTransfer')).toBe(false);
   });
 
-  it('shade stage: black with alpha = shade x (B below neutral), multiplied in before the rim', () => {
+  it('the light angle changes only the two rim matrices (never the structure)', () => {
+    const p60 = buildFilterSpec(resolveGlassParams({ specularAngleDeg: 60 }), REFS);
+    const p135 = buildFilterSpec(resolveGlassParams({ specularAngleDeg: 135 }), REFS);
+    expect(p135.structureKey).toBe(p60.structureKey);
+    expect(p135.static).toEqual(p60.static);
+    const diff = p60.dynamic.map((q, i) => (JSON.stringify(q) === JSON.stringify(p135.dynamic[i]) ? null : q.attrs.result)).filter(Boolean);
+    expect(diff).toEqual(['rimA', 'rimB']);
+    // 180° apart is the same lighting (|n·L|): the two sides swap
+    const p240 = buildFilterSpec(resolveGlassParams({ specularAngleDeg: 240 }), REFS);
+    const vals = (s: typeof p60, r: string) => s.dynamic.find((q) => q.attrs.result === r)!.attrs.values;
+    expect(vals(p240, 'rimA')).toBe(vals(p60, 'rimB'));
+    expect(vals(p240, 'rimB')).toBe(vals(p60, 'rimA'));
+  });
+
+  it('shade stage: black with alpha = shade x max(0, B − |lit rim|), multiplied in before the rim', () => {
     const none = buildFilterSpec(resolveGlassParams({ shade: 0 }), REFS);
     expect(none.dynamic.some((p) => p.attrs.result === 'shade')).toBe(false);
-    const spec = buildFilterSpec(resolveGlassParams({ shade: 1 }), REFS);
-    const shade = spec.dynamic.find((p) => p.tag === 'feColorMatrix' && p.attrs.result === 'shade')!;
-    // k = 1: (128 - 255b)/127 = -2.0079 b + 1.0079
-    expect(shade.attrs.values).toBe('0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 -2.0079 0 1.0079');
+    expect(none.dynamic.some((p) => p.attrs.result === 'lit')).toBe(false);
+    const spec = buildFilterSpec(resolveGlassParams({ shade: 0.5, specularAngleDeg: 60 }), REFS);
+    const names = spec.dynamic.map((p) => p.attrs.result);
+    expect(names.slice(names.indexOf('litA'), names.indexOf('shaded') + 1)).toEqual(['litA', 'litB', 'lit', 'shadeFull', 'shade', 'shaded']);
+    const litA = spec.dynamic.find((p) => p.attrs.result === 'litA')!;
+    expect(litA.attrs.values).toBe('0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  1.0039 1.7389 0 0 -1.3768'); // unit strength, no shade term
+    const full = spec.dynamic.find((p) => p.attrs.result === 'shadeFull')!;
+    expect(full.attrs.in).toBe('light');
+    expect(full.attrs.values).toBe('0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0.5 0 0');
+    const shade = spec.dynamic.find((p) => p.attrs.result === 'shade')!;
+    expect(shade.attrs).toMatchObject({ in: 'shadeFull', in2: 'lit', operator: 'arithmetic', k2: '1', k3: '-0.5' });
     const blend = spec.dynamic.find((p) => p.tag === 'feBlend' && p.attrs.in2 === 'shade')!;
     expect(blend.attrs).toMatchObject({ in: 'blurred', mode: 'multiply', result: 'shaded' });
     expect(spec.dynamic.find((p) => p.tag === 'feBlend' && p.attrs.in2 === 'rim')!.attrs.in).toBe('shaded');

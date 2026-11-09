@@ -1,9 +1,11 @@
 import {
   attachLiquidGlass,
   attachGlassMotion,
+  attachGlassLight,
   resolveGlassParams,
   DEFAULT_GLASS_PARAMS,
   type GlassParams,
+  type GlassLightHandle,
   type GlassMotionHandle,
   type LiquidGlassHandle,
 } from '../../src/index.js';
@@ -28,7 +30,41 @@ export type StageEntry = Glass & {
   /** One motion handle per glass in the wrapper (primary, twin), all driven by the wrapper's pointer. */
   motion: GlassMotionHandle[];
   motionSettings: MotionSettings | null;
+  /** One light handle per glass in the wrapper. */
+  light: GlassLightHandle[];
+  lightSettings: LightSettings | null;
 };
+
+/** The playground's view of the light options. */
+export interface LightSettings {
+  /** Scene light above the viewport: the rim follows where the glass sits. */
+  scene: boolean;
+  /** The pointer takes the light over when it comes within `radius` px. */
+  pointer: boolean;
+  radius: number;
+  /** Per-frame easing fraction. */
+  smoothing: number;
+}
+
+export const DEFAULT_LIGHT: LightSettings = { scene: true, pointer: true, radius: 160, smoothing: 0.35 };
+
+/** (Re)attach the page-driven light for an entry and its twin. `null` detaches (the Angle slider rules again). */
+export function setLight(entry: StageEntry, settings: LightSettings | null): void {
+  for (const l of entry.light) l.destroy();
+  entry.light = [];
+  entry.lightSettings = settings;
+  if (!settings || !(settings.scene || settings.pointer)) return;
+  const glasses = entry.twin ? [entry, entry.twin] : [entry];
+  for (const g of glasses) {
+    entry.light.push(
+      attachGlassLight(g.handle, {
+        scene: settings.scene ? 'viewport' : false,
+        pointer: settings.pointer ? { radius: settings.radius } : false,
+        smoothing: settings.smoothing,
+      }),
+    );
+  }
+}
 
 /** The playground's view of the motion options. */
 export interface MotionSettings {
@@ -140,6 +176,7 @@ export function setTwin(entry: StageEntry, override: Partial<GlassParams> | null
   entry.captionEl.textContent = '';
   if (!override) {
     setMotion(entry, entry.motionSettings);
+    setLight(entry, entry.lightSettings);
     return;
   }
 
@@ -151,6 +188,7 @@ export function setTwin(entry: StageEntry, override: Partial<GlassParams> | null
   entry.wrapper.classList.add('has-twin');
   entry.captionEl.textContent = captionFor(base, 'A');
   setMotion(entry, entry.motionSettings); // the twin moves with the primary
+  setLight(entry, entry.lightSettings); // and is lit like it
 }
 
 /** Re-run the entrance on the primary and its twin together, so the two can be compared mid-flight. */
@@ -322,8 +360,9 @@ export class DemoStageController {
 
     const glass = createGlass(config, wrapper, id, '');
     this.makeDraggable(wrapper, id);
-    const entry: StageEntry = { id, label, wrapper, ...glass, debug: false, twin: null, motion: [], motionSettings: null };
+    const entry: StageEntry = { id, label, wrapper, ...glass, debug: false, twin: null, motion: [], motionSettings: null, light: [], lightSettings: null };
     setMotion(entry, { ...DEFAULT_MOTION });
+    setLight(entry, { ...DEFAULT_LIGHT });
     stage.entries.set(id, entry);
     return entry;
   }
@@ -361,6 +400,8 @@ export class DemoStageController {
       if (pointerId !== event.pointerId) return;
       wrapper.style.left = `${startLeft + event.clientX - startX}px`;
       wrapper.style.top = `${startTop + event.clientY - startY}px`;
+      // the glass moved under a fixed scene light: re-aim the rim
+      for (const l of stage.entries.get(id)?.light ?? []) l.update();
     });
     const endDrag = (event: PointerEvent) => {
       if (pointerId !== event.pointerId) return;
@@ -377,6 +418,7 @@ export class DemoStageController {
     const entry = id ? stage.entries.get(id) : undefined;
     if (!id || !entry) return;
     setMotion(entry, null);
+    setLight(entry, null);
     entry.twin?.handle.destroy();
     entry.handle.destroy();
     entry.wrapper.remove();

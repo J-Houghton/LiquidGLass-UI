@@ -181,7 +181,7 @@ export function resolveGlassParams(
   return { ...p, shape, notes };
 }
 
-/** Keys whose change requires regenerating the map (geometry, optics, and the baked rim light). */
+/** Keys whose change requires regenerating the maps (geometry and optics; the light angle is a graph attribute). */
 export const MAP_KEYS: readonly (keyof GlassParams)[] = [
   'width',
   'height',
@@ -190,7 +190,6 @@ export const MAP_KEYS: readonly (keyof GlassParams)[] = [
   'surface',
   'refractiveIndex',
   'glassThickness',
-  'specularAngleDeg',
 ];
 
 /** The 1.x parameter names (`GlassContainerParams`), kept only for `fromLegacyParams`. */

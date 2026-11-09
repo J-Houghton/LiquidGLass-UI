@@ -22,14 +22,16 @@ export { attachLiquidGlass, reducedTransparencyParams, easeOutCubic, CONTENT_FIL
 export type { ImageEncoder, UrlRevoker } from './dom/encodeImage.js';
 export { encodeImageToBlobUrl, revokeBlobUrl } from './dom/encodeImage.js';
 
-export { MapRegistry, defaultMapRegistry } from './dom/mapCache.js';
-export type { MapRegistryOptions } from './dom/mapCache.js';
+export { MapRegistry, defaultMapRegistry, revokeLensUrls } from './dom/mapCache.js';
+export type { MapRegistryOptions, LensMapUrls } from './dom/mapCache.js';
 
 export type { ElementFactory } from './dom/mountFilter.js';
 export { createFilterSvg, applyFilterSpec } from './dom/mountFilter.js';
 
 export type { GlassMotionOptions, GlassMotionHandle, MotionFrame, MotionGlass, PressMotion, HoverMotion } from './dom/attachGlassMotion.js';
 export { attachGlassMotion } from './dom/attachGlassMotion.js';
+export type { GlassLightOptions, GlassLightHandle, LightGlass, SceneLight } from './dom/attachGlassLight.js';
+export { attachGlassLight } from './dom/attachGlassLight.js';
 export * from './motion/index.js';
 
 export type { GlassSupport, SupportEnvironment } from './dom/support.js';

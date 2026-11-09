@@ -10,13 +10,17 @@
  * element). `motion=press|release|drag&t=<ms>` attaches the motion with a manual clock and
  * freezes the frame `t` ms after a press (or after a release that follows a settled press, or
  * after a 2000 px/s impulse), so a mid-spring frame can be screenshotted deterministically.
+ * `light=scene` aims the rim from the scene light above the viewport; `light=pointer:x,y` adds a
+ * pointer at viewport px (x, y), both snapped (no easing) so the frame is deterministic.
  * `debug=1` shows the map instead of the glass. The document gets `data-ready="1"` once every
  * glass has rendered, which is what the screenshot script waits for.
  */
 import {
   attachLiquidGlass,
   attachGlassMotion,
+  attachGlassLight,
   DEFAULT_GLASS_PARAMS,
+  type GlassLightHandle,
   type GlassMotionHandle,
   type GlassParams,
   type LiquidGlassHandle,
@@ -106,8 +110,21 @@ function runMotion(): void {
   }
 }
 
-Promise.all(handles.map((h) => h.ready)).then(() => {
+// ---- page-driven light, snapped (deterministic frames)
+const lightMode = q.get('light');
+const lights: GlassLightHandle[] = lightMode
+  ? handles.map((h) => attachGlassLight(h, { scene: 'viewport', pointer: lightMode.startsWith('pointer'), smoothing: 1, listenOn: null }))
+  : [];
+function applyLight(): void {
+  if (!lightMode?.startsWith('pointer:')) return;
+  const [x, y] = lightMode.slice('pointer:'.length).split(',').map(Number);
+  for (const l of lights) l.setPointer({ x, y });
+}
+
+Promise.all(handles.map((h) => h.ready)).then(async () => {
   runMotion();
+  applyLight();
+  await Promise.all(handles.map((h) => h.refresh())); // the snapped angle is in the graph
   // one more frame so the browser has decoded the map images and painted the filter
   requestAnimationFrame(() => requestAnimationFrame(() => (document.documentElement.dataset.ready = '1')));
 });

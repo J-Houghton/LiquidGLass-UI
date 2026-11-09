@@ -15,9 +15,12 @@ import {
   setGlassDebug,
   setTwin,
   setMotion,
+  setLight,
   replayAppear,
   APPEAR_MS,
   DEFAULT_MOTION,
+  DEFAULT_LIGHT,
+  type LightSettings,
   type MotionSettings,
   type StageEntry,
 } from './demoStage.js';
@@ -35,7 +38,18 @@ type PaneParams = GlassParams & {
   motionHover: boolean;
   motionDuration: number;
   motionBounce: number;
+  lightScene: boolean;
+  lightPointer: boolean;
+  lightRadius: number;
+  lightSmoothing: number;
 };
+
+const lightSettingsOf = (p: PaneParams): LightSettings => ({
+  scene: p.lightScene,
+  pointer: p.lightPointer,
+  radius: p.lightRadius,
+  smoothing: p.lightSmoothing,
+});
 
 const motionSettingsOf = (p: PaneParams): MotionSettings => ({
   press: p.motionPress,
@@ -84,6 +98,11 @@ function syncParamsFromEntry(entry: StageEntry, params: PaneParams, bindings: Pa
   params.motionHover = m.hover;
   params.motionDuration = m.duration;
   params.motionBounce = m.bounce;
+  const l = entry.lightSettings ?? { ...DEFAULT_LIGHT, scene: false, pointer: false };
+  params.lightScene = l.scene;
+  params.lightPointer = l.pointer;
+  params.lightRadius = l.radius;
+  params.lightSmoothing = l.smoothing;
   bindings.forEach((binding) => binding.refresh());
 }
 
@@ -111,6 +130,10 @@ function init() {
     motionHover: DEFAULT_MOTION.hover,
     motionDuration: DEFAULT_MOTION.duration,
     motionBounce: DEFAULT_MOTION.bounce,
+    lightScene: DEFAULT_LIGHT.scene,
+    lightPointer: DEFAULT_LIGHT.pointer,
+    lightRadius: DEFAULT_LIGHT.radius,
+    lightSmoothing: DEFAULT_LIGHT.smoothing,
   };
 
   const host = document.createElement('div');
@@ -234,9 +257,30 @@ function init() {
 
   const specular = pane.addFolder({ title: 'Specular' });
   bindParam(specular, 'specular', { label: 'Enable' });
-  bindParam(specular, 'specularAngleDeg', { min: 0, max: 180, step: 1, label: 'Angle°' });
+  const angleBinding = bindParam(specular, 'specularAngleDeg', { min: 0, max: 180, step: 1, label: 'Angle° (manual)' });
   bindParam(specular, 'specularStrength', { min: 0, max: 2, step: 0.01, label: 'Strength' });
   bindParam(specular, 'shade', { min: 0, max: 1, step: 0.01, label: 'Shade (edge darkening)' });
+
+  // --- Light: the rim aimed from the page (scene light above the viewport) and the pointer ---
+  const lightFolder = pane.addFolder({ title: 'Light (scene, pointer)' });
+  const refreshAngleLock = () => {
+    angleBinding.disabled = params.lightScene || params.lightPointer; // the light drives the angle
+  };
+  const bindLight = (key: 'lightScene' | 'lightPointer' | 'lightRadius' | 'lightSmoothing', config: Record<string, unknown>) => {
+    const b = lightFolder.addBinding(params, key, config as never);
+    b.on('change', () => {
+      if (isSyncing || !activeEntry) return;
+      setLight(activeEntry, lightSettingsOf(params));
+      refreshAngleLock();
+    });
+    bindings.push(b);
+  };
+  bindLight('lightScene', { label: 'Scene light' });
+  bindLight('lightPointer', { label: 'Follow pointer' });
+  bindLight('lightRadius', { min: 0, max: 600, step: 10, label: 'Reach px' });
+  bindLight('lightSmoothing', { min: 0.05, max: 1, step: 0.05, label: 'Smoothing' });
+  window.addEventListener(CONTAINERS_CHANGED_EVENT, refreshAngleLock);
+  refreshAngleLock();
 
   const look = pane.addFolder({ title: 'Tint & Saturation' });
   bindParam(look, 'tint', { min: 0, max: 1, step: 0.01 });

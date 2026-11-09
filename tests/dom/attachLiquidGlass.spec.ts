@@ -92,13 +92,13 @@ describe('attachLiquidGlass (glass mode)', () => {
     const { attach, encoded } = env();
     const h = attach();
     await h.ready;
-    expect(encoded).toHaveLength(1);
+    expect(encoded).toHaveLength(2); // displacement map + light map
     FakeResizeObserver.instances[0].fire(500, 250);
     await h.update({});
     expect(h.params.width).toBe(500);
     expect(h.params.height).toBe(250);
-    expect(encoded).toHaveLength(2);
-    expect(encoded[1].width).toBe(Math.round(bucketSize(500))); // bucketed CSS size at dpr 1
+    expect(encoded).toHaveLength(4);
+    expect(encoded[2].width).toBe(Math.round(bucketSize(500))); // bucketed CSS size at dpr 1
     const f = h.filterElement as unknown as FakeElement;
     expect(f.getAttribute('filterUnits')).toBe('objectBoundingBox');
     expect(f.getAttribute('width')).toBe('1');
@@ -159,7 +159,7 @@ describe('attachLiquidGlass (glass mode)', () => {
     await h.ready;
     expect(h.mode).toBe('glass');
     expect(h.support).toBe('frost');
-    expect(encoded).toHaveLength(1);
+    expect(encoded).toHaveLength(2);
   });
 
   it('destroy disconnects the observer, restores inline styles, removes the svg and the data attribute', async () => {
@@ -258,18 +258,18 @@ describe('attachLiquidGlass (appear)', () => {
     await h.ready;
     const kids = (h.filterElement as unknown as FakeElement).children;
     expect(h.intensity).toBe(0);
-    expect(kids[1].getAttribute('scale')).toBe('0');
+    expect(kids[2].getAttribute('scale')).toBe('0');
     expect(c.pending).toBe(1); // the entrance queued its first frame on ready
     c.advance(200);
     await h.refresh();
     expect(h.intensity).toBeCloseTo(0.875, 6); // ease-out cubic at t = 0.5
-    expect(kids[1].getAttribute('scale')).toBe('157.5');
+    expect(kids[2].getAttribute('scale')).toBe('157.5');
     c.advance(200);
     await h.refresh();
     expect(h.intensity).toBe(1);
-    expect(kids[1].getAttribute('scale')).toBe('180');
+    expect(kids[2].getAttribute('scale')).toBe('180');
     expect(c.pending).toBe(0);
-    expect(encoded).toHaveLength(1);
+    expect(encoded).toHaveLength(2);
   });
 
   it('appear() replays; a manual setIntensity supersedes a running entrance', async () => {
@@ -389,7 +389,7 @@ describe('attachLiquidGlass (content mode)', () => {
     expect(h.mode).toBe('content');
     expect(h.content).toBe(content);
     await h.ready;
-    expect(encoded).toHaveLength(1);
+    expect(encoded).toHaveLength(2);
     expect(content.style.filter).toBe('url(#lg-c)');
     expect(target.style.backdropFilter).toBe('');
     expect(target.style.backgroundColor).toBe('rgba(0, 0, 0, 0.05)');
@@ -411,7 +411,7 @@ describe('attachLiquidGlass (content mode)', () => {
     await h.relayout();
     expect(h.lens).toEqual({ x: 200, y: 41.5 });
     expect(lensAttrs(h)).toEqual(['200', '41.5', '320', '100']);
-    expect(encoded).toHaveLength(1);
+    expect(encoded).toHaveLength(2);
     expect(h.debug.renders).toBe(2);
     await h.relayout(); // nothing moved
     expect(h.debug.renders).toBe(2);
@@ -431,7 +431,7 @@ describe('attachLiquidGlass (content mode)', () => {
     await h.refresh();
     expect(h.params.width).toBe(400);
     expect(lensAttrs(h)).toEqual(['50', '40', '400', '100']);
-    expect(encoded).toHaveLength(2);
+    expect(encoded).toHaveLength(4);
   });
 
   it('mode selection: forced by mode, skipped on Chromium under auto, needs filter: url() support', async () => {

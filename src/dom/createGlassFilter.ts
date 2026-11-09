@@ -6,11 +6,11 @@ import {
   type ResolvedGlassParams,
 } from '../core/params.js';
 import { displacementCurve } from '../core/optics/disp1d.js';
-import { displacementMap, maxAbs } from '../core/optics/disp2d.js';
+import { lensMaps, maxAbs } from '../core/optics/disp2d.js';
 import { buildFilterSpec, type FilterSpec } from '../core/filters/spec.js';
 import { createFilterSvg, applyFilterSpec, type ElementFactory } from './mountFilter.js';
 import { encodeImageToBlobUrl, revokeBlobUrl, type ImageEncoder, type UrlRevoker } from './encodeImage.js';
-import { MapRegistry, UrlSlot, defaultMapRegistry } from './mapCache.js';
+import { MapRegistry, UrlSlot, defaultMapRegistry, type LensMapUrls } from './mapCache.js';
 
 export interface GlassFilterOptions extends Partial<GlassParams> {
   /** Filter id. Default: auto-generated, unique per page. */
@@ -67,7 +67,7 @@ export interface GlassFilterOptions extends Partial<GlassParams> {
    * Registry that shares identical maps between handles. Default: the page-wide registry when
    * the default encoder is used, otherwise a private one (a custom encoder's URLs are its own).
    */
-  registry?: MapRegistry;
+  registry?: MapRegistry<LensMapUrls>;
   /** Element factory. Default: `host.ownerDocument`. */
   document?: ElementFactory;
   /** Called after every completed render. */
@@ -75,8 +75,10 @@ export interface GlassFilterOptions extends Partial<GlassParams> {
 }
 
 export interface GlassFilterDebug {
-  /** The one map image: R,G displacement, B rim light. */
+  /** The displacement map: R,G inward displacement, B neutral. */
   mapUrl: string | null;
+  /** The light map: R,G rim Gaussian × outward normal, B shade. */
+  lightUrl: string | null;
   /** Ratio the current map was generated at (≤ dpr once the pixel budget bites). */
   mapDpr: number;
   /** Device-pixel size of the current map (bucketed CSS size × mapDpr). */
@@ -211,12 +213,16 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
   const { svg, filter } = createFilterSvg(doc, id);
   mount.appendChild(svg);
 
-  const registry =
-    options.registry ?? (options.encodeImage || options.revokeImage ? new MapRegistry(revoke) : defaultMapRegistry);
-  const mapSlot = new UrlSlot(registry);
+  const revokeBoth = (urls: LensMapUrls) => {
+    revoke(urls.map);
+    revoke(urls.light);
+  };
+  const registry: MapRegistry<LensMapUrls> =
+    options.registry ?? (options.encodeImage || options.revokeImage ? new MapRegistry<LensMapUrls>(revokeBoth) : defaultMapRegistry);
+  const mapSlot = new UrlSlot<LensMapUrls>(registry);
   let spec: FilterSpec | null = null;
   let destroyed = false;
-  const debug: GlassFilterDebug = { mapUrl: null, mapDpr: dpr, mapWidth: 0, mapHeight: 0, physicalMaxDisplacementPx: 0, displacementPx: 0, renders: 0 };
+  const debug: GlassFilterDebug = { mapUrl: null, lightUrl: null, mapDpr: dpr, mapWidth: 0, mapHeight: 0, physicalMaxDisplacementPx: 0, displacementPx: 0, renders: 0 };
 
   // ---- render scheduling: coalesce per microtask, newest params win, each waiter resolves
   //      after a render that started at or after its request.
@@ -267,18 +273,9 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
     const mh = bucketSize(p.height, sizeBucket);
     const d = budgetedDpr(mw, mh, dpr, maxMapPixels);
 
-    const mapKey = JSON.stringify([
-      mw,
-      mh,
-      p.radius,
-      p.bezelWidth,
-      p.surface,
-      p.refractiveIndex,
-      p.glassThickness,
-      p.specularAngleDeg,
-      rimPx ?? null,
-      d,
-    ]);
+    // The light direction is not in the key: the light map is direction-free and the rim stage
+    // applies the angle as attributes.
+    const mapKey = JSON.stringify([mw, mh, p.radius, p.bezelWidth, p.surface, p.refractiveIndex, p.glassThickness, rimPx ?? null, d]);
     if (mapSlot.key !== mapKey) {
       const curve = displacementCurve({
         glassThickness: p.glassThickness,
@@ -287,21 +284,21 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
         surface: p.surface,
       });
       const physical = maxAbs(curve);
-      // The pixel work runs only if no other handle already holds this exact map.
-      await mapSlot.acquire(mapKey, () =>
-        encode(
-          displacementMap({
-            width: mw,
-            height: mh,
-            radius: p.radius,
-            bezelWidth: p.bezelWidth,
-            dpr: d,
-            curve,
-            maxDisplacement: physical,
-            rim: { angleDeg: p.specularAngleDeg, rimPx },
-          }),
-        ),
-      );
+      // The pixel work runs only if no other handle already holds this exact pair of maps.
+      await mapSlot.acquire(mapKey, async () => {
+        const images = lensMaps({
+          width: mw,
+          height: mh,
+          radius: p.radius,
+          bezelWidth: p.bezelWidth,
+          dpr: d,
+          curve,
+          maxDisplacement: physical,
+          rimPx,
+        });
+        const [map, light] = await Promise.all([encode(images.map), encode(images.light)]);
+        return { map, light };
+      });
       if (destroyed) return;
       debug.physicalMaxDisplacementPx = physical;
       debug.mapDpr = d;
@@ -321,12 +318,13 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
         // a px fringe must shrink with the entrance too; a relative one follows the scale already
         dispersion: p.dispersionUnit === 'px' ? p.dispersion * intensity : p.dispersion,
       },
-      { id: currentId, mapHref: mapSlot.url! },
+      { id: currentId, mapHref: mapSlot.url!.map, lightHref: mapSlot.url!.light },
       lens ? { region: { x: lens.x, y: lens.y, width: p.width, height: p.height } } : { padding: regionPadding },
     );
     applyFilterSpec(doc, filter, spec, next);
     spec = next;
-    debug.mapUrl = mapSlot.url;
+    debug.mapUrl = mapSlot.url?.map ?? null;
+    debug.lightUrl = mapSlot.url?.light ?? null;
     debug.displacementPx = scale;
     debug.renders += 1;
     options.onRender?.(handle);

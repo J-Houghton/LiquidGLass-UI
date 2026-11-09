@@ -1,10 +1,13 @@
 import type { BlurKind, DispersionUnit, ResolvedGlassParams } from '../params.js';
+import { lightVector } from '../optics/rim.js';
 
 /**
  * Pure description of the SVG filter graph. The DOM layer materializes it into elements;
  * `filterSpecToSvg` serializes it to markup. No DOM types in here.
  *
- * One image feeds everything: R,G = displacement, B = rim light. Stages, in order:
+ * Two images feed everything: the displacement map (R,G = inward displacement) and the light
+ * map (R,G = rim Gaussian × outward normal, B = shade), neither depending on the light
+ * direction; the rim stage applies the light vector itself. Stages, in order:
  *   blurStage 'after':  displacement → blur → rim
  *   blurStage 'before': blur(SourceGraphic) → pin alpha → displacement → rim
  * where displacement is 1 pass, or 3 channel-isolated passes at staggered scales for dispersion.
@@ -24,7 +27,7 @@ export interface FilterSpec {
   height: number;
   /** Filter region padding around the element box, px (output is still clipped to the box). */
   padding: number;
-  /** The map image: always present, always first. */
+  /** The two images: the displacement map first, the light map second. */
   static: readonly FilterPrimitive[];
   /** Blur / displacement / rim stages in graph order, only those enabled. */
   dynamic: readonly FilterPrimitive[];
@@ -34,7 +37,10 @@ export interface FilterSpec {
 
 export interface FilterRefs {
   id: string;
+  /** The displacement map (`displacementMap` / `lensMaps().map`). */
   mapHref: string;
+  /** The light map (`lightMap` / `lensMaps().light`). */
+  lightHref: string;
 }
 
 /** A rectangle in the filtered element's border-box coordinates, CSS px. */
@@ -82,13 +88,13 @@ export function buildFilterSpec(p: ResolvedGlassParams, refs: FilterRefs, opts: 
   const lens: Record<string, string> = region
     ? { x: num(region.x), y: num(region.y), width: num(region.width), height: num(region.height) }
     : {};
-  const staticPrims: FilterPrimitive[] = [
+  const image = (href: string, result: string): FilterPrimitive =>
     region
-      ? prim('feImage', { ...lens, preserveAspectRatio: 'none', href: refs.mapHref, result: 'map' })
+      ? prim('feImage', { ...lens, preserveAspectRatio: 'none', href, result })
       : padding > 0
-        ? prim('feImage', { x: '0', y: '0', width: String(p.width), height: String(p.height), preserveAspectRatio: 'none', href: refs.mapHref, result: 'map' })
-        : prim('feImage', { preserveAspectRatio: 'none', href: refs.mapHref, result: 'map' }),
-  ];
+        ? prim('feImage', { x: '0', y: '0', width: String(p.width), height: String(p.height), preserveAspectRatio: 'none', href, result })
+        : prim('feImage', { preserveAspectRatio: 'none', href, result });
+  const staticPrims: FilterPrimitive[] = [image(refs.mapHref, 'map'), image(refs.lightHref, 'light')];
 
   let dynamic: FilterPrimitive[] = [];
   const chromatic = p.dispersion > 0;
@@ -122,12 +128,13 @@ export function buildFilterSpec(p: ResolvedGlassParams, refs: FilterRefs, opts: 
     input = blurred.result;
   }
   const shade = p.shade;
+  const [lx, ly] = lightVector(p.specularAngleDeg);
   if (shade > 0) {
-    dynamic.push(...shadeStage(input, shade));
+    dynamic.push(...shadeStage(input, shade, lx, ly));
     input = 'shaded';
   }
   if (p.specular) {
-    dynamic.push(...rimStage(input, p.specularStrength));
+    dynamic.push(...rimStage(input, p.specularStrength, lx, ly));
     input = 'final';
   }
 
@@ -268,42 +275,54 @@ function blurStage(input: string, kind: BlurKind, blur: number): { prims: Filter
   };
 }
 
-// The blue channel is signed around 128: light above, shade below. In normalized terms
-// (b = B/255) the light amount is (255b − 128)/127 and the shade amount is (128 − 255b)/127;
-// feColorMatrix clamps negative alpha to 0, which separates the two halves.
+// The light map's R and G hold g·n with a 128 bias: in normalized terms (c = C/255) the
+// component is (255c − 128)/127 = GAIN·c − BIAS. A colour matrix is linear, so (g·n)·L for a
+// light vector L is GAIN·(Lx·r + Ly·g) − BIAS·(Lx + Ly); it clamps negative alpha to 0, which
+// gives max(0, ·) for free. The rim is lit on both sides (|n·L|), hence one matrix per sign.
+// B holds the shade profile (0..1 unsigned). Light and shade compete for the same pixels the way
+// the former single signed channel made them: the lit rim is light − shade, the shade is
+// shade − light, each clamped at 0, so the look is unchanged while the angle is free.
 const B_GAIN = 255 / 127;
 const B_BIAS = 128 / 127;
 const num4 = (v: number): string => String(Math.round(v * 10000) / 10000);
 
+/** Alpha row of a colour matrix on the light map: s·(±(g·n)·L − shadeWeight·shade). */
+const lightRow = (sx: number, sy: number, shadeCoeff: number): string =>
+  `0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  ${num4(B_GAIN * sx)} ${num4(B_GAIN * sy)} ${num4(shadeCoeff)} 0 ${num4(-B_BIAS * (sx + sy))}`;
+
 /**
- * Rim light: white with alpha = strength × light, screened over the refracted image. Strength is
- * applied here only.
+ * Rim light for the light vector (lx, ly): per side, white with alpha = max(0, strength × (±(g·n)·L
+ * − shade)), the two sides summed and screened over the refracted image. Strength is applied here
+ * only, and the light direction lives in these attributes alone.
  */
-function rimStage(input: string, strength: number): FilterPrimitive[] {
+function rimStage(input: string, strength: number, lx: number, ly: number): FilterPrimitive[] {
   return [
-    prim('feColorMatrix', {
-      in: 'map',
-      type: 'matrix',
-      values: `0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 ${num4(B_GAIN * strength)} 0 ${num4(-B_BIAS * strength)}`,
-      result: 'rim',
-    }),
+    prim('feColorMatrix', { in: 'light', type: 'matrix', values: lightRow(strength * lx, strength * ly, -strength), result: 'rimA' }),
+    prim('feColorMatrix', { in: 'light', type: 'matrix', values: lightRow(-strength * lx, -strength * ly, -strength), result: 'rimB' }),
+    prim('feComposite', { in: 'rimA', in2: 'rimB', operator: 'arithmetic', k1: '0', k2: '1', k3: '1', k4: '0', result: 'rim' }),
     prim('feBlend', { in: input, in2: 'rim', mode: 'screen', result: 'final' }),
   ];
 }
 
 /**
- * Shade: black with alpha = k × (B below neutral), multiplied into the refracted image, which
- * darkens an opaque backdrop by that alpha. k is the `shade` parameter: the darkening where the
- * lens thins the backdrop the most.
+ * Shade: black with alpha = k × max(0, shade − |(g·n)·L|), multiplied into the refracted image,
+ * which darkens an opaque backdrop by that alpha. k is the `shade` parameter: the darkening where
+ * the lens thins the backdrop the most. The lit rim |(g·n)·L| comes from two unit-strength side
+ * matrices summed (at most one is non-zero per pixel), and is subtracted with an arithmetic
+ * composite whose colour channels clamp to black.
  */
-function shadeStage(input: string, k: number): FilterPrimitive[] {
+function shadeStage(input: string, k: number, lx: number, ly: number): FilterPrimitive[] {
   return [
+    prim('feColorMatrix', { in: 'light', type: 'matrix', values: lightRow(lx, ly, 0), result: 'litA' }),
+    prim('feColorMatrix', { in: 'light', type: 'matrix', values: lightRow(-lx, -ly, 0), result: 'litB' }),
+    prim('feComposite', { in: 'litA', in2: 'litB', operator: 'arithmetic', k1: '0', k2: '1', k3: '1', k4: '0', result: 'lit' }),
     prim('feColorMatrix', {
-      in: 'map',
+      in: 'light',
       type: 'matrix',
-      values: `0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 ${num4(-B_GAIN * k)} 0 ${num4(B_BIAS * k)}`,
-      result: 'shade',
+      values: `0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 ${num4(k)} 0 0`,
+      result: 'shadeFull',
     }),
+    prim('feComposite', { in: 'shadeFull', in2: 'lit', operator: 'arithmetic', k1: '0', k2: '1', k3: num4(-k), k4: '0', result: 'shade' }),
     prim('feBlend', { in: input, in2: 'shade', mode: 'multiply', result: 'shaded' }),
   ];
 }

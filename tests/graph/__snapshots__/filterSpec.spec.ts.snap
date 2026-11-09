@@ -33,12 +33,34 @@ exports[`buildFilterSpec > blurStage 'before' > dispersion=0 blur=gauss: spec is
     },
     {
       "attrs": {
-        "in": "map",
-        "result": "rim",
+        "in": "light",
+        "result": "rimA",
         "type": "matrix",
-        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 1.6264 0 -0.8164",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0.8132 1.4085 -0.81 0 -1.1152",
       },
       "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "in": "light",
+        "result": "rimB",
+        "type": "matrix",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  -0.8132 -1.4085 -0.81 0 1.1152",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "in": "rimA",
+        "in2": "rimB",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "rim",
+      },
+      "tag": "feComposite",
     },
     {
       "attrs": {
@@ -59,6 +81,14 @@ exports[`buildFilterSpec > blurStage 'before' > dispersion=0 blur=gauss: spec is
         "href": "blob:map",
         "preserveAspectRatio": "none",
         "result": "map",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "href": "blob:light",
+        "preserveAspectRatio": "none",
+        "result": "light",
       },
       "tag": "feImage",
     },
@@ -123,12 +153,34 @@ exports[`buildFilterSpec > blurStage 'before' > dispersion=0 blur=noise1: spec i
     },
     {
       "attrs": {
-        "in": "map",
-        "result": "rim",
+        "in": "light",
+        "result": "rimA",
         "type": "matrix",
-        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 1.6264 0 -0.8164",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0.8132 1.4085 -0.81 0 -1.1152",
       },
       "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "in": "light",
+        "result": "rimB",
+        "type": "matrix",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  -0.8132 -1.4085 -0.81 0 1.1152",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "in": "rimA",
+        "in2": "rimB",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "rim",
+      },
+      "tag": "feComposite",
     },
     {
       "attrs": {
@@ -149,6 +201,14 @@ exports[`buildFilterSpec > blurStage 'before' > dispersion=0 blur=noise1: spec i
         "href": "blob:map",
         "preserveAspectRatio": "none",
         "result": "map",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "href": "blob:light",
+        "preserveAspectRatio": "none",
+        "result": "light",
       },
       "tag": "feImage",
     },
@@ -266,12 +326,34 @@ exports[`buildFilterSpec > blurStage 'before' > dispersion=1 blur=gauss: spec is
     },
     {
       "attrs": {
-        "in": "map",
-        "result": "rim",
+        "in": "light",
+        "result": "rimA",
         "type": "matrix",
-        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 1.6264 0 -0.8164",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0.8132 1.4085 -0.81 0 -1.1152",
       },
       "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "in": "light",
+        "result": "rimB",
+        "type": "matrix",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  -0.8132 -1.4085 -0.81 0 1.1152",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "in": "rimA",
+        "in2": "rimB",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "rim",
+      },
+      "tag": "feComposite",
     },
     {
       "attrs": {
@@ -292,6 +374,14 @@ exports[`buildFilterSpec > blurStage 'before' > dispersion=1 blur=gauss: spec is
         "href": "blob:map",
         "preserveAspectRatio": "none",
         "result": "map",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "href": "blob:light",
+        "preserveAspectRatio": "none",
+        "result": "light",
       },
       "tag": "feImage",
     },
@@ -431,12 +521,34 @@ exports[`buildFilterSpec > blurStage 'before' > dispersion=1 blur=noise2: spec i
     },
     {
       "attrs": {
-        "in": "map",
-        "result": "rim",
+        "in": "light",
+        "result": "rimA",
         "type": "matrix",
-        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 1.6264 0 -0.8164",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0.8132 1.4085 -0.81 0 -1.1152",
       },
       "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "in": "light",
+        "result": "rimB",
+        "type": "matrix",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  -0.8132 -1.4085 -0.81 0 1.1152",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "in": "rimA",
+        "in2": "rimB",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "rim",
+      },
+      "tag": "feComposite",
     },
     {
       "attrs": {
@@ -457,6 +569,14 @@ exports[`buildFilterSpec > blurStage 'before' > dispersion=1 blur=noise2: spec i
         "href": "blob:map",
         "preserveAspectRatio": "none",
         "result": "map",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "href": "blob:light",
+        "preserveAspectRatio": "none",
+        "result": "light",
       },
       "tag": "feImage",
     },
@@ -501,6 +621,14 @@ exports[`buildFilterSpec > dispersion=0 blur=gauss specular=false: spec is pinne
       },
       "tag": "feImage",
     },
+    {
+      "attrs": {
+        "href": "blob:light",
+        "preserveAspectRatio": "none",
+        "result": "light",
+      },
+      "tag": "feImage",
+    },
   ],
   "structureKey": "single|after:gauss|-|-|pad:box",
   "width": 300,
@@ -531,12 +659,34 @@ exports[`buildFilterSpec > dispersion=0 blur=gauss specular=true: spec is pinned
     },
     {
       "attrs": {
-        "in": "map",
-        "result": "rim",
+        "in": "light",
+        "result": "rimA",
         "type": "matrix",
-        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 2.2087 0 -1.1087",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  1.1043 1.9128 -1.1 0 -1.5145",
       },
       "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "in": "light",
+        "result": "rimB",
+        "type": "matrix",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  -1.1043 -1.9128 -1.1 0 1.5145",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "in": "rimA",
+        "in2": "rimB",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "rim",
+      },
+      "tag": "feComposite",
     },
     {
       "attrs": {
@@ -557,6 +707,14 @@ exports[`buildFilterSpec > dispersion=0 blur=gauss specular=true: spec is pinned
         "href": "blob:map",
         "preserveAspectRatio": "none",
         "result": "map",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "href": "blob:light",
+        "preserveAspectRatio": "none",
+        "result": "light",
       },
       "tag": "feImage",
     },
@@ -623,6 +781,14 @@ exports[`buildFilterSpec > dispersion=0 blur=noise1 specular=false: spec is pinn
       },
       "tag": "feImage",
     },
+    {
+      "attrs": {
+        "href": "blob:light",
+        "preserveAspectRatio": "none",
+        "result": "light",
+      },
+      "tag": "feImage",
+    },
   ],
   "structureKey": "single|after:noise1|-|-|pad:box",
   "width": 300,
@@ -675,12 +841,34 @@ exports[`buildFilterSpec > dispersion=0 blur=noise1 specular=true: spec is pinne
     },
     {
       "attrs": {
-        "in": "map",
-        "result": "rim",
+        "in": "light",
+        "result": "rimA",
         "type": "matrix",
-        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 2.2087 0 -1.1087",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  1.1043 1.9128 -1.1 0 -1.5145",
       },
       "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "in": "light",
+        "result": "rimB",
+        "type": "matrix",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  -1.1043 -1.9128 -1.1 0 1.5145",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "in": "rimA",
+        "in2": "rimB",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "rim",
+      },
+      "tag": "feComposite",
     },
     {
       "attrs": {
@@ -701,6 +889,14 @@ exports[`buildFilterSpec > dispersion=0 blur=noise1 specular=true: spec is pinne
         "href": "blob:map",
         "preserveAspectRatio": "none",
         "result": "map",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "href": "blob:light",
+        "preserveAspectRatio": "none",
+        "result": "light",
       },
       "tag": "feImage",
     },
@@ -767,6 +963,14 @@ exports[`buildFilterSpec > dispersion=0 blur=noise2 specular=false: spec is pinn
       },
       "tag": "feImage",
     },
+    {
+      "attrs": {
+        "href": "blob:light",
+        "preserveAspectRatio": "none",
+        "result": "light",
+      },
+      "tag": "feImage",
+    },
   ],
   "structureKey": "single|after:noise2|-|-|pad:box",
   "width": 300,
@@ -819,12 +1023,34 @@ exports[`buildFilterSpec > dispersion=0 blur=noise2 specular=true: spec is pinne
     },
     {
       "attrs": {
-        "in": "map",
-        "result": "rim",
+        "in": "light",
+        "result": "rimA",
         "type": "matrix",
-        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 2.2087 0 -1.1087",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  1.1043 1.9128 -1.1 0 -1.5145",
       },
       "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "in": "light",
+        "result": "rimB",
+        "type": "matrix",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  -1.1043 -1.9128 -1.1 0 1.5145",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "in": "rimA",
+        "in2": "rimB",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "rim",
+      },
+      "tag": "feComposite",
     },
     {
       "attrs": {
@@ -845,6 +1071,14 @@ exports[`buildFilterSpec > dispersion=0 blur=noise2 specular=true: spec is pinne
         "href": "blob:map",
         "preserveAspectRatio": "none",
         "result": "map",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "href": "blob:light",
+        "preserveAspectRatio": "none",
+        "result": "light",
       },
       "tag": "feImage",
     },
@@ -964,6 +1198,14 @@ exports[`buildFilterSpec > dispersion=1 blur=gauss specular=false: spec is pinne
       },
       "tag": "feImage",
     },
+    {
+      "attrs": {
+        "href": "blob:light",
+        "preserveAspectRatio": "none",
+        "result": "light",
+      },
+      "tag": "feImage",
+    },
   ],
   "structureKey": "dispersion|after:gauss|-|-|pad:box",
   "width": 300,
@@ -1069,12 +1311,34 @@ exports[`buildFilterSpec > dispersion=1 blur=gauss specular=true: spec is pinned
     },
     {
       "attrs": {
-        "in": "map",
-        "result": "rim",
+        "in": "light",
+        "result": "rimA",
         "type": "matrix",
-        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 2.2087 0 -1.1087",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  1.1043 1.9128 -1.1 0 -1.5145",
       },
       "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "in": "light",
+        "result": "rimB",
+        "type": "matrix",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  -1.1043 -1.9128 -1.1 0 1.5145",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "in": "rimA",
+        "in2": "rimB",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "rim",
+      },
+      "tag": "feComposite",
     },
     {
       "attrs": {
@@ -1095,6 +1359,14 @@ exports[`buildFilterSpec > dispersion=1 blur=gauss specular=true: spec is pinned
         "href": "blob:map",
         "preserveAspectRatio": "none",
         "result": "map",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "href": "blob:light",
+        "preserveAspectRatio": "none",
+        "result": "light",
       },
       "tag": "feImage",
     },
@@ -1236,6 +1508,14 @@ exports[`buildFilterSpec > dispersion=1 blur=noise1 specular=false: spec is pinn
       },
       "tag": "feImage",
     },
+    {
+      "attrs": {
+        "href": "blob:light",
+        "preserveAspectRatio": "none",
+        "result": "light",
+      },
+      "tag": "feImage",
+    },
   ],
   "structureKey": "dispersion|after:noise1|-|-|pad:box",
   "width": 300,
@@ -1363,12 +1643,34 @@ exports[`buildFilterSpec > dispersion=1 blur=noise1 specular=true: spec is pinne
     },
     {
       "attrs": {
-        "in": "map",
-        "result": "rim",
+        "in": "light",
+        "result": "rimA",
         "type": "matrix",
-        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 2.2087 0 -1.1087",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  1.1043 1.9128 -1.1 0 -1.5145",
       },
       "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "in": "light",
+        "result": "rimB",
+        "type": "matrix",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  -1.1043 -1.9128 -1.1 0 1.5145",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "in": "rimA",
+        "in2": "rimB",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "rim",
+      },
+      "tag": "feComposite",
     },
     {
       "attrs": {
@@ -1389,6 +1691,14 @@ exports[`buildFilterSpec > dispersion=1 blur=noise1 specular=true: spec is pinne
         "href": "blob:map",
         "preserveAspectRatio": "none",
         "result": "map",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "href": "blob:light",
+        "preserveAspectRatio": "none",
+        "result": "light",
       },
       "tag": "feImage",
     },
@@ -1530,6 +1840,14 @@ exports[`buildFilterSpec > dispersion=1 blur=noise2 specular=false: spec is pinn
       },
       "tag": "feImage",
     },
+    {
+      "attrs": {
+        "href": "blob:light",
+        "preserveAspectRatio": "none",
+        "result": "light",
+      },
+      "tag": "feImage",
+    },
   ],
   "structureKey": "dispersion|after:noise2|-|-|pad:box",
   "width": 300,
@@ -1657,12 +1975,34 @@ exports[`buildFilterSpec > dispersion=1 blur=noise2 specular=true: spec is pinne
     },
     {
       "attrs": {
-        "in": "map",
-        "result": "rim",
+        "in": "light",
+        "result": "rimA",
         "type": "matrix",
-        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 2.2087 0 -1.1087",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  1.1043 1.9128 -1.1 0 -1.5145",
       },
       "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "in": "light",
+        "result": "rimB",
+        "type": "matrix",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  -1.1043 -1.9128 -1.1 0 1.5145",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "in": "rimA",
+        "in2": "rimB",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "rim",
+      },
+      "tag": "feComposite",
     },
     {
       "attrs": {
@@ -1683,6 +2023,14 @@ exports[`buildFilterSpec > dispersion=1 blur=noise2 specular=true: spec is pinne
         "href": "blob:map",
         "preserveAspectRatio": "none",
         "result": "map",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "href": "blob:light",
+        "preserveAspectRatio": "none",
+        "result": "light",
       },
       "tag": "feImage",
     },
@@ -1738,15 +2086,75 @@ exports[`buildFilterSpec > region (content-side filter: url()) > dispersion=0: s
     {
       "attrs": {
         "height": "120",
-        "in": "map",
-        "result": "shade",
+        "in": "light",
+        "result": "litA",
         "type": "matrix",
-        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 -0.6024 0 0.3024",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  1.0039 1.7389 0 0 -1.3768",
         "width": "300",
         "x": "40",
         "y": "30.5",
       },
       "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "height": "120",
+        "in": "light",
+        "result": "litB",
+        "type": "matrix",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  -1.0039 -1.7389 0 0 1.3768",
+        "width": "300",
+        "x": "40",
+        "y": "30.5",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "height": "120",
+        "in": "litA",
+        "in2": "litB",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "lit",
+        "width": "300",
+        "x": "40",
+        "y": "30.5",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "height": "120",
+        "in": "light",
+        "result": "shadeFull",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0.3 0 0",
+        "width": "300",
+        "x": "40",
+        "y": "30.5",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "height": "120",
+        "in": "shadeFull",
+        "in2": "lit",
+        "k1": "0",
+        "k2": "1",
+        "k3": "-0.3",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "shade",
+        "width": "300",
+        "x": "40",
+        "y": "30.5",
+      },
+      "tag": "feComposite",
     },
     {
       "attrs": {
@@ -1764,15 +2172,45 @@ exports[`buildFilterSpec > region (content-side filter: url()) > dispersion=0: s
     {
       "attrs": {
         "height": "120",
-        "in": "map",
-        "result": "rim",
+        "in": "light",
+        "result": "rimA",
         "type": "matrix",
-        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 1.6264 0 -0.8164",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0.8132 1.4085 -0.81 0 -1.1152",
         "width": "300",
         "x": "40",
         "y": "30.5",
       },
       "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "height": "120",
+        "in": "light",
+        "result": "rimB",
+        "type": "matrix",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  -0.8132 -1.4085 -0.81 0 1.1152",
+        "width": "300",
+        "x": "40",
+        "y": "30.5",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "height": "120",
+        "in": "rimA",
+        "in2": "rimB",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "rim",
+        "width": "300",
+        "x": "40",
+        "y": "30.5",
+      },
+      "tag": "feComposite",
     },
     {
       "attrs": {
@@ -1840,6 +2278,18 @@ exports[`buildFilterSpec > region (content-side filter: url()) > dispersion=0: s
         "href": "blob:map",
         "preserveAspectRatio": "none",
         "result": "map",
+        "width": "300",
+        "x": "40",
+        "y": "30.5",
+      },
+      "tag": "feImage",
+    },
+    {
+      "attrs": {
+        "height": "120",
+        "href": "blob:light",
+        "preserveAspectRatio": "none",
+        "result": "light",
         "width": "300",
         "x": "40",
         "y": "30.5",
@@ -2001,15 +2451,75 @@ exports[`buildFilterSpec > region (content-side filter: url()) > dispersion=1: s
     {
       "attrs": {
         "height": "120",
-        "in": "map",
-        "result": "shade",
+        "in": "light",
+        "result": "litA",
         "type": "matrix",
-        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 -0.6024 0 0.3024",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  1.0039 1.7389 0 0 -1.3768",
         "width": "300",
         "x": "40",
         "y": "30.5",
       },
       "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "height": "120",
+        "in": "light",
+        "result": "litB",
+        "type": "matrix",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  -1.0039 -1.7389 0 0 1.3768",
+        "width": "300",
+        "x": "40",
+        "y": "30.5",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "height": "120",
+        "in": "litA",
+        "in2": "litB",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "lit",
+        "width": "300",
+        "x": "40",
+        "y": "30.5",
+      },
+      "tag": "feComposite",
+    },
+    {
+      "attrs": {
+        "height": "120",
+        "in": "light",
+        "result": "shadeFull",
+        "type": "matrix",
+        "values": "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0.3 0 0",
+        "width": "300",
+        "x": "40",
+        "y": "30.5",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "height": "120",
+        "in": "shadeFull",
+        "in2": "lit",
+        "k1": "0",
+        "k2": "1",
+        "k3": "-0.3",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "shade",
+        "width": "300",
+        "x": "40",
+        "y": "30.5",
+      },
+      "tag": "feComposite",
     },
     {
       "attrs": {
@@ -2027,15 +2537,45 @@ exports[`buildFilterSpec > region (content-side filter: url()) > dispersion=1: s
     {
       "attrs": {
         "height": "120",
-        "in": "map",
-        "result": "rim",
+        "in": "light",
+        "result": "rimA",
         "type": "matrix",
-        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 1.6264 0 -0.8164",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0.8132 1.4085 -0.81 0 -1.1152",
         "width": "300",
         "x": "40",
         "y": "30.5",
       },
       "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "height": "120",
+        "in": "light",
+        "result": "rimB",
+        "type": "matrix",
+        "values": "0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  -0.8132 -1.4085 -0.81 0 1.1152",
+        "width": "300",
+        "x": "40",
+        "y": "30.5",
+      },
+      "tag": "feColorMatrix",
+    },
+    {
+      "attrs": {
+        "height": "120",
+        "in": "rimA",
+        "in2": "rimB",
+        "k1": "0",
+        "k2": "1",
+        "k3": "1",
+        "k4": "0",
+        "operator": "arithmetic",
+        "result": "rim",
+        "width": "300",
+        "x": "40",
+        "y": "30.5",
+      },
+      "tag": "feComposite",
     },
     {
       "attrs": {
@@ -2109,10 +2649,22 @@ exports[`buildFilterSpec > region (content-side filter: url()) > dispersion=1: s
       },
       "tag": "feImage",
     },
+    {
+      "attrs": {
+        "height": "120",
+        "href": "blob:light",
+        "preserveAspectRatio": "none",
+        "result": "light",
+        "width": "300",
+        "x": "40",
+        "y": "30.5",
+      },
+      "tag": "feImage",
+    },
   ],
   "structureKey": "dispersion|before:gauss|shade|rim|pad:box|content",
   "width": 300,
 }
 `;
 
-exports[`buildFilterSpec > serializes to well-formed, escaped SVG markup 1`] = `"<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute;width:0;height:0;overflow:hidden;pointer-events:none"><defs><filter id="lg-test" filterUnits="objectBoundingBox" primitiveUnits="userSpaceOnUse" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB"><feImage preserveAspectRatio="none" href="data:x/y;base64,AA==&amp;&quot;&lt;" result="map"/><feDisplacementMap in="SourceGraphic" in2="map" xChannelSelector="R" yChannelSelector="G" scale="176.4" result="dispR"/><feColorMatrix in="dispR" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="chR"/><feDisplacementMap in="SourceGraphic" in2="map" xChannelSelector="R" yChannelSelector="G" scale="180" result="dispG"/><feColorMatrix in="dispG" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="chG"/><feDisplacementMap in="SourceGraphic" in2="map" xChannelSelector="R" yChannelSelector="G" scale="183.6" result="dispB"/><feColorMatrix in="dispB" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="chB"/><feComposite in="chR" in2="chG" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="chRG"/><feComposite in="chRG" in2="chB" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="refr"/><feGaussianBlur in="refr" stdDeviation="0.20" result="blurred"/><feColorMatrix in="map" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 1.6264 0 -0.8164" result="rim"/><feBlend in="blurred" in2="rim" mode="screen" result="final"/></filter></defs></svg>"`;
+exports[`buildFilterSpec > serializes to well-formed, escaped SVG markup 1`] = `"<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute;width:0;height:0;overflow:hidden;pointer-events:none"><defs><filter id="lg-test" filterUnits="objectBoundingBox" primitiveUnits="userSpaceOnUse" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB"><feImage preserveAspectRatio="none" href="data:x/y;base64,AA==&amp;&quot;&lt;" result="map"/><feImage preserveAspectRatio="none" href="blob:light" result="light"/><feDisplacementMap in="SourceGraphic" in2="map" xChannelSelector="R" yChannelSelector="G" scale="176.4" result="dispR"/><feColorMatrix in="dispR" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="chR"/><feDisplacementMap in="SourceGraphic" in2="map" xChannelSelector="R" yChannelSelector="G" scale="180" result="dispG"/><feColorMatrix in="dispG" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="chG"/><feDisplacementMap in="SourceGraphic" in2="map" xChannelSelector="R" yChannelSelector="G" scale="183.6" result="dispB"/><feColorMatrix in="dispB" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="chB"/><feComposite in="chR" in2="chG" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="chRG"/><feComposite in="chRG" in2="chB" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="refr"/><feGaussianBlur in="refr" stdDeviation="0.20" result="blurred"/><feColorMatrix in="light" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0.8132 1.4085 -0.81 0 -1.1152" result="rimA"/><feColorMatrix in="light" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  -0.8132 -1.4085 -0.81 0 1.1152" result="rimB"/><feComposite in="rimA" in2="rimB" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="rim"/><feBlend in="blurred" in2="rim" mode="screen" result="final"/></filter></defs></svg>"`;
