@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { MapRegistry, UrlSlot } from '../../src/dom/mapCache';
+import { MapRegistry, UrlSlot, type LensMapUrls } from '../../src/dom/mapCache';
 import { FakeDocument, type FakeElement } from '../helpers/fakeDom';
 import { createGlassFilter } from '../../src/dom/createGlassFilter';
 import type { RGBAImage } from '../../src/core/image';
@@ -122,7 +122,7 @@ describe('createGlassFilter with a shared registry', () => {
     const host = doc.body.appendChild(doc.createElement('div'));
     const revoked: string[] = [];
     let encodes = 0;
-    const registry = new MapRegistry((u) => revoked.push(u));
+    const registry = new MapRegistry<LensMapUrls>((u) => revoked.push(u.map, u.light));
     const make = () =>
       createGlassFilter(host as unknown as Element, {
         document: doc as unknown as Doc,
@@ -136,18 +136,19 @@ describe('createGlassFilter with a shared registry', () => {
     const a = make();
     const b = make();
     await Promise.all([a.ready, b.ready]);
-    expect(encodes).toBe(1);
+    expect(encodes).toBe(2); // one pair: displacement map, light map
     expect((a.filterElement as unknown as FakeElement).children[0].getAttribute('href')).toBe('blob:1');
+    expect((a.filterElement as unknown as FakeElement).children[1].getAttribute('href')).toBe('blob:2');
     expect((b.filterElement as unknown as FakeElement).children[0].getAttribute('href')).toBe('blob:1');
 
-    await b.update({ radius: 10 }); // b diverges: its own map; a keeps the shared one alive
-    expect(encodes).toBe(2);
+    await b.update({ radius: 10 }); // b diverges: its own pair; a keeps the shared one alive
+    expect(encodes).toBe(4);
     expect(revoked).toEqual([]);
 
     a.destroy();
-    expect(revoked).toEqual(['blob:1']);
-    b.destroy();
     expect(revoked).toEqual(['blob:1', 'blob:2']);
+    b.destroy();
+    expect(revoked).toEqual(['blob:1', 'blob:2', 'blob:3', 'blob:4']);
     expect(registry.size).toBe(0);
   });
 });

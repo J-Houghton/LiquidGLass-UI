@@ -4,7 +4,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { displacementCurve } from '../../src/core/optics/disp1d';
-import { displacementMap, lightMap, lensMaps, LIGHT_NEUTRAL, RIM_NEUTRAL } from '../../src/core/optics/disp2d';
+import { displacementMap, lightMap, lensMaps, stretchProfile, LIGHT_NEUTRAL, RIM_NEUTRAL } from '../../src/core/optics/disp2d';
 import { specularMap } from '../../src/core/optics/specularLight';
 import type { SurfaceKind } from '../../src/core/optics/surfaces';
 import { expectToMatchFixture } from '../helpers/fixtures';
@@ -82,19 +82,22 @@ describe('lightMap', () => {
         });
       }
 
-      it('B is the shade profile the baked map used to carry below neutral (away from the rim light)', () => {
-        const baked = displacementMap({ width: c.w, height: c.h, radius: c.r, bezelWidth: c.b, dpr: c.dpr, curve: curveFor(c), rim: { angleDeg: 60, shade: true } });
-        // where the rim Gaussian is zero (R = G = neutral) the baked B is 128 − 127·shade
-        let compared = 0;
-        expect(
-          everyPixel(img, (r, g, b, _a, x, y) => {
-            if (r !== LIGHT_NEUTRAL || g !== LIGHT_NEUTRAL) return true;
-            compared += 1;
-            const bakedShade = (RIM_NEUTRAL - baked.data[(y * W + x) * 4 + 2]) / 127;
-            return Math.abs(b / 255 - bakedShade) <= 1.5 / 127;
-          }),
-        ).toBe(true);
-        expect(compared).toBeGreaterThan(W * H * 0.5);
+      it('B is the stretch profile of the curve, sampled by depth into the band', () => {
+        const curve = curveFor(c);
+        const stretch = stretchProfile(curve);
+        const Bpx = Math.max(1, Math.round(c.b * c.dpr));
+        const n = curve.length;
+        // walk down from the top edge at mid-width: t = y + 0.5, u = t / B, i0 = floor(u (n − 1))
+        let checked = 0;
+        for (let y = 0; y < Bpx && y < H >> 1; y++) {
+          const u = Math.min(1, (y + 0.5) / Bpx);
+          const i0 = Math.min(stretch.length - 1, Math.floor(u * (n - 1)));
+          const expected = Math.round(255 * stretch[i0]);
+          expect(Math.abs(pixel(img, W >> 1, y)[2] - expected)).toBeLessThanOrEqual(1);
+          checked += 1;
+        }
+        expect(checked).toBeGreaterThan(5);
+        if (c.w > 2 * c.b && c.h > 2 * c.b) expect(pixel(img, W >> 1, H >> 1)[2]).toBe(0); // flat center: no shade
       });
 
       it('shade: false leaves B at 0 everywhere', () => {

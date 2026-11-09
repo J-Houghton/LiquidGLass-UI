@@ -4,7 +4,7 @@ import { createFilterSvg, applyFilterSpec } from '../../src/dom/mountFilter';
 import { buildFilterSpec } from '../../src/core/filters/spec';
 import { resolveGlassParams } from '../../src/core/params';
 
-const REFS = { id: 'lg-1', mapHref: 'blob:a' };
+const REFS = { id: 'lg-1', mapHref: 'blob:a', lightHref: 'blob:light' };
 type Doc = Pick<Document, 'createElementNS'>;
 type El = { tagName: string; getAttribute(n: string): string | null; children: El[] };
 
@@ -40,13 +40,14 @@ describe('mountFilter', () => {
     const f = filter as unknown as El;
     const before = [...f.children];
 
-    const b = buildFilterSpec(resolveGlassParams({ blur: 1.25, specularStrength: 0.3, displacementScale: 42 }), { ...REFS, mapHref: 'blob:b' });
+    const b = buildFilterSpec(resolveGlassParams({ blur: 1.25, specularStrength: 0.3, displacementScale: 42 }), { ...REFS, mapHref: 'blob:b', lightHref: 'blob:light' });
     applyFilterSpec(doc as unknown as Doc, filter, a, b);
     expect([...f.children]).toEqual(before);
     expect(f.children[0].getAttribute('href')).toBe('blob:b'); // map
-    expect(f.children[1].getAttribute('scale')).toBe('42'); // displacement
-    expect(f.children[2].getAttribute('stdDeviation')).toBe('1.25'); // blur
-    expect(f.children[3].getAttribute('values')).toContain(' 0.6024 0 -0.3024'); // rim alpha row at strength 0.3
+    expect(f.children[1].getAttribute('href')).toBe('blob:light'); // light map
+    expect(f.children[2].getAttribute('scale')).toBe('42'); // displacement
+    expect(f.children[3].getAttribute('stdDeviation')).toBe('1.25'); // blur
+    expect(f.children[4].getAttribute('values')).toContain(' 0.3012 0.5217 -0.3 0 -0.413'); // rim side A at strength 0.3, 60°
   });
 
   it('different structure: rebuilds the children', () => {
@@ -57,7 +58,7 @@ describe('mountFilter', () => {
     const b = buildFilterSpec(resolveGlassParams({ dispersion: 0, blurKind: 'gauss', specular: false }), REFS);
     applyFilterSpec(doc as unknown as Doc, filter, a, b);
     const f = filter as unknown as El;
-    expect(f.children.map((c) => c.tagName)).toEqual(['feImage', 'feDisplacementMap', 'feGaussianBlur']);
+    expect(f.children.map((c) => c.tagName)).toEqual(['feImage', 'feImage', 'feDisplacementMap', 'feGaussianBlur']);
   });
 
   it('a padded spec switches the region to px and gives the map image an explicit box; and back', () => {

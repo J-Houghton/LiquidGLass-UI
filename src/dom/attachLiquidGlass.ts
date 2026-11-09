@@ -465,7 +465,7 @@ function createFrostHandle(
   let destroyed = false;
   let dpr = options.dpr ?? 1;
   let intensity = 1;
-  const debug = { mapUrl: null, mapDpr: dpr, mapWidth: 0, mapHeight: 0, physicalMaxDisplacementPx: 0, displacementPx: 0, renders: 0 };
+  const debug = { mapUrl: null, lightUrl: null, mapDpr: dpr, mapWidth: 0, mapHeight: 0, physicalMaxDisplacementPx: 0, displacementPx: 0, renders: 0 };
 
   let scheduled: Promise<void> | null = null;
   const render = (): Promise<void> => {
