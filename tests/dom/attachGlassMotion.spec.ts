@@ -226,5 +226,72 @@ describe('attachGlassMotion', () => {
   });
 });
 
+describe('attachGlassMotion (enter)', () => {
+  it('springs in from a smaller glass: the first frame at once, a little overshoot, then nothing', async () => {
+    const { target, glass, c, motion, frames } = env();
+    await glass.ready;
+    const m = motion();
+    m.enter();
+    expect(target.style.transform).toBe('scale(0.94, 0.94)'); // before any frame: never seen full size first
+    expect(m.running).toBe(true);
+    c.run(1500);
+    const scales = frames.map((f) => f.scaleX);
+    expect(Math.min(...scales)).toBeCloseTo(0.94, 9);
+    expect(Math.max(...scales)).toBeGreaterThan(1); // settles with an overshoot (bounce 0.35)
+    expect(Math.max(...scales)).toBeLessThan(1.01);
+    expect(m.frame).toMatchObject({ scaleX: 1, scaleY: 1, lift: 1, transform: '' });
+    expect(target.style.transform).toBe('');
+    expect(m.running).toBe(false);
+    expect(c.pending).toBe(0);
+    await glass.refresh();
+    expect(glass.intensity).toBe(1); // the lens is the lens's own business (appear)
+  });
+
+  it('takes a scale per axis and a spring, as options or as defaults', () => {
+    const { target, c, motion, frames } = env();
+    const m = motion({ enter: { from: { x: 0.9, y: 1.05 } } });
+    m.enter();
+    expect(target.style.transform).toBe('scale(0.9, 1.05)');
+    c.run(1500);
+    expect(target.style.transform).toBe('');
+    m.enter({ from: 0.8, spring: { duration: 0.3, bounce: 0 } });
+    expect(target.style.transform).toBe('scale(0.8, 0.8)');
+    frames.length = 0;
+    c.run(1000);
+    expect(Math.max(...frames.map((f) => f.scaleX))).toBeLessThanOrEqual(1); // no bounce, no overshoot
+    expect(m.running).toBe(false);
+  });
+
+  it('combines with a press', () => {
+    const { c, motion } = env();
+    const m = motion();
+    m.enter();
+    m.press();
+    c.run(1500);
+    expect(m.frame.scaleX).toBeCloseTo(1.045, 3);
+    expect(m.frame.lift).toBeCloseTo(1.045, 3);
+  });
+
+  it('does nothing under reduced motion', () => {
+    const { target, c, motion } = env();
+    const m = motion({ matchMedia: () => new FakeMql(true) as unknown as MediaQueryList });
+    m.enter();
+    expect(target.style.transform).toBe('');
+    expect(m.running).toBe(false);
+    expect(c.pending).toBe(0);
+  });
+
+  it('destroy mid-entrance puts the transform back', () => {
+    const { target, c, motion } = env();
+    target.style.transform = 'translateX(4px)';
+    const m = motion();
+    m.enter();
+    c.run(100);
+    expect(target.style.transform).toMatch(/^translateX\(4px\) scale\(/);
+    m.destroy();
+    expect(target.style.transform).toBe('translateX(4px)');
+  });
+});
+
 // keep the imported type referenced for readers of this file
 export type _Handle = LiquidGlassHandle;

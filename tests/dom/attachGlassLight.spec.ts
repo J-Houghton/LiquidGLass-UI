@@ -2,18 +2,24 @@
 import { describe, it, expect } from 'vitest';
 import { attachLiquidGlass } from '../../src/dom/attachLiquidGlass';
 import { attachGlassLight, type GlassLightOptions } from '../../src/dom/attachGlassLight';
-import { lightAngleFor } from '../../src/motion/light';
+import { lightAngleFor, blendLightAngles, lightAngleDelta } from '../../src/motion/light';
 import type { RGBAImage } from '../../src/core/image';
 
-function frames() {
+/** A frame queue and the clock it advances, `step` ms a frame. */
+function frames(step = 16) {
   const queue: Array<(time: number) => void> = [];
+  let clock = 0;
   return {
     animationFrame: (cb: (time: number) => void) => {
       queue.push(cb);
       return queue.length;
     },
+    now: () => clock,
     run(n = 60) {
-      for (let i = 0; i < n && queue.length; i++) for (const f of queue.splice(0)) f(i * 16);
+      for (let i = 0; i < n && queue.length; i++) {
+        clock += step;
+        for (const f of queue.splice(0)) f(clock);
+      }
     },
     get pending() {
       return queue.length;
@@ -37,19 +43,20 @@ const RECT = { left: 100, top: 100, width: 200, height: 100 }; // centre (200, 1
 const SCENE = { x: 500, y: -300 }; // 'viewport' for 1000×600
 const sceneAngle = lightAngleFor(RECT, SCENE); // about -56.3°
 
-function env(glassOptions: Parameters<typeof attachLiquidGlass>[1] = {}) {
+function env(glassOptions: Parameters<typeof attachLiquidGlass>[1] = {}, step = 16) {
   document.body.innerHTML = '';
   const target = document.createElement('div');
   document.body.appendChild(target);
   target.getBoundingClientRect = () => ({ ...RECT, right: RECT.left + RECT.width, bottom: RECT.top + RECT.height, x: RECT.left, y: RECT.top, toJSON() {} }) as DOMRect;
   const encodeImage = async (_img: RGBAImage) => 'blob:x';
   const glass = attachLiquidGlass(target, { support: 'full', dpr: 1, encodeImage, revokeImage: () => {}, size: { width: 200, height: 100 }, radius: 20, ...glassOptions });
-  const f = frames();
+  const f = frames(step);
   const angles: number[] = [];
   const light = (opts: GlassLightOptions = {}) =>
     attachGlassLight(glass, {
       viewport: () => VIEWPORT,
       animationFrame: f.animationFrame,
+      now: f.now,
       matchMedia: () => new FakeMql(false) as unknown as MediaQueryList,
       onAngle: (a) => angles.push(a),
       ...opts,
@@ -91,9 +98,14 @@ describe('attachGlassLight', () => {
     expect(angles.length).toBeGreaterThan(3); // several eased writes
     for (let i = 1; i < angles.length; i++) expect(angles[i]).toBeGreaterThanOrEqual(angles[i - 1] - 1e-9);
 
-    h.setPointer({ x: 250, y: 150 }); // on the glass: the pointer owns the light
+    // on the glass, 50 px right of the centre: a light 50 px up (half the shorter side) is 45° off
+    // the vertical, so the pointer sets sin 45° of the direction
+    h.setPointer({ x: 250, y: 150 });
     f.run(200);
-    expect(h.target).toBeCloseTo(lightAngleFor(RECT, { x: 250, y: 150 }), 6);
+    expect(h.target).toBeCloseTo(blendLightAngles(sceneAngle, 0, Math.SQRT1_2), 6);
+    h.setPointer({ x: 200, y: 150 }); // right over the centre: no direction to give, the scene light shows
+    f.run(200);
+    expect(h.target).toBeCloseTo(sceneAngle, 6);
 
     h.setPointer({ x: 900, y: 150 }); // far away: back to the scene
     f.run(200);
@@ -163,5 +175,103 @@ describe('attachGlassLight', () => {
     h.setPointer({ x: 400, y: 150 });
     expect(h.angle).toBe(60);
     expect(f.pending).toBe(0);
+  });
+});
+
+describe('attachGlassLight (glide)', () => {
+  it('the pointer owns the light anywhere on the glass with elevation 0', async () => {
+    const { glass, f, light } = env();
+    await glass.ready;
+    const h = light({ pointer: { elevation: 0 } });
+    h.setPointer({ x: 250, y: 150 });
+    f.run(200);
+    expect(h.target).toBeCloseTo(0, 6);
+  });
+
+  it('turns on a spring: gently at first, without overshoot, in the same time at any frame rate', async () => {
+    const times: number[] = [];
+    for (const step of [16, 7]) {
+      const { glass, f, light } = env({}, step);
+      await glass.ready;
+      const h = light({ scene: { x: 200, y: -1000 } }); // straight above: -90
+      h.setScene({ x: 1000, y: 150 }); // to the right: 0, a quarter turn
+      const path: number[] = [];
+      while (h.running && path.length < 1000) {
+        f.run(1);
+        path.push(h.angle);
+      }
+      expect(h.angle).toBe(0);
+      // the first frame moves little, then it speeds up, and it never passes 0
+      expect(path[0] + 90).toBeLessThan(2);
+      expect(path[5] - path[4]).toBeGreaterThan(path[1] - path[0]);
+      expect(Math.max(...path)).toBeLessThanOrEqual(0);
+      // nine tenths of the turn in about 0.45 s
+      times.push((path.findIndex((a) => a >= -9) + 1) * step);
+    }
+    expect(times[0]).toBeGreaterThan(380);
+    expect(times[0]).toBeLessThan(520);
+    expect(Math.abs(times[0] - times[1])).toBeLessThanOrEqual(16);
+  });
+
+  it('a new target mid-turn carries the speed it has instead of starting over', async () => {
+    const { glass, f, light } = env();
+    await glass.ready;
+    const h = light({ scene: { x: 200, y: -1000 } });
+    h.setScene({ x: 1000, y: 150 });
+    const path: number[] = [h.angle];
+    for (let i = 0; i < 12; i++) {
+      f.run(1);
+      path.push(h.angle);
+    }
+    h.setScene({ x: 1000, y: 100 }); // a little further round, as a moving pointer would
+    f.run(1);
+    path.push(h.angle);
+    const before = path[12] - path[11];
+    const after = path[13] - path[12];
+    expect(before).toBeGreaterThan(2); // well under way
+    expect(Math.abs(after - before)).toBeLessThan(0.25 * before); // and still so: no restart from rest
+  });
+
+  it('a pointer crossing the glass near its centre turns the light smoothly', async () => {
+    const sweep = async (opts: GlassLightOptions) => {
+      const { glass, f, light } = env();
+      await glass.ready;
+      const h = light(opts);
+      let prev = h.angle;
+      let fastest = 0;
+      // left to right, 5 px below the centre, 10 px a frame (600 px/s)
+      for (let x = 60; x <= 340; x += 10) {
+        h.setPointer({ x, y: 155 });
+        f.run(1);
+        fastest = Math.max(fastest, Math.abs(lightAngleDelta(prev, h.angle)));
+        prev = h.angle;
+      }
+      return fastest;
+    };
+    const before = await sweep({ smoothing: 0.35, pointer: { elevation: 0 } }); // 2.0's behaviour
+    const now = await sweep({});
+    expect(before).toBeGreaterThan(25);
+    expect(now).toBeLessThan(6);
+  });
+
+  it('scene: false rests where the light was: the pointer pulls it and lets it go back', async () => {
+    const { glass, f, light } = env();
+    await glass.ready;
+    const h = light({ scene: false });
+    h.setPointer({ x: 400, y: 150 });
+    f.run(300);
+    expect(h.angle).not.toBeCloseTo(60, 0);
+    h.setPointer(null);
+    f.run(300);
+    expect(h.angle).toBeCloseTo(60, 1);
+  });
+
+  it('smoothing keeps the 2.0 per-frame easing', async () => {
+    const { glass, f, light, angles } = env();
+    await glass.ready;
+    const h = light({ smoothing: 0.5, scene: { x: 200, y: -1000 } });
+    h.setScene({ x: 1000, y: 150 });
+    f.run(1);
+    expect(angles.at(-1)).toBeCloseTo(-45, 1);
   });
 });

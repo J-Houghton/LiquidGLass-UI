@@ -190,7 +190,7 @@ await filter.ready;
 | `dpr` | `window.devicePixelRatio`, tracked | Ratio the maps are generated at. Passing a number fixes it. |
 | `maxMapPixels` | `320000` | Pixel budget per map. Above it the map is generated at a lower ratio and stretched by the filter; the displacement field is smooth and the rim keeps its CSS width. `Infinity` disables. |
 | `sizeBucket` | `1.02` | Sizes above 64 px are rounded up to a 2 % geometric grid for the map and stretched to the exact box, so a resize burst reuses maps. `1` disables (exact maps). |
-| `rimPx` | `2` | Gaussian width of the rim highlight, CSS px. |
+| `rimPx` | `2` | Gaussian width of the rim highlight, CSS px. The shade is held back under it, so the rim shows across that width, and pixels the corner arcs cut through are lit as much as the shape covers them, so it stays smooth round the corners. |
 | `lightLayer` | `false` | Leave the shade and the rim out of the lens and draw them with a second `<filter>` (`handle.light.url`) on the light map (`handle.light.image`), for a layer over the glass. Backdrop graph only. See [the light on a layer of its own](#the-light-on-a-layer-of-its-own). |
 | `maxLightPixels` | `2000000` | Pixel budget for the light map with `lightLayer`. It is an image on the layer, not sampled by the lens, so it gets a larger budget than `maxMapPixels` and the 2 px rim stays sharp. |
 | `regionPadding` | `0` | Enlarge the filter region around the box so displaced samples can come from just outside it (concave profiles). Output stays clipped to the box. Ignored in content mode. |
@@ -234,6 +234,7 @@ encode); everything else is an attribute write on the filter graph.
 | `glassThickness` | number, 31.25 | ≥ 0 | yes | Thickness of the flat interior: a longer path inside the glass displaces more. Literal px (1.x applied a curve; 1.x `50` is `31.25`). |
 | `displacementScale` | number, 180 | ≥ 0 | no | Maximum displacement in px. The map encodes the shape of the displacement; this sets the magnitude. |
 | `physicalScale` | boolean, false | | no | Ignore `displacementScale` and use the maximum displacement the optics produce (`debug.physicalMaxDisplacementPx`), so IOR and thickness set the strength. |
+| `magnify` | number, 0 | ≥ 0 | no | Zoom, after kube.io's lens: a third, small image (a straight ramp, made once for the lens's proportions) displaces the backdrop toward the middle before everything else, so what's behind the lens is drawn larger. The edge reads from `magnify` px in (in proportion on the shorter side): a lens `w` wide zooms by `w / (w − magnify)`. A graph attribute, so it can be animated (it eases in with `appear`). 0 leaves the stage out. |
 | `dispersion` | number, 0 | 0..50 (`relative`), 0..64 (`px`) | no | Chromatic dispersion as three displacement passes (red, green, blue). 0 disables the stage. |
 | `dispersionUnit` | `'relative'` | `relative`, `px` | no | `relative`: red and blue at `1 ∓ 0.02 × dispersion` times the green scale, so the fringe grows with the lens. `px`: red and blue `∓ dispersion` px from green, a fringe of fixed width. |
 | `blurKind` | `'gauss'` | `gauss`, `noise1`, `noise2` | no | Gaussian blur, or a turbulence displacement for a textured, organic distortion (`noise1` coarse, `noise2` fine). |
@@ -354,7 +355,12 @@ const motion = attachGlassMotion(glass, {
   press: { scale: 1.045, dim: 0.85, spring: { duration: 0.35, bounce: 0.3 } }, // defaults
   drag: true,     // squash from pointer velocity while pressed
   hover: false,   // or true / { scale: 1.02, spring: { duration: 0.3, bounce: 0.15 } }
+  enter: { from: 0.94, spring: { duration: 0.6, bounce: 0.35 } }, // defaults for motion.enter()
 });
+
+// the glass arriving: springs in with the lens easing in
+glass.appear(400);
+motion.enter();
 ```
 
 | Option | Default | Meaning |
@@ -362,6 +368,7 @@ const motion = attachGlassMotion(glass, {
 | `press` | `true` | `boolean` or `{ scale, dim, spring }`. Scale up on pointer down and dim the lens to `dim` through `setIntensity`; spring back (with overshoot) on release. |
 | `drag` | `true` | `boolean` or a partial `SquashConfig`: stretch along the pointer velocity, squash across it, shear with the horizontal component. Caps: 12 % stretch, 14° skew, full effect at 2000 px/s, decay 6/s. |
 | `hover` | `false` | Lift on `pointerenter`. |
+| `enter` | `{ from: 0.94, spring: { duration: 0.6, bounce: 0.35 } }` | Defaults for `enter()`: the scale it springs in from (a number, or `{ x, y }`) and its spring. |
 | `respectReducedMotion` | `true` | Under `prefers-reduced-motion` presses snap to their target and the squash is off. |
 | `element` | the target (nothing in content mode) | Where the `transform` is written. `null` writes nothing; read `onFrame` or `handle.frame`. |
 | `pointerTarget` | the target | Element whose pointer events drive press and drag. `null` for none: drive it yourself. |
@@ -371,6 +378,7 @@ const motion = attachGlassMotion(glass, {
 | Handle member | Meaning |
 |---|---|
 | `press()`, `release()`, `hover(on)` | Drive the springs from your own events. |
+| `enter(options?)` | The glass arriving: it springs from `from` to its own size and settles with a little overshoot. The first frame is written at once, so start it as the glass appears (with `appear`, or as your own fade-in starts) and it is never seen at full size first. Combines with press and squash. Nothing under reduced motion. |
 | `impulse(vx, vy)` | Feed a velocity sample in px/s, for drag code that owns the pointer (or pointer capture). |
 | `running` | True while the frame loop runs. It sleeps as soon as everything is at rest. |
 | `pressed`, `frame` | Current state. |
@@ -408,19 +416,20 @@ frame. `attachGlassLight` aims it from the page:
 import { attachGlassLight } from 'liquid-glass-filter';
 
 const light = attachGlassLight(glass, {
-  scene: 'viewport',          // default: a light half a viewport above the viewport's top centre
-  pointer: { radius: 160 },   // default: the pointer pulls the light within 160 px, owns it on the glass
-  smoothing: 0.35,            // per-frame fraction of the remaining turn; 1 snaps
+  scene: 'viewport',                        // default: a light half a viewport above the viewport's top centre
+  pointer: { radius: 160 },                 // default: the pointer pulls the light within 160 px
+  spring: { duration: 0.7, bounce: 0 },     // default: how the light glides to a new direction
 });
 ```
 
 | Option | Default | Meaning |
 |---|---|---|
 | `scene` | `'viewport'` | `'viewport'`, a `{ x, y }` point in viewport px, a function `(viewport) => point`, or `false` for no scene light (the angle stays unless the pointer takes over). |
-| `pointer` | `true` | `false`, or `{ radius }`. The weight is a smoothstep from 1 on the glass to 0 at `radius` px from its edge; the light is the scene point mixed toward the pointer by that weight. |
-| `smoothing` | `0.35` | Easing per frame. Snaps under `prefers-reduced-motion` (`respectReducedMotion: false` to ignore it). |
+| `pointer` | `true` | `false`, or `{ radius, elevation }`. How much of the direction the pointer sets is a smoothstep from 1 on the glass to 0 at `radius` px (default 160) from its edge, times how far off the glass's centre it is under a light `elevation` px above the page (r / √(r² + elevation²); default half the glass's shorter side). Right over the centre the pointer has no direction to give and the scene light shows through; the light turns from the scene's direction toward the pointer's, the short way, by that much. `elevation: 0` lets the pointer own the light anywhere on the glass (the 2.0 behaviour, which swings fast near the centre). |
+| `spring` | `{ duration: 0.7, bounce: 0 }` | How the light turns to a new direction: it starts gently, keeps its speed when the target moves on, never overshoots, and takes the same time at any frame rate (about 0.45 s for nine tenths of a turn). Snaps under `prefers-reduced-motion` (`respectReducedMotion: false` to ignore it). |
+| `smoothing` | none | The 2.0 easing, a fraction of the remaining turn per frame (faster on a faster display). Given, it replaces `spring`; `1` snaps. |
 | `listenOn` | the target | Element whose document and window supply `pointermove`, `pointerout`, `scroll` (capture) and `resize`. `null` for none. |
-| `viewport`, `animationFrame`, `matchMedia`, `onAngle` | globals | Test seams and a per-write callback. |
+| `viewport`, `animationFrame`, `now`, `matchMedia`, `onAngle` | globals | Test seams and a per-write callback. |
 
 | Handle member | Meaning |
 |---|---|
@@ -433,9 +442,11 @@ Every glass on the page lit this way shares one scene light, which reads as a si
 the page: a glass on the left is lit from the upper right, one on the right from the upper left,
 and the lighting shifts as the page scrolls past the light. The first placement snaps so a page
 does not open with rims swinging into place. The rim is symmetric (a direction and its opposite
-light the same pixels), so angle easing takes the short way around a 180° circle. Frost mode has
+light the same pixels), so the light turns the short way around a 180° circle. With `scene:
+false` the light rests where it was, and comes back there when the pointer leaves. Frost mode has
 no rim to aim, so the handle is inert there. The pure geometry (`lightAngleFor`, `distanceToRect`,
-`pointerWeight`, `lightAngleDelta`, `approachLightAngle`) lives in `liquid-glass-filter/motion`.
+`pointerWeight`, `pointerPull`, `blendLightAngles`, `lightAngleDelta`, `approachLightAngle`) lives
+in `liquid-glass-filter/motion`.
 
 ### The light on a layer of its own
 
@@ -743,7 +754,8 @@ no-op on the server.
 Main entry: `LiquidGlassOptions`, `LiquidGlassHandle`, `GlassMode`, `GlassFallback`,
 `AppearOptions`, `GlassFilterOptions`, `GlassFilterHandle`, `GlassFilterDebug`, `GlassLightLayer`, `LensPlacement`,
 `GlassMotionOptions`, `GlassMotionHandle`, `MotionFrame`, `MotionGlass`, `PressMotion`,
-`HoverMotion`, `GlassLightOptions`, `GlassLightHandle`, `LightGlass`, `SceneLight`, `GlassSupport`,
+`HoverMotion`, `EnterMotion`, `GlassLightOptions`, `GlassLightHandle`, `LightGlass`, `SceneLight`,
+`PointerLight`, `GlassSupport`,
 `SupportEnvironment`, `ImageEncoder`, `UrlRevoker`, `MapRegistryOptions`, `LensMapUrls`,
 `ElementFactory`.
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { lightAngleFor, distanceToRect, pointerWeight, mixPoints, lightAngleDelta, approachLightAngle } from '../../src/motion/light';
+import { lightAngleFor, distanceToRect, pointerWeight, pointerPull, mixPoints, blendLightAngles, lightAngleDelta, approachLightAngle } from '../../src/motion/light';
 
 const rect = { left: 100, top: 100, width: 200, height: 100 }; // centre (200, 150)
 
@@ -32,6 +32,28 @@ describe('light placement', () => {
     }
     expect(pointerWeight(0, 0)).toBe(1);
     expect(pointerWeight(1, 0)).toBe(0);
+  });
+
+  it('pointerPull: the weight, times how far off-centre the pointer is under a raised light', () => {
+    expect(pointerPull(rect, { x: 200, y: 150 }, 160, 50)).toBe(0); // right over the centre
+    expect(pointerPull(rect, { x: 250, y: 150 }, 160, 50)).toBeCloseTo(Math.SQRT1_2, 9); // 50 px out, 50 px up
+    expect(pointerPull(rect, { x: 250, y: 150 }, 160, 0)).toBe(1); // no elevation: the weight alone
+    const beside = pointerPull(rect, { x: 380, y: 150 }, 160, 50); // 80 px right of the edge: weight 0.5
+    expect(beside).toBeCloseTo(0.5 * (180 / Math.hypot(180, 50)), 9);
+    expect(pointerPull(rect, { x: 600, y: 150 }, 160, 50)).toBe(0); // out of reach
+    let last = 0;
+    for (let x = 200; x <= 300; x += 5) {
+      const p = pointerPull(rect, { x, y: 150 }, 160, 50);
+      expect(p).toBeGreaterThanOrEqual(last); // grows steadily from the centre to the edge
+      last = p;
+    }
+  });
+
+  it('blendLightAngles goes the short way and clamps the weight', () => {
+    expect(blendLightAngles(-90, 0, 0.5)).toBe(-45);
+    expect(blendLightAngles(80, -80, 0.5)).toBe(90); // through 90, not through 0
+    expect(blendLightAngles(-90, 0, 2)).toBe(0);
+    expect(blendLightAngles(-90, 0, -1)).toBe(-90);
   });
 
   it('mixPoints interpolates', () => {

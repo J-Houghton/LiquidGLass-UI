@@ -23,6 +23,17 @@ export interface BandPixel {
   corner: boolean;
 }
 
+/**
+ * How much of a pixel the shape covers, from the signed distance of its center to the outer edge
+ * (positive inside): 1 for a pixel well inside, falling to 0 half a pixel outside. Along the
+ * straight edges every band pixel is whole (the edges lie on pixel boundaries); in the corners the
+ * arc cuts through pixels, and the rim light drawn there in proportion to this keeps the arc smooth
+ * instead of following the pixel grid in steps.
+ */
+export function edgeCoverage(t: number): number {
+  return Math.min(1, Math.max(0, t + 0.5));
+}
+
 /** Point-in-rounded-rectangle test for a point (x, y) in continuous coordinates. */
 export function inRoundedRect(x: number, y: number, w: number, h: number, r: number): boolean {
   const onL = x < r;
@@ -100,6 +111,43 @@ export function forEachBandPixel(
         }
       }
 
+      emit(x, y, nx, ny);
+      if (mx !== x) emit(mx, y, -nx, ny);
+      if (my !== y) emit(x, my, nx, -ny);
+      if (mx !== x && my !== y) emit(mx, my, -nx, -ny);
+    }
+  }
+}
+
+/**
+ * Visit the pixels just outside the four corner arcs that the arc still cuts through: centers
+ * less than half a pixel beyond it (t in (-0.5, 0), `edgeCoverage(t)` > 0), with the outward
+ * normal of the arc. `forEachBandPixel` leaves them out (their centers are outside the shape);
+ * a rim drawn with coverage needs them too, or its outer edge steps along the pixel grid.
+ */
+export function forEachCornerFringePixel(W: number, H: number, R: number, visit: (p: BandPixel) => void): void {
+  const r = Math.min(R, Math.floor(W / 2), Math.floor(H / 2));
+  if (r <= 0) return;
+  const p: BandPixel = { x: 0, y: 0, idx: 0, nx: 0, ny: 0, t: 0, corner: true };
+  const emit = (x: number, y: number, nx: number, ny: number) => {
+    p.x = x;
+    p.y = y;
+    p.idx = (y * W + x) * 4;
+    p.nx = nx;
+    p.ny = ny;
+    visit(p);
+  };
+  for (let y = 0; y < r; y++) {
+    const my = H - 1 - y;
+    for (let x = 0; x < r; x++) {
+      const mx = W - 1 - x;
+      const cx = x + 0.5 - R;
+      const cy = y + 0.5 - R;
+      const dist = Math.hypot(cx, cy);
+      if (dist <= R || dist >= R + 0.5) continue;
+      const nx = cx / dist;
+      const ny = cy / dist;
+      p.t = R - dist;
       emit(x, y, nx, ny);
       if (mx !== x) emit(mx, y, -nx, ny);
       if (my !== y) emit(x, my, nx, -ny);

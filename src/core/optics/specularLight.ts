@@ -1,5 +1,5 @@
 import { createRGBAImage, type RGBAImage } from '../image.js';
-import { forEachBandPixel } from './band.js';
+import { edgeCoverage, forEachBandPixel, forEachCornerFringePixel, type BandPixel } from './band.js';
 import { lightVector, rimCoefficient, rimThickness } from './rim.js';
 
 export interface SpecularMapOptions {
@@ -42,13 +42,17 @@ export function specularMap(opts: SpecularMapOptions): RGBAImage {
   const img = createRGBAImage(W, H);
   const data = img.data;
 
-  forEachBandPixel(W, H, R, B, (p) => {
-    const c = Math.floor(255 * Math.min(1, rimCoefficient(p.nx, p.ny, p.t, vx, vy, T) * strength));
+  // as much of the rim as the shape covers in the corners, where the arc cuts through pixels (see edgeCoverage)
+  const write = (p: BandPixel) => {
+    const cover = p.corner ? edgeCoverage(p.t) : 1;
+    const c = Math.floor(255 * Math.min(1, rimCoefficient(p.nx, p.ny, Math.max(0, p.t), vx, vy, T) * strength * cover));
     if (c === 0) return;
     data[p.idx] = c;
     data[p.idx + 1] = c;
     data[p.idx + 2] = c;
     data[p.idx + 3] = c;
-  });
+  };
+  forEachBandPixel(W, H, R, B, write);
+  forEachCornerFringePixel(W, H, R, write);
   return img;
 }

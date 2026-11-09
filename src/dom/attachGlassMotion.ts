@@ -13,7 +13,8 @@ import type { GlassFilterHandle } from './createGlassFilter.js';
 
 /**
  * Drives a glass with the motion model: a spring on press/hover (scale up, relax the lens a
- * little, overshoot back on release) and velocity squash while dragging. One requestAnimationFrame
+ * little, overshoot back on release), velocity squash while dragging, and a spring in on arrival.
+ * One requestAnimationFrame
  * loop runs while anything moves and sleeps at rest; the transform is written to the target and
  * removed again when everything is still. Reduced motion snaps the springs and disables the
  * squash, as Apple's Reduce Motion contract asks.
@@ -35,6 +36,13 @@ export interface HoverMotion {
   spring?: SpringConfig;
 }
 
+export interface EnterMotion {
+  /** Scale the glass springs in from: one for both axes, or `{ x, y }`. Default 0.94. */
+  from?: number | { x: number; y: number };
+  /** Default `{ duration: 0.6, bounce: 0.35 }`: it settles with a little overshoot, like a release. */
+  spring?: SpringConfig;
+}
+
 export interface GlassMotionOptions {
   /** Press feedback. Default true. */
   press?: boolean | PressMotion;
@@ -42,6 +50,8 @@ export interface GlassMotionOptions {
   drag?: boolean | Partial<SquashConfig>;
   /** Lift on hover. Default false. */
   hover?: boolean | HoverMotion;
+  /** Defaults for `handle.enter()`. */
+  enter?: EnterMotion;
   /** Snap springs and disable squash under `prefers-reduced-motion`. Default true. */
   respectReducedMotion?: boolean;
   /**
@@ -63,7 +73,7 @@ export interface GlassMotionOptions {
 }
 
 export interface MotionFrame {
-  /** Final scales: press/hover lift times the squash. */
+  /** Final scales: press/hover lift times the entrance and the squash. */
   scaleX: number;
   scaleY: number;
   /** Shear from the squash, degrees. */
@@ -80,7 +90,13 @@ export interface GlassMotionHandle {
   press(): void;
   release(): void;
   hover(on: boolean): void;
-  /** Feed a velocity sample in px/s (your own drag code, or a scroll). Ignored under reduced motion. */
+  /**
+   * Spring in, the glass arriving: from `from` to its own size, settling with a little overshoot.
+   * Play it as the glass appears (with the lens's `appear`, or your own fade-in); the first frame
+   * is written at once, so the glass is never seen at full size first. Nothing under reduced motion.
+   */
+  enter(options?: EnterMotion): void;
+  /** Feed a velocity sample in px/s (your own drag code). Ignored under reduced motion. */
   impulse(vx: number, vy: number): void;
   /** True while the frame loop is running. */
   readonly running: boolean;
@@ -98,6 +114,7 @@ export interface MotionGlass {
 }
 
 const REST_FRAME: Readonly<MotionFrame> = Object.freeze({ scaleX: 1, scaleY: 1, skewX: 0, lift: 1, intensity: 1, transform: '' });
+const ENTER: Required<EnterMotion> = { from: 0.94, spring: { duration: 0.6, bounce: 0.35 } };
 const UNIT: Readonly<SpringState> = Object.freeze({ value: 0, velocity: 0 });
 const REST = { delta: 1e-3, speed: 1e-2 };
 const fmt = (v: number): string => String(Math.round(v * 10000) / 10000);
@@ -116,6 +133,7 @@ export function attachGlassMotion(glass: MotionGlass, options: GlassMotionOption
   const squashConfig: SquashConfig | null = dragOpt ? { ...DEFAULT_SQUASH, ...(typeof dragOpt === 'object' ? dragOpt : {}) } : null;
   const pressPhysics: SpringPhysics = springPhysics(press?.spring);
   const hoverPhysics: SpringPhysics = springPhysics(hover?.spring);
+  const enterDefaults: Required<EnterMotion> = { ...ENTER, ...options.enter };
 
   const element = options.element === undefined ? (glass.mode === 'content' ? null : glass.target) : options.element;
   const pointerTarget = options.pointerTarget === undefined ? glass.target : options.pointerTarget;
@@ -138,6 +156,10 @@ export function attachGlassMotion(glass: MotionGlass, options: GlassMotionOption
   let hoverAmount: SpringState = { ...UNIT };
   let pressTarget = 0;
   let hoverTarget = 0;
+  // the entrance: 1 at its start scale .. 0 at rest (below 0 in the overshoot)
+  let enterAmount: SpringState = { ...UNIT };
+  let enterFrom = { x: 1, y: 1 };
+  let enterPhysics: SpringPhysics = springPhysics(enterDefaults.spring);
   let squash: SquashState = { ...SQUASH_REST };
   let frame: MotionFrame = { ...REST_FRAME };
   let running = false;
@@ -151,8 +173,8 @@ export function attachGlassMotion(glass: MotionGlass, options: GlassMotionOption
   function compute(): MotionFrame {
     const lift = 1 + (press ? (press.scale - 1) * pressAmount.value : 0) + (hover ? (hover.scale - 1) * hoverAmount.value : 0);
     const d = squashConfig ? squashDeformation(squash, squashConfig) : { scaleX: 1, scaleY: 1, skewX: 0, magnitude: 0 };
-    const scaleX = lift * d.scaleX;
-    const scaleY = lift * d.scaleY;
+    const scaleX = lift * (1 + (enterFrom.x - 1) * enterAmount.value) * d.scaleX;
+    const scaleY = lift * (1 + (enterFrom.y - 1) * enterAmount.value) * d.scaleY;
     const intensity = press ? 1 - (1 - press.dim) * clamp01(pressAmount.value) : 1;
     const identity = Math.abs(scaleX - 1) < 1e-4 && Math.abs(scaleY - 1) < 1e-4 && Math.abs(d.skewX) < 1e-3;
     const own = identity ? '' : `scale(${fmt(scaleX)}, ${fmt(scaleY)})${Math.abs(d.skewX) >= 1e-3 ? ` skewX(${fmt(d.skewX)}deg)` : ''}`;
@@ -164,6 +186,7 @@ export function attachGlassMotion(glass: MotionGlass, options: GlassMotionOption
     return (
       isSpringAtRest(pressAmount, pressTarget, REST) &&
       isSpringAtRest(hoverAmount, hoverTarget, REST) &&
+      isSpringAtRest(enterAmount, 0, REST) &&
       (!squashConfig || isSquashAtRest(squash, squashConfig))
     );
   }
@@ -190,6 +213,7 @@ export function attachGlassMotion(glass: MotionGlass, options: GlassMotionOption
     // the exact rest frame, so nothing is left a hair off
     pressAmount = { value: pressTarget, velocity: 0 };
     hoverAmount = { value: hoverTarget, velocity: 0 };
+    enterAmount = { ...UNIT };
     if (squashConfig) squash = { ...SQUASH_REST };
     apply(compute());
   }
@@ -201,6 +225,7 @@ export function attachGlassMotion(glass: MotionGlass, options: GlassMotionOption
     last = t;
     pressAmount = stepSpring(pressAmount, pressTarget, dt, pressPhysics);
     hoverAmount = stepSpring(hoverAmount, hoverTarget, dt, hoverPhysics);
+    enterAmount = stepSpring(enterAmount, 0, dt, enterPhysics);
     if (squashConfig) squash = squashDecay(squash, dt, squashConfig);
     if (atRest()) {
       running = false;
@@ -291,6 +316,15 @@ export function attachGlassMotion(glass: MotionGlass, options: GlassMotionOption
       const next = on ? 1 : 0;
       if (hoverTarget === next) return;
       hoverTarget = next;
+      wake();
+    },
+    enter(opts: EnterMotion = {}) {
+      if (destroyed || reduced || !raf) return;
+      const from = opts.from ?? enterDefaults.from;
+      enterFrom = typeof from === 'number' ? { x: from, y: from } : { x: from.x, y: from.y };
+      enterPhysics = springPhysics(opts.spring ?? enterDefaults.spring);
+      enterAmount = { value: 1, velocity: 0 };
+      apply(compute());
       wake();
     },
     impulse(vx: number, vy: number) {

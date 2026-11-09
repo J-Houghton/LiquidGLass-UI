@@ -11,6 +11,7 @@ import { lightVector } from '../optics/rim.js';
  *   blurStage 'after':  displacement → blur → rim
  *   blurStage 'before': blur(SourceGraphic) → pin alpha → displacement → rim
  * where displacement is 1 pass, or 3 channel-isolated passes at staggered scales for dispersion.
+ * With `magnify`, a third image (the zoom map) zooms the backdrop in before all of that.
  * With `region` (content-side `filter: url()`), the stages are confined to the lens rectangle and
  * the chain ends: saturate → hole in the source → lens over source.
  * With `lightLayer`, the lens stops after displacement and blur (no light map image either), and
@@ -43,6 +44,8 @@ export interface FilterRefs {
   mapHref: string;
   /** The light map (`lightMap` / `lensMaps().light`). */
   lightHref: string;
+  /** The zoom map (`zoomMap`), for `magnify`; without it, the lens doesn't magnify. */
+  zoomHref?: string;
 }
 
 /** A rectangle in the filtered element's border-box coordinates, CSS px. */
@@ -106,6 +109,8 @@ export function buildFilterSpec(p: ResolvedGlassParams, refs: FilterRefs, opts: 
         : prim('feImage', { preserveAspectRatio: 'none', href, result });
   // with a light layer, nothing in the lens reads the light map, so it isn't drawn here at all
   const staticPrims: FilterPrimitive[] = layered ? [image(refs.mapHref, 'map')] : [image(refs.mapHref, 'map'), image(refs.lightHref, 'light')];
+  const zoom = p.magnify > 0 && !!refs.zoomHref;
+  if (zoom) staticPrims.push(image(refs.zoomHref!, 'zoom'));
 
   let dynamic: FilterPrimitive[] = [];
   const chromatic = p.dispersion > 0;
@@ -116,8 +121,15 @@ export function buildFilterSpec(p: ResolvedGlassParams, refs: FilterRefs, opts: 
   const before = region !== null || p.blurStage === 'before';
 
   let source = 'SourceGraphic';
+  if (zoom) {
+    // the magnifier first, so the lens bends (and blurs) the zoomed-in backdrop as it would any other
+    dynamic.push(
+      prim('feDisplacementMap', { in: source, in2: 'zoom', xChannelSelector: 'R', yChannelSelector: 'G', scale: num(p.magnify), result: 'zoomed' }),
+    );
+    source = 'zoomed';
+  }
   if (before) {
-    const blurred = blurStage('SourceGraphic', p.blurKind, p.blur);
+    const blurred = blurStage(source, p.blurKind, p.blur);
     dynamic.push(...blurred.prims);
     // The blur sampled past the region edge, so edge pixels are translucent; pinned to opaque they
     // keep their (correctly averaged) colour instead of leaving a pale hairline after the
@@ -174,7 +186,8 @@ export function buildFilterSpec(p: ResolvedGlassParams, refs: FilterRefs, opts: 
     structureKey:
       `${chromatic ? 'dispersion' : 'single'}|${before ? 'before' : 'after'}:${p.blurKind}|${shade > 0 ? 'shade' : '-'}|${specular ? 'rim' : '-'}|pad:${padding > 0 ? 'px' : 'box'}` +
       (region ? '|content' : '') +
-      (layered ? '|layer' : ''),
+      (layered ? '|layer' : '') +
+      (zoom ? '|zoom' : ''),
   };
 }
 
@@ -331,8 +344,9 @@ function blurStage(input: string, kind: BlurKind, blur: number): { prims: Filter
 // component is (255c − 128)/127 = GAIN·c − BIAS. A colour matrix is linear, so (g·n)·L for a
 // light vector L is GAIN·(Lx·r + Ly·g) − BIAS·(Lx + Ly); it clamps negative alpha to 0, which
 // gives max(0, ·) for free. The rim is lit on both sides (|n·L|), hence one matrix per sign.
-// B holds the shade profile (0..1 unsigned). Light and shade compete for the same pixels the way
-// the former single signed channel made them: the lit rim is light − shade, the shade is
+// B holds the shade profile (0..1 unsigned, held back under the rim: see lightMap). Light and shade
+// compete for the same pixels the way the former single signed channel made them: the lit rim is
+// light − shade, the shade is
 // shade − light, each clamped at 0, so the look is unchanged while the angle is free.
 const B_GAIN = 255 / 127;
 const B_BIAS = 128 / 127;

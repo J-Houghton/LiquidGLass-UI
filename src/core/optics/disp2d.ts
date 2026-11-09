@@ -1,5 +1,5 @@
 import { createRGBAImage, type RGBAImage } from '../image.js';
-import { forEachBandPixel } from './band.js';
+import { edgeCoverage, forEachBandPixel, forEachCornerFringePixel, type BandPixel } from './band.js';
 import { rimThickness } from './rim.js';
 
 export interface DisplacementMapOptions {
@@ -102,7 +102,11 @@ export const LIGHT_NEUTRAL = 128;
 /**
  * The lighting companion of the displacement map, independent of the light direction:
  * R,G = Gaussian rim falloff times the outward unit normal (128 bias, 127 scale), B = the
- * normalized stretch profile (0..255, 1 where the lens thins the backdrop the most), A = 255.
+ * normalized stretch profile (0..255, 1 where the lens thins the backdrop the most) less where the
+ * rim is lit (times 1 − the Gaussian), A = 255. The filter takes the shade from the lit rim, and
+ * the stretch peaks a pixel or two in from the edge, so at full strength there it would leave only
+ * the outermost device pixel of the rim: a hairline that steps round the corners. Held back under
+ * the rim, the shade lets the rim show over its width (`rimPx`) and fade, and starts where it ends.
  * The filter turns it into the lit rim for any light vector L with one colour matrix per side:
  * alpha = max(0, ±(g·n)·L), summed, so changing the light angle is an attribute write.
  */
@@ -143,6 +147,19 @@ function rasterize(
   const md = map?.data;
   const ld = light?.data;
 
+  // the rim at a pixel: its Gaussian, as much of it as the shape covers (see edgeCoverage); and the
+  // shade, held back where the rim is lit (see lightMap)
+  const writeLight = (p: BandPixel, shade: number) => {
+    const cover = p.corner ? edgeCoverage(p.t) : 1;
+    const t = Math.max(0, p.t);
+    const rim = t > 3 * T ? 0 : Math.exp(-(t * t) / (2 * T * T));
+    const g = rim * cover;
+    ld![p.idx] = Math.round(LIGHT_NEUTRAL + 127 * g * p.nx);
+    ld![p.idx + 1] = Math.round(LIGHT_NEUTRAL + 127 * g * p.ny);
+    ld![p.idx + 2] = Math.round(255 * shade * (1 - rim) * cover);
+    ld![p.idx + 3] = 255;
+  };
+
   forEachBandPixel(W, H, R, B, (p) => {
     const u = Math.max(0, Math.min(1, p.t / B));
     const f = u * (n - 1);
@@ -157,13 +174,9 @@ function rasterize(
       md[p.idx + 2] = RIM_NEUTRAL;
       md[p.idx + 3] = 255;
     }
-    if (ld) {
-      const g = p.t > 3 * T ? 0 : Math.exp(-(p.t * p.t) / (2 * T * T));
-      ld[p.idx] = Math.round(LIGHT_NEUTRAL + 127 * g * p.nx);
-      ld[p.idx + 1] = Math.round(LIGHT_NEUTRAL + 127 * g * p.ny);
-      ld[p.idx + 2] = stretch ? Math.round(255 * stretch[Math.min(stretch.length - 1, i0)]) : 0;
-      ld[p.idx + 3] = 255;
-    }
+    if (ld) writeLight(p, stretch ? stretch[Math.min(stretch.length - 1, i0)] : 0);
   });
+  // the corner pixels just outside the shape that its edge still cuts through
+  if (ld) forEachCornerFringePixel(W, H, R, (p) => writeLight(p, stretch ? stretch[0] : 0));
   return { map: map ?? undefined, light: light ?? undefined };
 }
