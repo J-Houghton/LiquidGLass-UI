@@ -362,3 +362,89 @@ describe('createGlassFilter (content-side lens)', () => {
     expect(h.id).toBe('lg-b-r2');
   });
 });
+
+describe('createGlassFilter (light layer)', () => {
+  it('leaves the light out of the lens and draws it in a second filter in the same <defs>', async () => {
+    const { create, filterOf, encoded } = env();
+    const h = create({ id: 'lg-l', width: 200, height: 100, shade: 0.4, lightLayer: true });
+    expect(h.light).toBeNull(); // nothing rendered yet
+    await h.ready;
+    expect(encoded).toHaveLength(2);
+    const lens = filterOf(h);
+    expect(lens.querySelectorAll('feImage').map((c) => c.getAttribute('href'))).toEqual(['blob:1']);
+    expect(lens.querySelector('[result="shade"]')).toBeNull();
+    expect(lens.querySelector('[result="rim"]')).toBeNull();
+    const light = h.light!;
+    expect(light.id).toBe('lg-l-light');
+    expect(light.url).toBe('url(#lg-l-light)');
+    expect(light.image).toBe('blob:2');
+    expect(h.debug.lightUrl).toBe('blob:2');
+    const lf = light.filterElement as unknown as FakeElement;
+    expect(lf.parentNode).toBe(lens.parentNode);
+    expect(lf.getAttribute('id')).toBe('lg-l-light');
+    expect(lf.querySelector('[result="litA"]')!.getAttribute('in')).toBe('SourceGraphic');
+    expect(lf.querySelector('[result="both"]')!.getAttribute('operator')).toBe('over');
+    expect(lf.querySelector('[result="light"]')!.getAttribute('in2')).toBe('SourceAlpha');
+  });
+
+  it('gives the light map its own pixel budget, so it stays sharp while the lens map is capped', async () => {
+    const { create, encoded } = env();
+    const h = create({ width: 1000, height: 400, dpr: 2, lightLayer: true });
+    await h.ready;
+    expect(h.debug.mapDpr).toBeLessThan(1);
+    expect(h.debug.lightDpr).toBe(2);
+    expect(encoded[0].width).toBe(Math.round(bucketSize(1000) * h.debug.mapDpr));
+    expect(encoded[1].width).toBe(Math.round(bucketSize(1000) * 2));
+    const capped = create({ width: 1000, height: 400, dpr: 2, lightLayer: true, maxLightPixels: 100_000 });
+    await capped.ready;
+    expect(capped.debug.lightDpr).toBeLessThan(capped.debug.mapDpr);
+    const plain = create({ width: 1000, height: 400, dpr: 2 });
+    await plain.ready;
+    expect(plain.debug.lightDpr).toBe(plain.debug.mapDpr);
+  });
+
+  it('a light change rewrites the light filter only; the lens graph and the maps stay as they were', async () => {
+    const { create, filterOf, encoded } = env();
+    const h = create({ shade: 0.4, specularAngleDeg: 60, lightLayer: true });
+    await h.ready;
+    const lens = JSON.stringify(filterOf(h).toJSON());
+    const lf = h.light!.filterElement as unknown as FakeElement;
+    const rimA = lf.querySelector('[result="rimA"]')!;
+    const before = rimA.getAttribute('values');
+    await h.update({ specularAngleDeg: -101 });
+    expect(JSON.stringify(filterOf(h).toJSON())).toBe(lens);
+    expect(lf.querySelector('[result="rimA"]')).toBe(rimA);
+    expect(rimA.getAttribute('values')).not.toBe(before);
+    expect(encoded).toHaveLength(2);
+  });
+
+  it('intensity scales the light layer like the lens', async () => {
+    const { create } = env();
+    const h = create({ shade: 0.5, lightLayer: true });
+    await h.ready;
+    await h.setIntensity(0.5);
+    const lf = h.light!.filterElement as unknown as FakeElement;
+    expect(lf.querySelector('[result="shadeFull"]')!.getAttribute('values')).toBe('0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0.25 0 0');
+  });
+
+  it('the content-side lens takes the light back in: the light filter goes, light becomes null', async () => {
+    const { create, filterOf } = env();
+    const h = create({ shade: 0.4, lightLayer: true });
+    await h.ready;
+    const lf = h.light!.filterElement as unknown as FakeElement;
+    await h.setLens({ x: 10, y: 20 });
+    expect(h.light).toBeNull();
+    expect(lf.parentNode).toBeNull();
+    expect(filterOf(h).querySelectorAll('feImage')).toHaveLength(2);
+    expect(filterOf(h).querySelector('[result="shade"]')).not.toBeNull();
+  });
+
+  it('destroy drops the light layer with the rest', async () => {
+    const { create, host } = env();
+    const h = create({ lightLayer: true });
+    await h.ready;
+    h.destroy();
+    expect(h.light).toBeNull();
+    expect(host.children).toHaveLength(0);
+  });
+});

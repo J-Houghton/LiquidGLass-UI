@@ -4,7 +4,7 @@
  */
 export * from './core/index.js';
 
-export type { GlassFilterOptions, GlassFilterHandle, GlassFilterDebug, LensPlacement } from './dom/createGlassFilter.js';
+export type { GlassFilterOptions, GlassFilterHandle, GlassFilterDebug, GlassLightLayer, LensPlacement } from './dom/createGlassFilter.js';
 export {
   createGlassFilter,
   nextGlassId,
@@ -12,6 +12,7 @@ export {
   budgetedDpr,
   bucketSize,
   DEFAULT_MAX_MAP_PIXELS,
+  DEFAULT_MAX_LIGHT_PIXELS,
   DEFAULT_SIZE_BUCKET,
   SIZE_BUCKET_MIN,
 } from './dom/createGlassFilter.js';

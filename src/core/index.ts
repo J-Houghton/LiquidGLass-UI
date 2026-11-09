@@ -34,4 +34,4 @@ export { forEachBandPixel, inRoundedRect } from './optics/band.js';
 export { mapGlassThickness } from './validation/geometry.js';
 
 export type { FilterPrimitive, FilterSpec, FilterRefs, FilterSpecOptions, LensRegion } from './filters/spec.js';
-export { buildFilterSpec, filterSpecToSvg, filterElementAttrs, NOISE_SCALE_FACTOR, DISPERSION_SPREAD } from './filters/spec.js';
+export { buildFilterSpec, buildLightSpec, filterSpecToSvg, filterElementAttrs, NOISE_SCALE_FACTOR, DISPERSION_SPREAD } from './filters/spec.js';

@@ -100,6 +100,9 @@ export class FakeElement {
   get firstElementChild(): FakeElement | null {
     return this.children[0] ?? null;
   }
+  get firstChild(): FakeElement | null {
+    return this.children[0] ?? null;
+  }
 
   matches(sel: string): boolean {
     return parseSelector(sel).some(

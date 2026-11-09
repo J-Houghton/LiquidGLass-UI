@@ -59,7 +59,10 @@ export interface LiquidGlassOptions extends Omit<GlassFilterOptions, 'radius' | 
   /**
    * Write `backdrop-filter`, `-webkit-backdrop-filter`, `background-color` (the tint), the frost
    * rim `box-shadow` and, when `radius` is a number, `border-radius` onto the target. Default true.
-   * Previous inline values are restored on destroy.
+   * With `lightLayer` (glass mode), also add the light layer: a `<div data-liquid-glass-light>` as
+   * the target's first child, absolutely placed over its border box under its content, and
+   * `position: relative` on the target if it was static. Previous inline values are restored, and
+   * the layer removed, on destroy.
    */
   applyStyles?: boolean;
   /** What to do where SVG backdrop filters do not render (Safari, Firefox). Default 'frost'. */
@@ -109,6 +112,16 @@ export interface LiquidGlassHandle extends GlassFilterHandle {
   /** In content mode, the inline style the content element needs (`filter`); empty otherwise. */
   getContentStyle(): Readonly<Record<string, string>>;
   /**
+   * With `lightLayer` in glass mode, the style of the light layer: `backgroundImage` (the light
+   * map), `backgroundSize`, `backgroundRepeat` and `filter`; empty otherwise. For a layer you
+   * place yourself (`applyStyles: false`, or a pseudo-element via custom properties): over the
+   * target's border box, under its content, with the target's border radius. It changes when the
+   * map does, so read it in `onRender`.
+   */
+  getLightStyle(): Readonly<Record<string, string>>;
+  /** The light layer `applyStyles` added, else null. */
+  readonly lightElement: HTMLElement | null;
+  /**
    * Re-measure the target (and, in content mode, its offset inside the content element) and
    * apply the result: attribute writes only unless the size changed. Call it after moving the
    * target; resizes and scrolling are followed automatically.
@@ -124,6 +137,7 @@ export interface LiquidGlassHandle extends GlassFilterHandle {
 const STYLE_KEYS = ['backdropFilter', 'WebkitBackdropFilter', 'backgroundColor', 'boxShadow', 'borderRadius'] as const;
 type StyleKey = (typeof STYLE_KEYS)[number];
 const DATA_ATTR = 'data-liquid-glass';
+const LIGHT_ATTR = 'data-liquid-glass-light';
 const DEFAULT_APPEAR_MS = 400;
 /** WebKit downscales a filtered image buffer above this many device px per side (WebCore ImageBuffer.cpp). */
 export const CONTENT_FILTER_MAX_PX = 4096;
@@ -146,6 +160,18 @@ function readCssRadius(target: HTMLElement): number | undefined {
   const v = getComputedStyle(target).borderTopLeftRadius;
   const m = /^(\d+(?:\.\d+)?)px$/.exec(v ?? '');
   return m ? parseFloat(m[1]) : undefined;
+}
+
+/** The target's border widths, top right bottom left, px (0 where unknown). */
+function borderWidths(target: HTMLElement): [number, number, number, number] {
+  if (typeof getComputedStyle !== 'function') return [0, 0, 0, 0];
+  const cs = getComputedStyle(target);
+  return [cs.borderTopWidth, cs.borderRightWidth, cs.borderBottomWidth, cs.borderLeftWidth].map((v) => parseFloat(v ?? '') || 0) as [
+    number,
+    number,
+    number,
+    number,
+  ];
 }
 
 function measure(target: HTMLElement): { width: number; height: number } {
@@ -250,6 +276,41 @@ export function attachLiquidGlass(target: HTMLElement, options: LiquidGlassOptio
     return out;
   };
   const contentStyleFor = (url: string): Record<string, string> => (mode === 'content' ? { filter: url } : {});
+  const lightStyle = (): Record<string, string> => {
+    const light = inner.light;
+    if (mode !== 'glass' || !light || !light.image) return {};
+    return { backgroundImage: `url("${light.image}")`, backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', filter: light.url };
+  };
+
+  // ---- the light layer (`lightLayer` with `applyStyles`): an element over the target's border box,
+  //      under its content (z-index -1 in the stacking context the backdrop filter makes)
+  let lightEl: HTMLElement | null = null;
+  let savedPosition: string | null = null;
+  const fitLight = () => {
+    if (!lightEl) return;
+    const [top, right, bottom, left] = borderWidths(target);
+    // absolute boxes start at the padding box: reach out over the border
+    Object.assign(lightEl.style, { top: `${-top}px`, right: `${-right}px`, bottom: `${-bottom}px`, left: `${-left}px` });
+  };
+  const applyLightStyles = () => {
+    const style = lightStyle();
+    if (!style.filter) return;
+    if (!lightEl) {
+      lightEl = (target.ownerDocument as Document).createElement('div');
+      lightEl.setAttribute(LIGHT_ATTR, '');
+      lightEl.setAttribute('aria-hidden', 'true');
+      Object.assign(lightEl.style, { position: 'absolute', zIndex: '-1', borderRadius: 'inherit', pointerEvents: 'none' });
+      fitLight();
+      target.insertBefore(lightEl, target.firstChild);
+      const position = typeof getComputedStyle === 'function' ? getComputedStyle(target).position : 'static';
+      if (!position || position === 'static') {
+        savedPosition = styleTarget.position ?? '';
+        styleTarget.position = 'relative';
+      }
+    }
+    const s = lightEl.style as unknown as Record<string, string>;
+    for (const [k, v] of Object.entries(style)) if (s[k] !== v) s[k] = v;
+  };
 
   const applyTargetStyles = (p: ResolvedGlassParams, url: string) => {
     if (!applyStyles) return;
@@ -257,6 +318,7 @@ export function attachLiquidGlass(target: HTMLElement, options: LiquidGlassOptio
     for (const k of STYLE_KEYS) styleTarget[k] = style[k] ?? saved[k] ?? '';
     target.setAttribute(DATA_ATTR, mode);
     if (mode === 'content' && styleContent) styleContent.filter = url;
+    applyLightStyles();
   };
 
   let handle!: LiquidGlassHandle;
@@ -311,6 +373,7 @@ export function attachLiquidGlass(target: HTMLElement, options: LiquidGlassOptio
       checkContentSize();
       tasks.push(inner.setLens(lensOffset(target, content!)));
     }
+    fitLight();
     return Promise.all(tasks).then(() => undefined);
   }
 
@@ -361,6 +424,7 @@ export function attachLiquidGlass(target: HTMLElement, options: LiquidGlassOptio
       const next = box ? { width: Math.round(box.inlineSize), height: Math.round(box.blockSize) } : measure(target);
       if (next.width > 0 && next.height > 0) void update(next);
       if (mode === 'content') void relayout();
+      fitLight();
     });
     observer.observe(target);
   }
@@ -391,6 +455,10 @@ export function attachLiquidGlass(target: HTMLElement, options: LiquidGlassOptio
       target.removeAttribute(DATA_ATTR);
       if (mode === 'content' && styleContent) styleContent.filter = savedContentFilter;
     }
+    lightEl?.remove();
+    lightEl = null;
+    if (savedPosition !== null) styleTarget.position = savedPosition;
+    savedPosition = null;
     inner.destroy();
   }
 
@@ -419,6 +487,12 @@ export function attachLiquidGlass(target: HTMLElement, options: LiquidGlassOptio
     get lens() {
       return inner.lens;
     },
+    get light() {
+      return mode === 'glass' ? inner.light : null;
+    },
+    get lightElement() {
+      return lightEl;
+    },
     get destroyed() {
       return inner.destroyed;
     },
@@ -439,6 +513,7 @@ export function attachLiquidGlass(target: HTMLElement, options: LiquidGlassOptio
     appear,
     getStyle: () => styleFor(inner.params, inner.url),
     getContentStyle: () => contentStyleFor(inner.url),
+    getLightStyle: lightStyle,
     relayout,
     destroy,
   };
@@ -465,7 +540,7 @@ function createFrostHandle(
   let destroyed = false;
   let dpr = options.dpr ?? 1;
   let intensity = 1;
-  const debug = { mapUrl: null, lightUrl: null, mapDpr: dpr, mapWidth: 0, mapHeight: 0, physicalMaxDisplacementPx: 0, displacementPx: 0, renders: 0 };
+  const debug = { mapUrl: null, lightUrl: null, mapDpr: dpr, lightDpr: dpr, mapWidth: 0, mapHeight: 0, physicalMaxDisplacementPx: 0, displacementPx: 0, renders: 0 };
 
   let scheduled: Promise<void> | null = null;
   const render = (): Promise<void> => {
@@ -485,6 +560,7 @@ function createFrostHandle(
     id,
     url: `url(#${id})`,
     lens: null,
+    light: null,
     filterElement: filter,
     svgElement: svg,
     get params() {

@@ -3,7 +3,7 @@
  * (single pass, or three channel-isolated passes for dispersion), a blur stage and a rim stage.
  */
 import { describe, it, expect } from 'vitest';
-import { buildFilterSpec, filterSpecToSvg, filterElementAttrs, DISPERSION_SPREAD } from '../../src/core/filters/spec';
+import { buildFilterSpec, buildLightSpec, filterSpecToSvg, filterElementAttrs, DISPERSION_SPREAD, type FilterPrimitive } from '../../src/core/filters/spec';
 import { resolveGlassParams, type BlurKind } from '../../src/core/params';
 
 const COMBOS: { dispersion: number; blurKind: BlurKind; specular: boolean }[] = [];
@@ -277,5 +277,177 @@ describe('buildFilterSpec', () => {
     expect((svg.match(/<filter/g) ?? []).length).toBe(1);
     expect(svg.endsWith('</filter></defs></svg>')).toBe(true);
     expect(svg).toMatchSnapshot();
+  });
+});
+
+// ---- the light layer -------------------------------------------------------------------------
+
+/** One pixel, premultiplied RGBA in [0, 1]. */
+type Px = [number, number, number, number];
+const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+const over = (s: Px, b: Px): Px => s.map((c, i) => c + (1 - s[3]) * b[i]) as Px;
+
+/**
+ * Runs the colour stages of a graph on one pixel in sRGB, the way the Filter Effects spec does:
+ * colour matrices on unpremultiplied colour, arithmetic composites on premultiplied values
+ * (colour clamped to alpha), blends with the separable blend formulas. Names the graph has not
+ * produced read `fallback`.
+ */
+function runPixel(prims: readonly FilterPrimitive[], inputs: Record<string, Px>, fallback: Px): Px {
+  const results: Record<string, Px> = { ...inputs };
+  let last = fallback;
+  const read = (name: string | undefined) => (name !== undefined ? (results[name] ?? fallback) : last);
+  for (const p of prims) {
+    const a = p.attrs;
+    let out: Px;
+    if (p.tag === 'feColorMatrix') {
+      const [r, g, b, al] = read(a.in);
+      const u = al > 0 ? [r / al, g / al, b / al, al] : [0, 0, 0, 0];
+      const m = a.values.trim().split(/\s+/).map(Number);
+      const row = (i: number) => clamp01(m[i * 5] * u[0] + m[i * 5 + 1] * u[1] + m[i * 5 + 2] * u[2] + m[i * 5 + 3] * u[3] + m[i * 5 + 4]);
+      const alpha = row(3);
+      out = [row(0) * alpha, row(1) * alpha, row(2) * alpha, alpha];
+    } else if (p.tag === 'feComposite' && a.operator === 'arithmetic') {
+      const i1 = read(a.in);
+      const i2 = read(a.in2);
+      const [k1, k2, k3, k4] = [a.k1, a.k2, a.k3, a.k4].map(Number);
+      const v = i1.map((x, c) => clamp01(k1 * x * i2[c] + k2 * x + k3 * i2[c] + k4));
+      out = [Math.min(v[0], v[3]), Math.min(v[1], v[3]), Math.min(v[2], v[3]), v[3]];
+    } else if (p.tag === 'feComposite' && a.operator === 'over') {
+      out = over(read(a.in), read(a.in2));
+    } else if (p.tag === 'feComposite' && a.operator === 'in') {
+      const alpha = read(a.in2)[3];
+      out = read(a.in).map((c) => c * alpha) as Px;
+    } else if (p.tag === 'feBlend') {
+      const s = read(a.in);
+      const b = read(a.in2);
+      const mixed = (i: number) => (a.mode === 'multiply' ? s[i] * b[i] : s[3] * b[i] + b[3] * s[i] - s[i] * b[i]);
+      const [r, g, bl] = [0, 1, 2].map((i) => s[i] * (1 - b[3]) + b[i] * (1 - s[3]) + mixed(i));
+      out = [r, g, bl, s[3] + b[3] - s[3] * b[3]];
+    } else if (p.tag === 'feFlood') {
+      out = [0, 0, 0, Number(a['flood-opacity'] ?? 1)];
+    } else {
+      throw new Error(`runPixel: no ${p.tag}`);
+    }
+    results[a.result] = out;
+    last = out;
+  }
+  return last;
+}
+
+/** Light map pixels (bytes): no rim, rims of either sign, the deepest shade. */
+const LIGHT_PIXELS: [number, number, number][] = [
+  [128, 128, 0],
+  [242, 128, 40],
+  [28, 188, 200],
+  [128, 128, 255],
+  [200, 30, 128],
+  [60, 250, 90],
+];
+const BACKDROPS: Px[] = [
+  [0.2, 0.5, 0.9, 1],
+  [1, 1, 1, 1],
+  [0, 0, 0, 1],
+  [0.7, 0.1, 0.3, 1],
+];
+
+describe('buildFilterSpec (light layer)', () => {
+  it('leaves the shade, the rim and the light map out of the lens', () => {
+    for (const blurStage of ['after', 'before'] as const) {
+      const spec = buildFilterSpec(resolveGlassParams({ blurStage, shade: 0.4, specular: true }), REFS, { lightLayer: true });
+      expect(spec.static.map((p) => p.attrs.result)).toEqual(['map']);
+      const names = spec.dynamic.map((p) => p.attrs.result);
+      for (const light of ['litA', 'lit', 'shade', 'shaded', 'rimA', 'rim', 'final']) expect(names).not.toContain(light);
+      expect(spec.dynamic.some((p) => p.attrs.in === 'light' || p.attrs.in2 === 'light')).toBe(false);
+      expect(spec.structureKey).toContain('|-|-|');
+      expect(spec.structureKey.endsWith('|layer')).toBe(true);
+    }
+  });
+
+  it('the light angle, shade and rim strength change nothing in a layered lens', () => {
+    const a = buildFilterSpec(resolveGlassParams({ specularAngleDeg: 60, shade: 0.2, specularStrength: 1 }), REFS, { lightLayer: true });
+    const b = buildFilterSpec(resolveGlassParams({ specularAngleDeg: -101, shade: 0.6, specularStrength: 1.4 }), REFS, { lightLayer: true });
+    expect(b).toEqual(a);
+  });
+
+  it('is ignored in content-side mode (the lens draws its own light there)', () => {
+    const region = { x: 10, y: 20, width: 200, height: 80 };
+    const p = resolveGlassParams({ shade: 0.4 });
+    expect(buildFilterSpec(p, REFS, { region, lightLayer: true })).toEqual(buildFilterSpec(p, REFS, { region }));
+  });
+});
+
+describe('buildLightSpec', () => {
+  it("is the lens's own shade and rim stages on SourceGraphic: the rim over the shade, cut to the layer's shape", () => {
+    const p = resolveGlassParams({ shade: 0.5, specularStrength: 0.81, specularAngleDeg: 60 });
+    const light = buildLightSpec(p, 'lg-test-light');
+    const lens = buildFilterSpec(p, REFS);
+    expect(light.static).toEqual([]);
+    expect(light.padding).toBe(0);
+    expect(light.dynamic.map((q) => q.attrs.result)).toEqual(['litA', 'litB', 'lit', 'shadeFull', 'shade', 'rimA', 'rimB', 'rim', 'both', 'light']);
+    for (const q of light.dynamic.slice(0, -2)) {
+      const twin = lens.dynamic.find((r) => r.attrs.result === q.attrs.result)!;
+      expect(q).toEqual({ ...twin, attrs: { ...twin.attrs, ...(twin.attrs.in === 'light' ? { in: 'SourceGraphic' } : {}) } });
+    }
+    expect(light.dynamic.at(-2)!.attrs).toEqual({ in: 'rim', in2: 'shade', operator: 'over', result: 'both' });
+    expect(light.dynamic.at(-1)!.attrs).toEqual({ in: 'both', in2: 'SourceAlpha', operator: 'in', result: 'light' });
+    expect(filterElementAttrs(light)).toMatchObject({ id: 'lg-test-light', filterUnits: 'objectBoundingBox', width: '1', height: '1', 'color-interpolation-filters': 'sRGB' });
+  });
+
+  it('keeps only the enabled stages, and draws nothing when neither is', () => {
+    const results = (o: Parameters<typeof resolveGlassParams>[0]) => buildLightSpec(resolveGlassParams(o), 'x').dynamic.map((q) => q.attrs.result);
+    expect(results({ shade: 0.4, specular: false })).toEqual(['litA', 'litB', 'lit', 'shadeFull', 'shade', 'light']);
+    expect(results({ shade: 0, specular: true })).toEqual(['rimA', 'rimB', 'rim', 'light']);
+    const none = buildLightSpec(resolveGlassParams({ shade: 0, specular: false }), 'x');
+    expect(none.dynamic.map((q) => q.tag)).toEqual(['feFlood']);
+    expect(none.dynamic[0].attrs['flood-opacity']).toBe('0');
+  });
+
+  it('the light angle changes only matrix values (never the structure)', () => {
+    const a = buildLightSpec(resolveGlassParams({ shade: 0.4, specularAngleDeg: 60 }), 'x');
+    const b = buildLightSpec(resolveGlassParams({ shade: 0.4, specularAngleDeg: -101 }), 'x');
+    expect(b.structureKey).toBe(a.structureKey);
+    const diff = a.dynamic.map((q, i) => (JSON.stringify(q) === JSON.stringify(b.dynamic[i]) ? null : q.attrs.result)).filter(Boolean);
+    expect(diff).toEqual(['litA', 'litB', 'rimA', 'rimB']);
+  });
+
+  it('laid over the glass, it gives the pixels the lens gives with the light inside it', () => {
+    const cases = [
+      { shade: 0.4, specularStrength: 1, specularAngleDeg: 60 },
+      { shade: 0.55, specularStrength: 1.3, specularAngleDeg: -101 },
+      { shade: 0.4, specular: false, specularAngleDeg: 30 },
+      { shade: 0, specularStrength: 0.8, specularAngleDeg: 200 },
+      { shade: 0, specular: false },
+    ];
+    for (const c of cases) {
+      const p = resolveGlassParams(c);
+      const lens = buildFilterSpec(p, REFS).dynamic;
+      // the lens's light stages run on whatever the lens refracted: here, one backdrop pixel
+      const from = lens.findIndex((q) => q.attrs.in === 'light');
+      const lensLight = from < 0 ? [] : lens.slice(from);
+      const layer = buildLightSpec(p, 'x').dynamic;
+      for (const [r, g, b] of LIGHT_PIXELS) {
+        const map: Px = [r / 255, g / 255, b / 255, 1];
+        const drawn = runPixel(layer, { SourceGraphic: map, SourceAlpha: [0, 0, 0, 1] }, map);
+        for (const backdrop of BACKDROPS) {
+          const inLens = runPixel(lensLight, { light: map }, backdrop);
+          const layered = over(drawn, backdrop);
+          for (let i = 0; i < 4; i++) expect(layered[i]).toBeCloseTo(inLens[i], 9);
+        }
+      }
+    }
+  });
+
+  it("draws nothing outside the layer's shape, and fades with its antialiased edge", () => {
+    const layer = buildLightSpec(resolveGlassParams({ shade: 0.4, specularStrength: 1, specularAngleDeg: -90 }), 'x').dynamic;
+    const run = (px: Px) => runPixel(layer, { SourceGraphic: px, SourceAlpha: [0, 0, 0, px[3]] }, px);
+    // a corner outside the radius: transparent, which the matrices alone would light as a full rim
+    expect(run([0, 0, 0, 0])).toEqual([0, 0, 0, 0]);
+    for (const [r, g, b] of LIGHT_PIXELS) {
+      const full = run([r / 255, g / 255, b / 255, 1]);
+      const a = 0.35;
+      const edge = run([(a * r) / 255, (a * g) / 255, (a * b) / 255, a]);
+      for (let i = 0; i < 4; i++) expect(edge[i]).toBeCloseTo(full[i] * a, 9);
+    }
   });
 });
