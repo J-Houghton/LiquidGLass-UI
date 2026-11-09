@@ -153,7 +153,7 @@ object) plus the keys below. Nothing is required.
 | `getStyle()` | The declarations the target needs, as `CSSStyleDeclaration` keys (`backdropFilter`, `WebkitBackdropFilter`, `backgroundColor`, `boxShadow`, `borderRadius`), for `applyStyles: false`. |
 | `getContentStyle()` | Content mode: `{ filter: 'url(#id)' }` for the content element. |
 | `url`, `id`, `filterElement`, `svgElement` | The filter reference and its elements. `id` changes per render when `bumpFilterId` is on. |
-| `debug` | `mapUrl`, `mapDpr`, `mapWidth`, `mapHeight`, `physicalMaxDisplacementPx`, `displacementPx`, `renders`. |
+| `debug` | `mapUrl`, `lightUrl`, `mapDpr`, `mapWidth`, `mapHeight`, `physicalMaxDisplacementPx`, `displacementPx`, `renders`. |
 | `destroyed`, `destroy()` | Disconnect observers, restore inline styles, remove the `<svg>`, release the map. Idempotent. |
 
 ### Sizing rules
@@ -204,12 +204,14 @@ The handle is the `attachLiquidGlass` handle minus `target`, `mode`, `support`, 
 
 ### Map registry
 
-Handles whose geometry, optics and ratio agree share one map image through a reference-counted
-registry; a list of identical cards costs one map. The page-wide `defaultMapRegistry` keeps the
-16 most recently released maps warm so an unmount and remount, or a virtualised list, finds its
-map again. Create your own with `new MapRegistry(revoke, { maxIdle })` and pass it as `registry`
-when a group of handles should pool separately; `registry.clearIdle()` drops the warm maps,
-`size` and `idleSize` report what it holds.
+Handles whose geometry, optics and ratio agree share one pair of images (`{ map, light }`, see
+"What the maps are") through a reference-counted registry; a list of identical cards costs one
+pair. The light direction is not part of the key. The page-wide `defaultMapRegistry` keeps the 16
+most recently released pairs warm so an unmount and remount, or a virtualised list, finds them
+again. Create your own with `new MapRegistry<LensMapUrls>(revokeLensUrls, { maxIdle })` and pass
+it as `registry` when a group of handles should pool separately; `registry.clearIdle()` drops the
+warm pairs, `size` and `idleSize` report what it holds. A custom `encodeImage` is called twice per
+generation, once per image.
 
 ## 6. Parameters
 
@@ -234,7 +236,7 @@ encode); everything else is an attribute write on the filter graph.
 | `blur` | number, 0.2 | ≥ 0 | no | Gaussian standard deviation in px, or the noise displacement scale (× 20 for `noise1`, × 40 for `noise2`). |
 | `blurStage` | `'after'` | `after`, `before` | no | `after` blurs the refracted result; `before` blurs the backdrop first (alpha pinned opaque) and then displaces it, which keeps the rim and the dispersion fringe crisp. Indistinguishable at the default blur; visible from about 1 px, most with dispersion. Content mode always blurs first. |
 | `specular` | boolean, true | | no | Rim highlight on or off. |
-| `specularAngleDeg` | number, 60 | any | yes | Light direction in degrees (baked into the map's blue channel). |
+| `specularAngleDeg` | number, 60 | any | no | Light direction in degrees, y down (0 = from the right, −90 = from above; the rim is lit on both sides, so an angle and its opposite agree). A graph attribute, so it can move every frame: see `attachGlassLight`. |
 | `specularStrength` | number, 0.81 | ≥ 0 | no | Rim brightness, applied once in the filter. Values above 1 are allowed and clip. |
 | `shade` | number, 0 | 0..1 | no | Edge darkening: how dark the glass gets where the lens thins the backdrop the most, just inside the rim, fading to nothing on the flat center. Reads as thickness. 0.35 is a good start. |
 | `tint` | number, 0.05 | 0..1 | no | Black overlay alpha, written as the target's `background-color`. |
@@ -244,12 +246,14 @@ encode); everything else is an attribute write on the filter graph.
 without touching the DOM, if you want to validate ahead of time. `fromLegacyParams()` maps 1.x
 names (`scalePx`, `blurStdDev`, `showSpecular`, `frost`).
 
-### What the map is
+### What the maps are
 
-One RGBA image per unique geometry: R and G carry the inward displacement with a 128 bias, B
-carries lighting signed around 128 (rim light above, shade below, both at unit strength so the
-filter can scale them), A is 255 everywhere. `debug.mapUrl` shows it; the custom element's `debug`
-attribute overlays it.
+Two RGBA images per unique geometry, from one walk of the bezel band. The displacement map
+(`debug.mapUrl`) carries the inward displacement in R and G with a 128 bias, B neutral, A 255.
+The light map (`debug.lightUrl`) carries the rim Gaussian times the outward normal in R and G
+(128 bias) and the shade profile in B, A 255. Neither depends on the light direction: the filter
+applies the light vector itself with colour matrices, which is why `specularAngleDeg` changes
+cost nothing. The custom element's `debug` attribute overlays the displacement map.
 
 ## 7. Browser support, fallback and the content-side lens
 
@@ -391,6 +395,44 @@ el.style.transition = `transform ${durationMs}ms ${easing}`;      // linear(0, 0
 `springPhysics` also takes `{ mass, stiffness, damping }`; `springPerceptual` converts back.
 `{ duration: 0.5, bounce: 0.3 }` is stiffness 157.9, damping 17.6, the pair Apple documents.
 
+### Light from the page and the pointer
+
+The rim highlight's direction (`specularAngleDeg`) is a graph attribute, so it can change every
+frame. `attachGlassLight` aims it from the page:
+
+```ts
+import { attachGlassLight } from 'liquid-glass-filter';
+
+const light = attachGlassLight(glass, {
+  scene: 'viewport',          // default: a light half a viewport above the viewport's top centre
+  pointer: { radius: 160 },   // default: the pointer pulls the light within 160 px, owns it on the glass
+  smoothing: 0.35,            // per-frame fraction of the remaining turn; 1 snaps
+});
+```
+
+| Option | Default | Meaning |
+|---|---|---|
+| `scene` | `'viewport'` | `'viewport'`, a `{ x, y }` point in viewport px, a function `(viewport) => point`, or `false` for no scene light (the angle stays unless the pointer takes over). |
+| `pointer` | `true` | `false`, or `{ radius }`. The weight is a smoothstep from 1 on the glass to 0 at `radius` px from its edge; the light is the scene point mixed toward the pointer by that weight. |
+| `smoothing` | `0.35` | Easing per frame. Snaps under `prefers-reduced-motion` (`respectReducedMotion: false` to ignore it). |
+| `listenOn` | the target | Element whose document and window supply `pointermove`, `pointerout`, `scroll` (capture) and `resize`. `null` for none. |
+| `viewport`, `animationFrame`, `matchMedia`, `onAngle` | globals | Test seams and a per-write callback. |
+
+| Handle member | Meaning |
+|---|---|
+| `angle`, `target`, `running` | What is written, where it is heading, whether the loop runs. |
+| `update()` | Re-measure the glass (after you move it; scroll and resize are followed). |
+| `setScene(scene)`, `setPointer(point \| null)` | Change the scene rule; feed a pointer from your own code. |
+| `destroy()` | Remove listeners and stop. |
+
+Every glass on the page lit this way shares one scene light, which reads as a single light over
+the page: a glass on the left is lit from the upper right, one on the right from the upper left,
+and the lighting shifts as the page scrolls past the light. The first placement snaps so a page
+does not open with rims swinging into place. The rim is symmetric (a direction and its opposite
+light the same pixels), so angle easing takes the short way around a 180° circle. Frost mode has
+no rim to aim, so the handle is inert there. The pure geometry (`lightAngleFor`, `distanceToRect`,
+`pointerWeight`, `lightAngleDelta`, `approachLightAngle`) lives in `liquid-glass-filter/motion`.
+
 ## 9. Custom elements
 
 ```ts
@@ -418,6 +460,7 @@ work. Extra attributes:
 | `debug` | Overlay the displacement map. |
 | `content="#selector"`, `mode="content"` | Content-side lens (section 7). The selector is resolved in the element's root (shadow or document) on connect. |
 | `motion="press drag hover"` | Attach the motion with any subset; the bare attribute means press and drag. `element.motion` is the handle. |
+| `light="scene pointer"` | Aim the rim from the page with any subset; the bare attribute means both. `element.light` is the handle. |
 
 Properties mirror the parameters in camelCase; `blur` is exposed as `blurAmount` because
 `HTMLElement.blur()` exists. `element.glass` is the live `LiquidGlassHandle` (null while
@@ -489,7 +532,7 @@ Everything in `/core` is pure: numbers in, plain data out, no DOM types, runs in
 tests.
 
 ```ts
-import { resolveGlassParams, displacementCurve, displacementMap, maxAbs, buildFilterSpec, filterSpecToSvg } from 'liquid-glass-filter/core';
+import { resolveGlassParams, displacementCurve, lensMaps, maxAbs, buildFilterSpec, filterSpecToSvg } from 'liquid-glass-filter/core';
 
 const p = resolveGlassParams({ width: 320, height: 160, radius: 24, bezelWidth: 40 });
 
@@ -498,15 +541,14 @@ const curve = displacementCurve({
   glassThickness: p.glassThickness, bezelWidth: p.bezelWidth, refractiveIndex: p.refractiveIndex, surface: p.surface,
 });
 
-// 2. the map: { width, height, data: Uint8ClampedArray } at the given ratio
-const map = displacementMap({
+// 2. the two maps: { width, height, data: Uint8ClampedArray } each, at the given ratio
+const { map, light } = lensMaps({
   width: p.width, height: p.height, radius: p.radius, bezelWidth: p.bezelWidth, dpr: 2,
-  curve, maxDisplacement: maxAbs(curve),
-  rim: { angleDeg: p.specularAngleDeg, rimPx: 2 },      // light and shade in the blue channel
+  curve, maxDisplacement: maxAbs(curve), rimPx: 2,
 });
 
-// 3. the filter graph as data, then markup
-const spec = buildFilterSpec(p, { id: 'glass', mapHref: pngDataUrlOf(map) });
+// 3. the filter graph as data (the light angle goes into the rim matrices), then markup
+const spec = buildFilterSpec(p, { id: 'glass', mapHref: pngDataUrlOf(map), lightHref: pngDataUrlOf(light) });
 const svg = filterSpecToSvg(spec);   // '<svg …><defs><filter id="glass" …>…</filter></defs></svg>'
 ```
 
@@ -514,10 +556,11 @@ const svg = filterSpecToSvg(spec);   // '<svg …><defs><filter id="glass" …>�
 |---|---|---|
 | `resolveGlassParams(partial, base?)` | `ResolvedGlassParams` | Clamped parameters plus `shape` and `notes`. |
 | `displacementCurve(opts)` | `Float64Array` | Snell's law at each bezel sample over the bezel height plus glass thickness, with a soft-knee limiter. `surface` can be a name or your own `(x) => height` on [0, 1]. |
-| `displacementMap(opts)` | `RGBAImage` | Band geometry at pixel centers, one quadrant computed and mirrored. `maxDisplacement` normalises the 8-bit range; the filter's `scale` restores px. |
+| `lensMaps(opts)` | `{ map, light }` | Both images from one walk of the band: geometry at pixel centers, one quadrant computed and mirrored. `maxDisplacement` normalises the 8-bit range; the filter's `scale` restores px. `rimPx` sets the rim Gaussian, `shade: false` leaves the shade channel empty. |
+| `displacementMap(opts)`, `lightMap(opts)` | `RGBAImage` | Either image alone. |
 | `maxAbs(curve)` | number | The physical maximum displacement, what `physicalScale` uses. |
 | `specularMap(opts)` | `RGBAImage` | A standalone rim-light image, if you want it separate from the map. |
-| `buildFilterSpec(params, { id, mapHref }, { padding?, region? })` | `FilterSpec` | The graph as `{ static, dynamic, structureKey }` primitives. `region` builds the content-side variant. |
+| `buildFilterSpec(params, { id, mapHref, lightHref }, { padding?, region? })` | `FilterSpec` | The graph as `{ static, dynamic, structureKey }` primitives; the light vector from `specularAngleDeg` sits in the rim matrices. `region` builds the content-side variant. |
 | `filterSpecToSvg(spec)` | string | Inline `<svg>` markup; `mapHref` must then be a data or real URL. |
 | `filterElementAttrs(spec)` | record | The `<filter>` element's attributes. |
 | `createRGBAImage(w, h)` | `RGBAImage` | An empty buffer. |
@@ -534,7 +577,7 @@ What costs what:
 
 | Action | Cost |
 |---|---|
-| First render, or a change to a map key (size, radius, bezel, surface, IOR, thickness, light angle, dpr) | CPU map generation for the bucketed size, capped by `maxMapPixels` (default about 565×565 device px, a few ms), then a PNG encode through a canvas (async). Shared across handles with the same key. |
+| First render, or a change to a map key (size, radius, bezel, surface, IOR, thickness, dpr) | CPU map generation for the bucketed size, capped by `maxMapPixels` (default about 565×565 device px, a few ms), then a PNG encode through a canvas (async). Shared across handles with the same key. |
 | Any other parameter, `intensity`, `setLens`, `relayout` | Attribute writes on the existing primitives; the browser re-runs the filter on the next composite. |
 | A resize | A new map for the new bucket, while the old one is stretched to the new box so nothing flickers. With `sizeBucket` 1.02, dragging a resize handle changes the bucket every 2 %, not every pixel. |
 | Rendering | Chromium runs the backdrop filter in the compositor per frame; cost scales with the glass area and the number of passes (3× with dispersion, plus blur). Firefox content mode runs on the CPU. |
@@ -634,8 +677,9 @@ no-op on the server.
 Main entry: `LiquidGlassOptions`, `LiquidGlassHandle`, `GlassMode`, `GlassFallback`,
 `AppearOptions`, `GlassFilterOptions`, `GlassFilterHandle`, `GlassFilterDebug`, `LensPlacement`,
 `GlassMotionOptions`, `GlassMotionHandle`, `MotionFrame`, `MotionGlass`, `PressMotion`,
-`HoverMotion`, `GlassSupport`, `SupportEnvironment`, `ImageEncoder`, `UrlRevoker`,
-`MapRegistryOptions`, `ElementFactory`.
+`HoverMotion`, `GlassLightOptions`, `GlassLightHandle`, `LightGlass`, `SceneLight`, `GlassSupport`,
+`SupportEnvironment`, `ImageEncoder`, `UrlRevoker`, `MapRegistryOptions`, `LensMapUrls`,
+`ElementFactory`.
 
 Core: `GlassParams`, `ResolvedGlassParams`, `BlurKind`, `BlurStage`, `DispersionUnit`,
 `SurfaceKind`, `SurfaceFn`, `RGBAImage`, `DisplacementCurveOptions`, `DisplacementMapOptions`,
@@ -643,7 +687,7 @@ Core: `GlassParams`, `ResolvedGlassParams`, `BlurKind`, `BlurStage`, `Dispersion
 `LensRegion`, `LegacyGlassParams`.
 
 Motion: `SpringPhysics`, `SpringPerceptual`, `SpringConfig`, `SpringState`, `RestThreshold`,
-`LinearEasingOptions`, `SquashConfig`, `SquashState`, `Deformation`.
+`LinearEasingOptions`, `SquashConfig`, `SquashState`, `Deformation`, `Point`, `Rect`.
 
 Elements: `LiquidGlassElement`, `LiquidGlassFilterElement`, `DefineLiquidGlassElementsOptions`,
 `PropDef`, `PropType`; the `HTMLElementTagNameMap` augmentation types `document.createElement('liquid-glass-container')`.

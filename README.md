@@ -137,6 +137,32 @@ string plus duration for plain transitions), `squashSample`, `squashDecay`, `squ
 On the element: `<liquid-glass-container motion="press drag hover">` (any subset; the bare
 attribute means press and drag).
 
+### Light that follows the page and the pointer
+
+The rim highlight's direction is a graph attribute (`specularAngleDeg`), not part of the map, so
+it can move every frame. `attachGlassLight` aims it from the page: a scene light fixed above the
+viewport's top centre, so each glass is lit according to where it sits and keeps being so as the
+page scrolls, blended toward the pointer when it comes within reach.
+
+```ts
+import { attachLiquidGlass, attachGlassLight } from 'liquid-glass-filter';
+
+const glass = attachLiquidGlass(card);
+const light = attachGlassLight(glass, {
+  scene: 'viewport',        // default; or { x, y } in viewport px, a function of the viewport size, or false
+  pointer: { radius: 160 }, // default; the pointer owns the light on the glass and lets go beyond 160 px
+  smoothing: 0.35,          // per-frame easing; 1 snaps; reduced motion snaps
+});
+light.update();             // after moving the glass yourself; scroll and resize are followed
+light.setPointer({ x, y }); // or feed a pointer from your own code; null when it leaves
+```
+
+Two glasses side by side are lit from the same place, which reads as one light over the page; a
+glass under the cursor gets the highlight on the side facing it. Angles ease in one frame loop
+that sleeps at rest, and the rim is symmetric (a light and its opposite are the same), so the
+easing always takes the short way. On the element: `<liquid-glass-container light="scene pointer">`
+(any subset; the bare attribute means both).
+
 ### HTML custom elements
 
 ```ts
@@ -224,7 +250,7 @@ Values are validated and clamped; `handle.params.notes` lists anything that was 
 | `url`, `id`, `filterElement`, `svgElement` | The filter reference and its elements. |
 | `setDpr(n)`, `refresh()` | Re-render at another device pixel ratio / with current parameters. |
 | `intensity`, `setIntensity(k)`, `appear(ms?)` | A 0..1 multiplier on displacement and rim (graph attributes only); `appear` eases it from 0 to 1. |
-| `debug` | `mapUrl` (one image: R,G displacement, B light above 128 and shade below), `mapDpr`, `physicalMaxDisplacementPx`, `displacementPx`, `renders`. |
+| `debug` | `mapUrl` (R,G displacement), `lightUrl` (R,G rim normal, B shade), `mapDpr`, `mapWidth`, `mapHeight`, `physicalMaxDisplacementPx`, `displacementPx`, `renders`. |
 | `destroy()` | Removes everything the handle created. Idempotent. |
 | `getStyle()` (attach only) | The declarations the effect needs, for `applyStyles: false`. |
 
