@@ -1,6 +1,7 @@
 import type { GlassParams } from '../core/params.js';
 import { attachLiquidGlass, type LiquidGlassHandle, type LiquidGlassOptions } from '../dom/attachLiquidGlass.js';
 import { attachGlassMotion, type GlassMotionHandle } from '../dom/attachGlassMotion.js';
+import { attachGlassLight, type GlassLightHandle } from '../dom/attachGlassLight.js';
 import { GLASS_PROP_SCHEMA, adoptOwnProps, attrPatch, defineAccessors, observedAttributesOf } from './reactiveProps.js';
 
 /** Safe to evaluate on a server: falls back to a plain class when HTMLElement is absent. */
@@ -16,16 +17,18 @@ export const ElementBase: typeof HTMLElement =
  * names the element to refract through `filter: url()` where the backdrop lens does not render
  * (resolved in the element's root on connect); `mode="content"` forces that path.
  * `motion="press drag hover"` (any subset; the bare attribute means press and drag) attaches
- * the spring/squash motion.
+ * the spring/squash motion. `light="scene pointer"` (any subset; bare means both) lights the rim
+ * from the page: the scene light above the viewport, the pointer when it comes near.
  */
 export class LiquidGlassElement extends ElementBase {
-  static readonly observedAttributes: readonly string[] = [...observedAttributesOf(GLASS_PROP_SCHEMA), 'debug', 'appear', 'content', 'mode', 'motion'];
+  static readonly observedAttributes: readonly string[] = [...observedAttributesOf(GLASS_PROP_SCHEMA), 'debug', 'appear', 'content', 'mode', 'motion', 'light'];
   /** Options merged into every instance's `attachLiquidGlass` call (set via defineLiquidGlassElements). */
   static defaults: Partial<LiquidGlassOptions> = {};
 
   _props: Record<string, unknown> = {};
   private _glass: LiquidGlassHandle | null = null;
   private _motion: GlassMotionHandle | null = null;
+  private _light: GlassLightHandle | null = null;
   private _debug = false;
   private _debugEl: HTMLElement | null = null;
   private _pending: Record<string, unknown> | null = null;
@@ -44,6 +47,11 @@ export class LiquidGlassElement extends ElementBase {
   /** The motion handle while the `motion` attribute is set and the element is connected. */
   get motion(): GlassMotionHandle | null {
     return this._motion;
+  }
+
+  /** The light handle while the `light` attribute is set and the element is connected. */
+  get light(): GlassLightHandle | null {
+    return this._light;
   }
 
   /** Show the displacement map instead of the glass (development aid). */
@@ -89,9 +97,12 @@ export class LiquidGlassElement extends ElementBase {
     });
     this._syncDebugOverlay();
     this._syncMotion();
+    this._syncLight();
   }
 
   disconnectedCallback(): void {
+    this._light?.destroy();
+    this._light = null;
     this._motion?.destroy();
     this._motion = null;
     this._glass?.destroy();
@@ -118,6 +129,10 @@ export class LiquidGlassElement extends ElementBase {
     }
     if (name === 'motion') {
       this._syncMotion();
+      return;
+    }
+    if (name === 'light') {
+      this._syncLight();
       return;
     }
     const patch = attrPatch(GLASS_PROP_SCHEMA, name, value);
@@ -154,6 +169,20 @@ export class LiquidGlassElement extends ElementBase {
       press: all || tokens.includes('press'),
       drag: all || tokens.includes('drag'),
       hover: tokens.includes('hover'),
+    });
+  }
+
+  /** (Re)attach the light for the current `light` attribute. */
+  private _syncLight(): void {
+    this._light?.destroy();
+    this._light = null;
+    const attr = this.getAttribute('light');
+    if (attr === null || !this._glass) return;
+    const tokens = attr.split(/\s+/).filter(Boolean);
+    const all = tokens.length === 0;
+    this._light = attachGlassLight(this._glass, {
+      scene: all || tokens.includes('scene') ? 'viewport' : false,
+      pointer: all || tokens.includes('pointer'),
     });
   }
 

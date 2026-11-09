@@ -192,3 +192,19 @@ describe('<liquid-glass-container motion>', () => {
     expect(el.motion).toBeNull();
   });
 });
+
+describe('<liquid-glass-container light>', () => {
+  it('light attribute lights the rim from the page; tokens choose scene and pointer; removal detaches', async () => {
+    document.body.innerHTML = `<liquid-glass-container id="l" light width="200" height="100"></liquid-glass-container>`;
+    const el = document.getElementById('l') as LiquidGlassElement;
+    await el.glass!.ready;
+    expect(el.light).not.toBeNull();
+    const first = el.light!;
+    el.setAttribute('light', 'pointer');
+    expect(el.light).not.toBe(first);
+    el.removeAttribute('light');
+    expect(el.light).toBeNull();
+    el.remove();
+    expect(el.light).toBeNull();
+  });
+});

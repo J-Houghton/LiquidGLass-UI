@@ -17,3 +17,6 @@ export {
   SQUASH_MAX_DT,
   IDENTITY_DEFORMATION,
 } from './squash.js';
+
+export type { Point, Rect } from './light.js';
+export { lightAngleFor, distanceToRect, pointerWeight, mixPoints, lightAngleDelta, approachLightAngle } from './light.js';
