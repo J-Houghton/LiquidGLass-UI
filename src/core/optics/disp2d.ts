@@ -126,3 +126,90 @@ export function maxAbs(curve: ArrayLike<number>): number {
   for (let i = 0; i < curve.length; i++) m = Math.max(m, Math.abs(curve[i]));
   return m;
 }
+
+// ---- light map ------------------------------------------------------------------------------
+
+export interface LightMapOptions {
+  width: number;
+  height: number;
+  radius: number;
+  bezelWidth: number;
+  dpr: number;
+  /** The displacement curve; its stretch profile becomes the shade channel. */
+  curve: ArrayLike<number>;
+  /** Gaussian width of the rim, CSS px. Default 2. */
+  rimPx?: number;
+  /** Bake the shade profile into B. Default true. */
+  shade?: boolean;
+}
+
+/** R and G value of the light map where there is no rim. B is 0 where there is no shade. */
+export const LIGHT_NEUTRAL = 128;
+
+/**
+ * The lighting companion of the displacement map, independent of the light direction:
+ * R,G = Gaussian rim falloff times the outward unit normal (128 bias, 127 scale), B = the
+ * normalized stretch profile (0..255, 1 where the lens thins the backdrop the most), A = 255.
+ * The filter turns it into the lit rim for any light vector L with one colour matrix per side:
+ * alpha = max(0, ±(g·n)·L), summed, so changing the light angle is an attribute write.
+ */
+export function lightMap(opts: LightMapOptions): RGBAImage {
+  return rasterize(opts, false, true).light!;
+}
+
+export interface LensMaps {
+  map: RGBAImage;
+  light: RGBAImage;
+}
+
+/** Both images from one walk of the band (the displacement map carries no lighting). */
+export function lensMaps(opts: LightMapOptions & { maxDisplacement?: number }): LensMaps {
+  const r = rasterize(opts, true, true);
+  return { map: r.map!, light: r.light! };
+}
+
+function rasterize(
+  opts: LightMapOptions & { maxDisplacement?: number },
+  wantMap: boolean,
+  wantLight: boolean,
+): { map?: RGBAImage; light?: RGBAImage } {
+  const { dpr, curve } = opts;
+  const W = Math.round(opts.width * dpr);
+  const H = Math.round(opts.height * dpr);
+  const R = Math.round(opts.radius * dpr);
+  const B = Math.max(1, Math.round(opts.bezelWidth * dpr));
+  const n = curve.length;
+  const maxDisp = opts.maxDisplacement ?? maxAbs(curve);
+  const T = rimThickness(opts.rimPx, dpr);
+  const stretch = opts.shade === false ? null : stretchProfile(curve);
+
+  const map = wantMap ? createRGBAImage(W, H) : null;
+  const light = wantLight ? createRGBAImage(W, H) : null;
+  if (map) new Uint32Array(map.data.buffer).fill(0xff808080); // (128,128,128,255)
+  if (light) new Uint32Array(light.data.buffer).fill(0xff008080); // (128,128,0,255)
+  const md = map?.data;
+  const ld = light?.data;
+
+  forEachBandPixel(W, H, R, B, (p) => {
+    const u = Math.max(0, Math.min(1, p.t / B));
+    const f = u * (n - 1);
+    const i0 = Math.max(0, Math.floor(f));
+    if (md) {
+      const i1 = Math.min(n - 1, i0 + 1);
+      const w1 = f - i0;
+      const disp = (curve[i0] ?? 0) * (1 - w1) + (curve[i1] ?? 0) * w1;
+      md[p.idx] = 128 + ((-p.nx * disp) / maxDisp) * 127;
+      md[p.idx + 1] = 128 + ((-p.ny * disp) / maxDisp) * 127;
+      md[p.idx + 2] = RIM_NEUTRAL;
+      md[p.idx + 3] = 255;
+    }
+    if (ld) {
+      const g = p.t > 3 * T ? 0 : Math.exp(-(p.t * p.t) / (2 * T * T));
+      ld[p.idx] = Math.round(LIGHT_NEUTRAL + 127 * g * p.nx);
+      ld[p.idx + 1] = Math.round(LIGHT_NEUTRAL + 127 * g * p.ny);
+      ld[p.idx + 2] = stretch ? Math.round(255 * stretch[Math.min(stretch.length - 1, i0)]) : 0;
+      ld[p.idx + 3] = 255;
+    }
+  });
+  return { map: map ?? undefined, light: light ?? undefined };
+}
