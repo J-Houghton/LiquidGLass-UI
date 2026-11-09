@@ -13,6 +13,8 @@ import { lightVector } from '../optics/rim.js';
  * where displacement is 1 pass, or 3 channel-isolated passes at staggered scales for dispersion.
  * With `region` (content-side `filter: url()`), the stages are confined to the lens rectangle and
  * the chain ends: saturate → hole in the source → lens over source.
+ * With `lightLayer`, the lens stops after displacement and blur (no light map image either), and
+ * `buildLightSpec` draws the shade and rim as a filter of their own, for a layer over the glass.
  */
 
 export interface FilterPrimitive {
@@ -64,6 +66,13 @@ export interface FilterSpecOptions {
    * Moving the lens changes only these four attributes on each primitive.
    */
   region?: LensRegion;
+  /**
+   * Leave the shade and the rim (and the light map image they read) out of the lens graph: they
+   * are drawn by `buildLightSpec` on a layer over the glass instead. A backdrop filter re-runs its
+   * whole graph whenever anything behind the glass moves, so the lens is then a third of the
+   * work, and the light only re-runs when the light moves. Ignored with `region`.
+   */
+  lightLayer?: boolean;
 }
 
 /** Displacement scale per unit of blur for the two noise profiles. */
@@ -79,6 +88,7 @@ const num = (v: number): string => String(Math.round(v * 1000) / 1000);
 
 export function buildFilterSpec(p: ResolvedGlassParams, refs: FilterRefs, opts: FilterSpecOptions = {}): FilterSpec {
   const region = opts.region ?? null;
+  const layered = !region && opts.lightLayer === true;
   const padding = region ? 0 : Math.max(0, opts.padding ?? 0);
   // Without padding the filter region is the element's box in objectBoundingBox units and the
   // map image has no subregion, so it fills whatever the box is right now: a resized element
@@ -94,7 +104,8 @@ export function buildFilterSpec(p: ResolvedGlassParams, refs: FilterRefs, opts: 
       : padding > 0
         ? prim('feImage', { x: '0', y: '0', width: String(p.width), height: String(p.height), preserveAspectRatio: 'none', href, result })
         : prim('feImage', { preserveAspectRatio: 'none', href, result });
-  const staticPrims: FilterPrimitive[] = [image(refs.mapHref, 'map'), image(refs.lightHref, 'light')];
+  // with a light layer, nothing in the lens reads the light map, so it isn't drawn here at all
+  const staticPrims: FilterPrimitive[] = layered ? [image(refs.mapHref, 'map')] : [image(refs.mapHref, 'map'), image(refs.lightHref, 'light')];
 
   let dynamic: FilterPrimitive[] = [];
   const chromatic = p.dispersion > 0;
@@ -127,13 +138,14 @@ export function buildFilterSpec(p: ResolvedGlassParams, refs: FilterRefs, opts: 
     dynamic.push(...blurred.prims);
     input = blurred.result;
   }
-  const shade = p.shade;
+  const shade = layered ? 0 : p.shade;
+  const specular = !layered && p.specular;
   const [lx, ly] = lightVector(p.specularAngleDeg);
   if (shade > 0) {
     dynamic.push(...shadeStage(input, shade, lx, ly));
     input = 'shaded';
   }
-  if (p.specular) {
+  if (specular) {
     dynamic.push(...rimStage(input, p.specularStrength, lx, ly));
     input = 'final';
   }
@@ -160,8 +172,48 @@ export function buildFilterSpec(p: ResolvedGlassParams, refs: FilterRefs, opts: 
     static: staticPrims,
     dynamic,
     structureKey:
-      `${chromatic ? 'dispersion' : 'single'}|${before ? 'before' : 'after'}:${p.blurKind}|${shade > 0 ? 'shade' : '-'}|${p.specular ? 'rim' : '-'}|pad:${padding > 0 ? 'px' : 'box'}` +
-      (region ? '|content' : ''),
+      `${chromatic ? 'dispersion' : 'single'}|${before ? 'before' : 'after'}:${p.blurKind}|${shade > 0 ? 'shade' : '-'}|${specular ? 'rim' : '-'}|pad:${padding > 0 ? 'px' : 'box'}` +
+      (region ? '|content' : '') +
+      (layered ? '|layer' : ''),
+  };
+}
+
+/**
+ * The light layer: the shade and the lit rim as a filter of their own, for `filter: url()` on an
+ * element over the glass whose content is the light map, stretched to the glass's box (see
+ * `lightLayer`). They are the lens graph's own stages, reading the map from `SourceGraphic`. The
+ * lens graph multiplies its shade into the refracted image and screens its rim over it; the shade
+ * is black and the rim white, and for those, multiply and screen give the same as compositing them
+ * over the top. So this graph ends with the rim over the shade, both see-through, and laid over
+ * the glass it comes to the lens graph's result. Only matrix values depend on the light direction.
+ *
+ * The result is cut to the layer's own shape (its alpha). A layer with the glass's border radius
+ * leaves its corners transparent, and the matrices would read a transparent pixel (R = G = 0) as a
+ * fully lit rim; the lens never sees one, since its map covers the whole box and the browser clips
+ * the backdrop to the corners afterwards. The cut does that clipping here, antialiased edge included.
+ */
+export function buildLightSpec(p: ResolvedGlassParams, id: string): FilterSpec {
+  const [lx, ly] = lightVector(p.specularAngleDeg);
+  const shade = p.shade > 0;
+  const dynamic: FilterPrimitive[] = [];
+  if (shade) dynamic.push(...litStage('SourceGraphic', lx, ly), ...shadeLayer('SourceGraphic', p.shade));
+  if (p.specular) dynamic.push(...rimLayer('SourceGraphic', p.specularStrength, lx, ly));
+  if (shade && p.specular) dynamic.push(prim('feComposite', { in: 'rim', in2: 'shade', operator: 'over', result: 'both' }));
+  if (shade || p.specular) {
+    const top = shade && p.specular ? 'both' : shade ? 'shade' : 'rim';
+    dynamic.push(prim('feComposite', { in: top, in2: 'SourceAlpha', operator: 'in', result: 'light' }));
+  } else {
+    // neither: draw nothing (a filter with no primitives would show the light map itself)
+    dynamic.push(prim('feFlood', { 'flood-opacity': '0', result: 'light' }));
+  }
+  return {
+    id,
+    width: p.width,
+    height: p.height,
+    padding: 0,
+    static: [],
+    dynamic,
+    structureKey: `light|${shade ? 'shade' : '-'}|${p.specular ? 'rim' : '-'}`,
   };
 }
 
@@ -292,38 +344,60 @@ const lightRow = (sx: number, sy: number, shadeCoeff: number): string =>
 
 /**
  * Rim light for the light vector (lx, ly): per side, white with alpha = max(0, strength × (±(g·n)·L
- * − shade)), the two sides summed and screened over the refracted image. Strength is applied here
- * only, and the light direction lives in these attributes alone.
+ * − shade)), the two sides summed (`rimLayer`) and screened over the refracted image. Strength is
+ * applied here only, and the light direction lives in these attributes alone.
  */
 function rimStage(input: string, strength: number, lx: number, ly: number): FilterPrimitive[] {
+  return [...rimLayer('light', strength, lx, ly), prim('feBlend', { in: input, in2: 'rim', mode: 'screen', result: 'final' })];
+}
+
+/** The lit rim as a white layer, from the light map at `source`. */
+function rimLayer(source: string, strength: number, lx: number, ly: number): FilterPrimitive[] {
   return [
-    prim('feColorMatrix', { in: 'light', type: 'matrix', values: lightRow(strength * lx, strength * ly, -strength), result: 'rimA' }),
-    prim('feColorMatrix', { in: 'light', type: 'matrix', values: lightRow(-strength * lx, -strength * ly, -strength), result: 'rimB' }),
+    prim('feColorMatrix', { in: source, type: 'matrix', values: lightRow(strength * lx, strength * ly, -strength), result: 'rimA' }),
+    prim('feColorMatrix', { in: source, type: 'matrix', values: lightRow(-strength * lx, -strength * ly, -strength), result: 'rimB' }),
     prim('feComposite', { in: 'rimA', in2: 'rimB', operator: 'arithmetic', k1: '0', k2: '1', k3: '1', k4: '0', result: 'rim' }),
-    prim('feBlend', { in: input, in2: 'rim', mode: 'screen', result: 'final' }),
   ];
 }
 
 /**
- * Shade: black with alpha = k × max(0, shade − |(g·n)·L|), multiplied into the refracted image,
- * which darkens an opaque backdrop by that alpha. k is the `shade` parameter: the darkening where
- * the lens thins the backdrop the most. The lit rim |(g·n)·L| comes from two unit-strength side
- * matrices summed (at most one is non-zero per pixel), and is subtracted with an arithmetic
- * composite whose colour channels clamp to black.
+ * Shade: black with alpha = k × max(0, shade − |(g·n)·L|) (`litStage`, `shadeLayer`), multiplied
+ * into the refracted image, which darkens an opaque backdrop by that alpha. k is the `shade`
+ * parameter: the darkening where the lens thins the backdrop the most.
  */
 function shadeStage(input: string, k: number, lx: number, ly: number): FilterPrimitive[] {
   return [
-    prim('feColorMatrix', { in: 'light', type: 'matrix', values: lightRow(lx, ly, 0), result: 'litA' }),
-    prim('feColorMatrix', { in: 'light', type: 'matrix', values: lightRow(-lx, -ly, 0), result: 'litB' }),
+    ...litStage('light', lx, ly),
+    ...shadeLayer('light', k),
+    prim('feBlend', { in: input, in2: 'shade', mode: 'multiply', result: 'shaded' }),
+  ];
+}
+
+/**
+ * How lit each point of the rim is, |(g·n)·L|, as white alpha: two unit-strength side matrices on
+ * the light map at `source`, summed (at most one is non-zero per pixel).
+ */
+function litStage(source: string, lx: number, ly: number): FilterPrimitive[] {
+  return [
+    prim('feColorMatrix', { in: source, type: 'matrix', values: lightRow(lx, ly, 0), result: 'litA' }),
+    prim('feColorMatrix', { in: source, type: 'matrix', values: lightRow(-lx, -ly, 0), result: 'litB' }),
     prim('feComposite', { in: 'litA', in2: 'litB', operator: 'arithmetic', k1: '0', k2: '1', k3: '1', k4: '0', result: 'lit' }),
+  ];
+}
+
+/**
+ * The shade as a black layer: the shade profile at strength k, less the lit rim (`lit`), with an
+ * arithmetic composite whose colour channels clamp to black.
+ */
+function shadeLayer(source: string, k: number): FilterPrimitive[] {
+  return [
     prim('feColorMatrix', {
-      in: 'light',
+      in: source,
       type: 'matrix',
       values: `0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 ${num4(k)} 0 0`,
       result: 'shadeFull',
     }),
     prim('feComposite', { in: 'shadeFull', in2: 'lit', operator: 'arithmetic', k1: '0', k2: '1', k3: num4(-k), k4: '0', result: 'shade' }),
-    prim('feBlend', { in: input, in2: 'shade', mode: 'multiply', result: 'shaded' }),
   ];
 }
 

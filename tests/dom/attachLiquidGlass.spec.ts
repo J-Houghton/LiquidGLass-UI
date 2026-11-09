@@ -492,3 +492,108 @@ describe('attachLiquidGlass (content mode)', () => {
     expect(target.children).toHaveLength(0);
   });
 });
+
+describe('attachLiquidGlass (light layer)', () => {
+  const withComputedStyle = async (style: Record<string, string>, run: () => Promise<void>) => {
+    const g = globalThis as { getComputedStyle?: unknown };
+    const prev = g.getComputedStyle;
+    g.getComputedStyle = () => style;
+    try {
+      await run();
+    } finally {
+      if (prev === undefined) delete g.getComputedStyle;
+      else g.getComputedStyle = prev;
+    }
+  };
+
+  it('mounts the layer as the first child, over the border box, under the content', async () => {
+    const { target, attach } = env();
+    const h = attach({ id: 'lg-l', lightLayer: true });
+    expect(h.lightElement).toBeNull();
+    await h.ready;
+    const layer = h.lightElement as unknown as FakeElement;
+    expect(target.children[0]).toBe(layer);
+    expect(layer.hasAttribute('data-liquid-glass-light')).toBe(true);
+    expect(layer.getAttribute('aria-hidden')).toBe('true');
+    expect(layer.style).toEqual({
+      position: 'absolute',
+      zIndex: '-1',
+      borderRadius: 'inherit',
+      pointerEvents: 'none',
+      top: '0px',
+      right: '0px',
+      bottom: '0px',
+      left: '0px',
+      backgroundImage: `url("${h.light!.image}")`,
+      backgroundSize: '100% 100%',
+      backgroundRepeat: 'no-repeat',
+      filter: 'url(#lg-l-light)',
+    });
+    expect(h.getLightStyle()).toEqual({
+      backgroundImage: `url("${h.light!.image}")`,
+      backgroundSize: '100% 100%',
+      backgroundRepeat: 'no-repeat',
+      filter: 'url(#lg-l-light)',
+    });
+    expect(target.style.position).toBe('relative'); // static without a computed style
+    expect(target.style.backdropFilter).toMatch(/^url\(#lg-l\) saturate/);
+  });
+
+  it("reaches out over the target's border, and keeps a position the target already has", async () => {
+    await withComputedStyle(
+      { borderTopWidth: '2px', borderRightWidth: '1.5px', borderBottomWidth: '0px', borderLeftWidth: '3px', position: 'sticky' },
+      async () => {
+        const { target, attach } = env();
+        const h = attach({ lightLayer: true });
+        await h.ready;
+        const layer = h.lightElement as unknown as FakeElement;
+        expect(layer.style).toMatchObject({ top: '-2px', right: '-1.5px', bottom: '0px', left: '-3px' });
+        expect(target.style.position).toBeUndefined();
+      },
+    );
+  });
+
+  it('follows map changes, and destroy removes the layer and restores the position', async () => {
+    const { target, attach, encoded } = env();
+    target.style.position = '';
+    const h = attach({ lightLayer: true });
+    await h.ready;
+    const layer = h.lightElement as unknown as FakeElement;
+    FakeResizeObserver.instances[0].fire(500, 140);
+    await h.refresh();
+    expect(encoded).toHaveLength(4);
+    expect(layer.style.backgroundImage).toBe('url("blob:4")');
+    expect(h.lightElement).toBe(layer);
+    h.destroy();
+    expect(layer.parentNode).toBeNull();
+    expect(h.lightElement).toBeNull();
+    expect(target.style.position).toBe('');
+  });
+
+  it('applyStyles:false mounts nothing; getLightStyle() hands the declarations to your own layer', async () => {
+    const { target, attach } = env();
+    const h = attach({ id: 'lg-own', lightLayer: true, applyStyles: false });
+    await h.ready;
+    expect(h.lightElement).toBeNull();
+    expect(target.children.map((c) => c.tagName)).toEqual(['svg']);
+    expect(h.getLightStyle().filter).toBe('url(#lg-own-light)');
+    expect(target.style.position).toBeUndefined();
+  });
+
+  it('frost and content modes have no light layer', async () => {
+    const frost = env().attach({ lightLayer: true, support: 'none' });
+    await frost.ready;
+    expect(frost.light).toBeNull();
+    expect(frost.lightElement).toBeNull();
+    expect(frost.getLightStyle()).toEqual({});
+    const { doc, attach } = env();
+    const content = doc.body.appendChild(doc.createElement('div'));
+    content.rect = { x: 0, y: 0, top: 0, left: 0, width: 800, height: 600, right: 800, bottom: 600 };
+    const lens = attach({ lightLayer: true, content: content as unknown as HTMLElement, mode: 'content', contentSupport: true });
+    await lens.ready;
+    expect(lens.mode).toBe('content');
+    expect(lens.light).toBeNull();
+    expect(lens.lightElement).toBeNull();
+    expect(lens.getLightStyle()).toEqual({});
+  });
+});

@@ -163,6 +163,19 @@ that sleeps at rest, and the rim is symmetric (a light and its opposite are the 
 easing always takes the short way. On the element: `<liquid-glass-container light="scene pointer">`
 (any subset; the bare attribute means both).
 
+With several glasses, or anything moving behind them, add `lightLayer: true`. The shade and the
+rim leave the lens and are drawn on a layer of their own over the glass, under its content (a
+`<div data-liquid-glass-light>` that `attachLiquidGlass` adds). Chromium re-runs a backdrop
+filter's whole graph whenever anything behind the glass moves; without the light the lens does
+about a third of the work, and a light change redraws only the layer. Over an opaque backdrop the
+pixels are the same, except that the light now sits above the tint. With `applyStyles: false`,
+put `handle.getLightStyle()` on your own layer (a `::before`, say) over the glass's border box.
+
+```ts
+const glass = attachLiquidGlass(card, { lightLayer: true });
+attachGlassLight(glass);
+```
+
 ### HTML custom elements
 
 ```ts
@@ -235,6 +248,8 @@ Values are validated and clamped; `handle.params.notes` lists anything that was 
 | `maxMapPixels` (320 000) | Pixel budget per map: above it the map is generated at a lower ratio and stretched by the filter (the rim keeps its CSS-px width). `Infinity` disables. |
 | `sizeBucket` (1.02) | Maps are generated for the element size rounded up to a 2 % geometric grid (exact below 64 px) and stretched to the exact box, so dragging a resize handle reuses maps instead of regenerating one per pixel. `1` disables. |
 | `rimPx` (2) | Width of the rim highlight. |
+| `lightLayer` (false) | Draw the shade and the rim on a layer over the glass instead of in the lens (glass mode). See "Light that follows the page and the pointer". |
+| `maxLightPixels` (2 000 000) | Pixel budget for the light map with `lightLayer`: it is an image on the layer, not sampled by the lens, so it stays sharp. |
 | `mount`, `dpr`, `encodeImage`, `revokeImage`, `registry`, `document` | Where the `<svg>` goes, device pixel ratio, and seams for tests, workers and shared caches. |
 
 ## Handle
@@ -250,9 +265,11 @@ Values are validated and clamped; `handle.params.notes` lists anything that was 
 | `url`, `id`, `filterElement`, `svgElement` | The filter reference and its elements. |
 | `setDpr(n)`, `refresh()` | Re-render at another device pixel ratio / with current parameters. |
 | `intensity`, `setIntensity(k)`, `appear(ms?)` | A 0..1 multiplier on displacement and rim (graph attributes only); `appear` eases it from 0 to 1. |
-| `debug` | `mapUrl` (R,G displacement), `lightUrl` (R,G rim normal, B shade), `mapDpr`, `mapWidth`, `mapHeight`, `physicalMaxDisplacementPx`, `displacementPx`, `renders`. |
+| `debug` | `mapUrl` (R,G displacement), `lightUrl` (R,G rim normal, B shade), `mapDpr`, `lightDpr`, `mapWidth`, `mapHeight`, `physicalMaxDisplacementPx`, `displacementPx`, `renders`. |
+| `light` | With `lightLayer`: `{ id, url, image, filterElement }`, the light filter and the light map; null otherwise. |
 | `destroy()` | Removes everything the handle created. Idempotent. |
 | `getStyle()` (attach only) | The declarations the effect needs, for `applyStyles: false`. |
+| `getLightStyle()`, `lightElement` (attach only) | With `lightLayer`: the light layer's declarations (`backgroundImage`, `backgroundSize`, `backgroundRepeat`, `filter`) for a layer you place yourself, and the layer `applyStyles` added. |
 
 ## Browser support
 

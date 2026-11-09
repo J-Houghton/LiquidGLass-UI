@@ -119,7 +119,7 @@ object) plus the keys below. Nothing is required.
 |---|---|---|
 | `size` | `'observe'` | Measure the target's border box and follow it with a `ResizeObserver`, or fix it with `{ width, height }`. |
 | `radius` | `'css'` | Corner radius: read the computed `border-radius` (px values only), or a number in px, which is also written as `border-radius`. |
-| `applyStyles` | `true` | Write the styles onto the target (and the content element in content mode). `false`: use `getStyle()` / `getContentStyle()` yourself. Inline values are restored on `destroy()`. |
+| `applyStyles` | `true` | Write the styles onto the target (and the content element in content mode), and with `lightLayer` add the light layer. `false`: use `getStyle()` / `getContentStyle()` / `getLightStyle()` yourself. Inline values are restored, and the layer removed, on `destroy()`. |
 | `fallback` | `'frost'` | Where the SVG lens cannot render: `'frost'` (CSS blur, tint, 1 px rim hint, no maps) or `'none'` (attach the SVG filter regardless). |
 | `support` | detected | Force `'full'`, `'frost'` or `'none'`. Tests in jsdom-like environments pass `'full'`. |
 | `frostBlurPx` | `12` | Blur radius of the frost fallback. The final blur is `frostBlurPx + (reduced transparency ? 8 : 0) + max(0, blur − 0.2) × 4`. |
@@ -131,7 +131,7 @@ object) plus the keys below. Nothing is required.
 | `warn` | `console.warn` | Receives the one-time warning when the content element exceeds 4096 device px on a side. |
 | `resizeObserver`, `matchMedia`, `animationFrame`, `now` | globals | Seams for tests. |
 | `onRender` | none | Called with the handle after every completed render. |
-| plus every `createGlassFilter` option | | `id`, `mount`, `dpr`, `maxMapPixels`, `sizeBucket`, `rimPx`, `regionPadding`, `intensity`, `bumpFilterId`, `encodeImage`, `revokeImage`, `registry`, `document` (section 5). |
+| plus every `createGlassFilter` option | | `id`, `mount`, `dpr`, `maxMapPixels`, `sizeBucket`, `rimPx`, `lightLayer`, `maxLightPixels`, `regionPadding`, `intensity`, `bumpFilterId`, `encodeImage`, `revokeImage`, `registry`, `document` (section 5). |
 
 ### The handle
 
@@ -152,8 +152,10 @@ object) plus the keys below. Nothing is required.
 | `lens`, `setLens({ x, y })` | Content mode: where the lens sits inside the content element, px. |
 | `getStyle()` | The declarations the target needs, as `CSSStyleDeclaration` keys (`backdropFilter`, `WebkitBackdropFilter`, `backgroundColor`, `boxShadow`, `borderRadius`), for `applyStyles: false`. |
 | `getContentStyle()` | Content mode: `{ filter: 'url(#id)' }` for the content element. |
+| `getLightStyle()` | With `lightLayer` in glass mode: the light layer's `backgroundImage`, `backgroundSize`, `backgroundRepeat` and `filter`, for a layer you place yourself; `{}` otherwise. See [the light on a layer of its own](#the-light-on-a-layer-of-its-own). |
+| `light`, `lightElement` | With `lightLayer` in glass mode: `{ id, url, image, filterElement }` (the light filter and the light map), and the layer `applyStyles` added; null otherwise. |
 | `url`, `id`, `filterElement`, `svgElement` | The filter reference and its elements. `id` changes per render when `bumpFilterId` is on. |
-| `debug` | `mapUrl`, `lightUrl`, `mapDpr`, `mapWidth`, `mapHeight`, `physicalMaxDisplacementPx`, `displacementPx`, `renders`. |
+| `debug` | `mapUrl`, `lightUrl`, `mapDpr`, `lightDpr`, `mapWidth`, `mapHeight`, `physicalMaxDisplacementPx`, `displacementPx`, `renders`. |
 | `destroyed`, `destroy()` | Disconnect observers, restore inline styles, remove the `<svg>`, release the map. Idempotent. |
 
 ### Sizing rules
@@ -189,6 +191,8 @@ await filter.ready;
 | `maxMapPixels` | `320000` | Pixel budget per map. Above it the map is generated at a lower ratio and stretched by the filter; the displacement field is smooth and the rim keeps its CSS width. `Infinity` disables. |
 | `sizeBucket` | `1.02` | Sizes above 64 px are rounded up to a 2 % geometric grid for the map and stretched to the exact box, so a resize burst reuses maps. `1` disables (exact maps). |
 | `rimPx` | `2` | Gaussian width of the rim highlight, CSS px. |
+| `lightLayer` | `false` | Leave the shade and the rim out of the lens and draw them with a second `<filter>` (`handle.light.url`) on the light map (`handle.light.image`), for a layer over the glass. Backdrop graph only. See [the light on a layer of its own](#the-light-on-a-layer-of-its-own). |
+| `maxLightPixels` | `2000000` | Pixel budget for the light map with `lightLayer`. It is an image on the layer, not sampled by the lens, so it gets a larger budget than `maxMapPixels` and the 2 px rim stays sharp. |
 | `regionPadding` | `0` | Enlarge the filter region around the box so displaced samples can come from just outside it (concave profiles). Output stays clipped to the box. Ignored in content mode. |
 | `intensity` | `1` | Initial intensity multiplier. |
 | `lens` | none | Content-side graph with the lens at this `{ x, y }` inside the filtered element. `attachLiquidGlass` sets this for you. |
@@ -200,7 +204,7 @@ await filter.ready;
 | `onRender` | none | Called after every completed render. |
 
 The handle is the `attachLiquidGlass` handle minus `target`, `mode`, `support`, `content`,
-`appear`, `relayout`, `getStyle` and `getContentStyle`.
+`appear`, `relayout`, `getStyle`, `getContentStyle`, `getLightStyle` and `lightElement`.
 
 ### Map registry
 
@@ -433,6 +437,63 @@ light the same pixels), so angle easing takes the short way around a 180° circl
 no rim to aim, so the handle is inert there. The pure geometry (`lightAngleFor`, `distanceToRect`,
 `pointerWeight`, `lightAngleDelta`, `approachLightAngle`) lives in `liquid-glass-filter/motion`.
 
+### The light on a layer of its own
+
+`lightLayer: true` takes the shade and the rim out of the lens and draws them on a layer over the
+glass, with a second filter (`handle.light.url`) on the light map (`handle.light.image`):
+
+```ts
+const glass = attachLiquidGlass(card, { lightLayer: true });
+attachGlassLight(glass);
+```
+
+Why: Chromium re-runs a backdrop filter's whole graph whenever anything behind the glass changes
+(a scroll, an animation, a video), and with displacement a change anywhere can reach every lens.
+Without the light, the lens is the map, the blur and the displacement: a handful of primitives
+instead of about fifteen, and one image instead of two, about a third of the work per redraw. The
+layer is an ordinary filtered element, drawn again only when the light, the intensity or the size
+changes. Worth it with several glasses, a moving light, or anything animating behind the glass.
+
+With `applyStyles`, `attachLiquidGlass` adds `<div data-liquid-glass-light aria-hidden="true">` as
+the target's first child: `position: absolute` over the border box (it reaches out over the
+border), `z-index: -1` (under the content and over the glass; the backdrop filter makes the
+target a stacking context), `border-radius: inherit`, `pointer-events: none`, the light map as its
+background stretched to the box, the light filter as its `filter`. A static target gets
+`position: relative`. `destroy()` removes the layer and restores the position.
+
+To place it yourself (`applyStyles: false`, or a pseudo-element), take `getLightStyle()`. It
+changes when the map does, so read it in `onRender`:
+
+```ts
+attachLiquidGlass(card, {
+  lightLayer: true,
+  applyStyles: false,
+  onRender: (h) => {
+    Object.assign(card.style, h.getStyle());
+    const light = h.getLightStyle();
+    card.style.setProperty('--glass-light', light.backgroundImage ?? 'none');
+    card.style.setProperty('--glass-lit', light.filter ?? 'none');
+  },
+});
+```
+
+```css
+.card { position: relative; }
+.card::before {
+  content: ''; position: absolute; inset: 0; /* minus the border width, if there is one */
+  z-index: -1; border-radius: inherit; pointer-events: none;
+  background: var(--glass-light) 0 0 / 100% 100% no-repeat;
+  filter: var(--glass-lit);
+}
+```
+
+What changes: over an opaque backdrop, nothing. The shade is black and the rim white, and for
+those, the lens's multiply and screen give the same pixels as laying them on top. Two things do
+differ. The light now sits above the tint (`background-color`), so a dark tint no longer dims the
+rim. And the light map gets its own pixel budget (`maxLightPixels`), so the rim stays sharp on a
+large glass where the lens map is scaled down. Content mode and the frost fallback ignore
+`lightLayer`; `handle.light` is null there.
+
 ## 9. Custom elements
 
 ```ts
@@ -560,7 +621,8 @@ const svg = filterSpecToSvg(spec);   // '<svg …><defs><filter id="glass" …>�
 | `displacementMap(opts)`, `lightMap(opts)` | `RGBAImage` | Either image alone. |
 | `maxAbs(curve)` | number | The physical maximum displacement, what `physicalScale` uses. |
 | `specularMap(opts)` | `RGBAImage` | A standalone rim-light image, if you want it separate from the map. |
-| `buildFilterSpec(params, { id, mapHref, lightHref }, { padding?, region? })` | `FilterSpec` | The graph as `{ static, dynamic, structureKey }` primitives; the light vector from `specularAngleDeg` sits in the rim matrices. `region` builds the content-side variant. |
+| `buildFilterSpec(params, { id, mapHref, lightHref }, { padding?, region?, lightLayer? })` | `FilterSpec` | The graph as `{ static, dynamic, structureKey }` primitives; the light vector from `specularAngleDeg` sits in the rim matrices. `region` builds the content-side variant; `lightLayer` leaves the shade and the rim out. |
+| `buildLightSpec(params, id)` | `FilterSpec` | The shade and the rim as a filter of their own, on `SourceGraphic` (the light map drawn as the layer's background): the `lightLayer` companion. |
 | `filterSpecToSvg(spec)` | string | Inline `<svg>` markup; `mapHref` must then be a data or real URL. |
 | `filterElementAttrs(spec)` | record | The `<filter>` element's attributes. |
 | `createRGBAImage(w, h)` | `RGBAImage` | An empty buffer. |
@@ -579,6 +641,7 @@ What costs what:
 |---|---|
 | First render, or a change to a map key (size, radius, bezel, surface, IOR, thickness, dpr) | CPU map generation for the bucketed size, capped by `maxMapPixels` (default about 565×565 device px, a few ms), then a PNG encode through a canvas (async). Shared across handles with the same key. |
 | Any other parameter, `intensity`, `setLens`, `relayout` | Attribute writes on the existing primitives; the browser re-runs the filter on the next composite. |
+| A light change (`specularAngleDeg`; every frame while `attachGlassLight` eases) | Attribute writes on the shade and rim matrices. In the lens, the whole backdrop graph re-runs; with `lightLayer`, only the layer's filter. |
 | A resize | A new map for the new bucket, while the old one is stretched to the new box so nothing flickers. With `sizeBucket` 1.02, dragging a resize handle changes the bucket every 2 %, not every pixel. |
 | Rendering | Chromium runs the backdrop filter in the compositor per frame; cost scales with the glass area and the number of passes (3× with dispersion, plus blur). Firefox content mode runs on the CPU. |
 
@@ -594,6 +657,9 @@ Guidance:
 - Prefer a fixed `dpr` only when you know the display; otherwise ratio changes are tracked and
   regenerate the maps.
 - In content mode, filter the smallest element behind the glass.
+- With several glasses, a moving light, or anything animating behind the glass, use `lightLayer`:
+  the backdrop graph that re-runs on every change behind the glass is then about a third of the
+  work.
 
 ## 13. Accessibility
 
@@ -675,7 +741,7 @@ no-op on the server.
 ## 16. Type index
 
 Main entry: `LiquidGlassOptions`, `LiquidGlassHandle`, `GlassMode`, `GlassFallback`,
-`AppearOptions`, `GlassFilterOptions`, `GlassFilterHandle`, `GlassFilterDebug`, `LensPlacement`,
+`AppearOptions`, `GlassFilterOptions`, `GlassFilterHandle`, `GlassFilterDebug`, `GlassLightLayer`, `LensPlacement`,
 `GlassMotionOptions`, `GlassMotionHandle`, `MotionFrame`, `MotionGlass`, `PressMotion`,
 `HoverMotion`, `GlassLightOptions`, `GlassLightHandle`, `LightGlass`, `SceneLight`, `GlassSupport`,
 `SupportEnvironment`, `ImageEncoder`, `UrlRevoker`, `MapRegistryOptions`, `LensMapUrls`,

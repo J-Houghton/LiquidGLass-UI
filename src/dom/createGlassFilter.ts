@@ -6,9 +6,9 @@ import {
   type ResolvedGlassParams,
 } from '../core/params.js';
 import { displacementCurve } from '../core/optics/disp1d.js';
-import { lensMaps, maxAbs } from '../core/optics/disp2d.js';
-import { buildFilterSpec, type FilterSpec } from '../core/filters/spec.js';
-import { createFilterSvg, applyFilterSpec, type ElementFactory } from './mountFilter.js';
+import { displacementMap, lensMaps, lightMap, maxAbs } from '../core/optics/disp2d.js';
+import { buildFilterSpec, buildLightSpec, type FilterSpec } from '../core/filters/spec.js';
+import { createFilterSvg, applyFilterSpec, SVG_NS, type ElementFactory } from './mountFilter.js';
 import { encodeImageToBlobUrl, revokeBlobUrl, type ImageEncoder, type UrlRevoker } from './encodeImage.js';
 import { MapRegistry, UrlSlot, defaultMapRegistry, type LensMapUrls } from './mapCache.js';
 
@@ -36,6 +36,21 @@ export interface GlassFilterOptions extends Partial<GlassParams> {
   sizeBucket?: number;
   /** Gaussian width of the rim light, CSS px. Default 2. */
   rimPx?: number;
+  /**
+   * Draw the shade and the rim on a layer of their own instead of in the lens (backdrop mode;
+   * ignored in content-side mode). The lens filter then only blurs and refracts, and a second
+   * `<filter>` (`handle.light.url`) turns the light map (`handle.light.image`) into the shade and
+   * the lit rim. Put both on an element over the glass, under its content, stretched to its border
+   * box (`attachLiquidGlass` does this for you). A backdrop filter re-runs its whole graph whenever
+   * anything behind the glass moves; the layer only re-runs when the light does. Default false.
+   */
+  lightLayer?: boolean;
+  /**
+   * Pixel budget for the light map with `lightLayer`, like `maxMapPixels`. It is a plain image on
+   * the layer, not sampled by the lens, so it can stay sharp: the rim is only `rimPx` wide.
+   * Default 2 000 000 (about 1414×1414 device px).
+   */
+  maxLightPixels?: number;
   /**
    * Extra filter region around the element box, CSS px, so displaced samples can come from just
    * outside it (useful with concave profiles). The output is still clipped to the box. Default 0.
@@ -81,6 +96,8 @@ export interface GlassFilterDebug {
   lightUrl: string | null;
   /** Ratio the current map was generated at (≤ dpr once the pixel budget bites). */
   mapDpr: number;
+  /** Ratio the light map was generated at (the map's, unless `lightLayer` gives it its own budget). */
+  lightDpr: number;
   /** Device-pixel size of the current map (bucketed CSS size × mapDpr). */
   mapWidth: number;
   mapHeight: number;
@@ -90,6 +107,17 @@ export interface GlassFilterDebug {
   displacementPx: number;
   /** Completed renders so far. */
   renders: number;
+}
+
+/** The light layer of a `lightLayer` handle: what the element over the glass needs. */
+export interface GlassLightLayer {
+  /** Current id of the light `<filter>`. */
+  readonly id: string;
+  /** `url(#id)` of the light filter: the layer's `filter`. */
+  readonly url: string;
+  /** The light map's URL: the layer's background image, stretched to the glass's border box. */
+  readonly image: string;
+  readonly filterElement: SVGFilterElement;
 }
 
 /** Where the lens sits inside the filtered element's border box, CSS px (content-side mode). */
@@ -105,6 +133,8 @@ export interface GlassFilterHandle {
   readonly url: string;
   /** Lens offset in content-side mode, null in backdrop mode. */
   readonly lens: LensPlacement | null;
+  /** The light layer with `lightLayer` in backdrop mode, once rendered; null otherwise. */
+  readonly light: GlassLightLayer | null;
   readonly filterElement: SVGFilterElement;
   readonly svgElement: SVGSVGElement;
   /** Current parameters after validation and clamping. */
@@ -140,6 +170,9 @@ const clamp01 = (v: number): number => (Number.isFinite(v) ? Math.min(1, Math.ma
 
 /** hyalite's budget: about 565×565 device px per map. */
 export const DEFAULT_MAX_MAP_PIXELS = 320_000;
+
+/** The light layer's budget: about 1414×1414 device px. */
+export const DEFAULT_MAX_LIGHT_PIXELS = 2_000_000;
 
 /** The ratio to generate a width×height map at under a pixel budget (never above `dpr`). */
 export function budgetedDpr(width: number, height: number, dpr: number, maxMapPixels: number): number {
@@ -198,6 +231,8 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
   const rimPx = options.rimPx;
   const regionPadding = options.regionPadding ?? 0;
   const maxMapPixels = options.maxMapPixels ?? DEFAULT_MAX_MAP_PIXELS;
+  const lightLayer = options.lightLayer ?? false;
+  const maxLightPixels = options.maxLightPixels ?? DEFAULT_MAX_LIGHT_PIXELS;
   const sizeBucket = options.sizeBucket ?? DEFAULT_SIZE_BUCKET;
   const bumpFilterId = options.bumpFilterId ?? false;
   let dpr = options.dpr ?? defaultDpr();
@@ -212,6 +247,9 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
 
   const { svg, filter } = createFilterSvg(doc, id);
   mount.appendChild(svg);
+  // the light layer's filter, next to the lens's in the same <defs>, made on first use
+  let lightFilter: SVGFilterElement | null = null;
+  let lightSpec: FilterSpec | null = null;
 
   const revokeBoth = (urls: LensMapUrls) => {
     revoke(urls.map);
@@ -222,7 +260,7 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
   const mapSlot = new UrlSlot<LensMapUrls>(registry);
   let spec: FilterSpec | null = null;
   let destroyed = false;
-  const debug: GlassFilterDebug = { mapUrl: null, lightUrl: null, mapDpr: dpr, mapWidth: 0, mapHeight: 0, physicalMaxDisplacementPx: 0, displacementPx: 0, renders: 0 };
+  const debug: GlassFilterDebug = { mapUrl: null, lightUrl: null, mapDpr: dpr, lightDpr: dpr, mapWidth: 0, mapHeight: 0, physicalMaxDisplacementPx: 0, displacementPx: 0, renders: 0 };
 
   // ---- render scheduling: coalesce per microtask, newest params win, each waiter resolves
   //      after a render that started at or after its request.
@@ -272,10 +310,13 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
     const mw = bucketSize(p.width, sizeBucket);
     const mh = bucketSize(p.height, sizeBucket);
     const d = budgetedDpr(mw, mh, dpr, maxMapPixels);
+    // A light layer draws the light map as an image of its own, so it gets its own budget.
+    const layered = lightLayer && lens === null;
+    const ld = layered ? budgetedDpr(mw, mh, dpr, maxLightPixels) : d;
 
     // The light direction is not in the key: the light map is direction-free and the rim stage
     // applies the angle as attributes.
-    const mapKey = JSON.stringify([mw, mh, p.radius, p.bezelWidth, p.surface, p.refractiveIndex, p.glassThickness, rimPx ?? null, d]);
+    const mapKey = JSON.stringify([mw, mh, p.radius, p.bezelWidth, p.surface, p.refractiveIndex, p.glassThickness, rimPx ?? null, d, ld]);
     if (mapSlot.key !== mapKey) {
       const curve = displacementCurve({
         glassThickness: p.glassThickness,
@@ -286,22 +327,19 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
       const physical = maxAbs(curve);
       // The pixel work runs only if no other handle already holds this exact pair of maps.
       await mapSlot.acquire(mapKey, async () => {
-        const images = lensMaps({
-          width: mw,
-          height: mh,
-          radius: p.radius,
-          bezelWidth: p.bezelWidth,
-          dpr: d,
-          curve,
-          maxDisplacement: physical,
-          rimPx,
-        });
+        const shape = { width: mw, height: mh, radius: p.radius, bezelWidth: p.bezelWidth, curve, rimPx };
+        // one walk of the band when both maps share a ratio, else one each
+        const images =
+          ld === d
+            ? lensMaps({ ...shape, dpr: d, maxDisplacement: physical })
+            : { map: displacementMap({ ...shape, dpr: d, maxDisplacement: physical }), light: lightMap({ ...shape, dpr: ld }) };
         const [map, light] = await Promise.all([encode(images.map), encode(images.light)]);
         return { map, light };
       });
       if (destroyed) return;
       debug.physicalMaxDisplacementPx = physical;
       debug.mapDpr = d;
+      debug.lightDpr = ld;
       debug.mapWidth = Math.round(mw * d);
       debug.mapHeight = Math.round(mh * d);
     }
@@ -309,20 +347,36 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
     const scale = (p.physicalScale ? debug.physicalMaxDisplacementPx : p.displacementScale) * intensity;
     // A fresh id per re-render where the engine will not repaint a changed filter otherwise.
     if (bumpFilterId && spec !== null) currentId = `${id}-r${++idSerial}`;
+    const scaled: ResolvedGlassParams = {
+      ...p,
+      displacementScale: scale,
+      specularStrength: p.specularStrength * intensity,
+      shade: p.shade * intensity,
+      // a px fringe must shrink with the entrance too; a relative one follows the scale already
+      dispersion: p.dispersionUnit === 'px' ? p.dispersion * intensity : p.dispersion,
+    };
     const next = buildFilterSpec(
-      {
-        ...p,
-        displacementScale: scale,
-        specularStrength: p.specularStrength * intensity,
-        shade: p.shade * intensity,
-        // a px fringe must shrink with the entrance too; a relative one follows the scale already
-        dispersion: p.dispersionUnit === 'px' ? p.dispersion * intensity : p.dispersion,
-      },
+      scaled,
       { id: currentId, mapHref: mapSlot.url!.map, lightHref: mapSlot.url!.light },
-      lens ? { region: { x: lens.x, y: lens.y, width: p.width, height: p.height } } : { padding: regionPadding },
+      lens ? { region: { x: lens.x, y: lens.y, width: p.width, height: p.height } } : { padding: regionPadding, lightLayer: layered },
     );
     applyFilterSpec(doc, filter, spec, next);
     spec = next;
+    if (layered) {
+      if (!lightFilter) {
+        lightFilter = doc.createElementNS(SVG_NS, 'filter') as SVGFilterElement;
+        filter.parentNode!.appendChild(lightFilter);
+      }
+      // a light change rewrites this filter only: the lens graph above is left as it was
+      const nextLight = buildLightSpec(scaled, `${currentId}-light`);
+      applyFilterSpec(doc, lightFilter, lightSpec, nextLight);
+      lightSpec = nextLight;
+    } else if (lightFilter) {
+      // moved to content-side mode: the lens draws its own light again
+      lightFilter.remove();
+      lightFilter = null;
+      lightSpec = null;
+    }
     debug.mapUrl = mapSlot.url?.map ?? null;
     debug.lightUrl = mapSlot.url?.light ?? null;
     debug.displacementPx = scale;
@@ -354,6 +408,21 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
   watchDpr();
 
   // ---- public surface
+  const light: GlassLightLayer = {
+    get id() {
+      return lightSpec?.id ?? '';
+    },
+    get url() {
+      return `url(#${lightSpec?.id ?? ''})`;
+    },
+    get image() {
+      return mapSlot.url?.light ?? '';
+    },
+    get filterElement() {
+      return lightFilter!;
+    },
+  };
+
   function update(patch: Partial<GlassParams>): Promise<void> {
     if (destroyed) return Promise.resolve();
     let changed = false;
@@ -395,6 +464,9 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
     },
     get lens() {
       return lens;
+    },
+    get light() {
+      return lightSpec !== null && !destroyed ? light : null;
     },
     filterElement: filter,
     svgElement: svg,
