@@ -19,4 +19,4 @@ export {
 } from './squash.js';
 
 export type { Point, Rect } from './light.js';
-export { lightAngleFor, distanceToRect, pointerWeight, mixPoints, lightAngleDelta, approachLightAngle } from './light.js';
+export { lightAngleFor, distanceToRect, pointerWeight, pointerPull, mixPoints, blendLightAngles, lightAngleDelta, approachLightAngle } from './light.js';

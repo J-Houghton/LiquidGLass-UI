@@ -107,7 +107,7 @@ px per side (the handle warns once); Safari before 27 needs a fresh filter id pe
 automatically; fixed in Safari 27.0); Firefox filters on the CPU (Mozilla bug 1883933). Filter the
 smallest element that sits behind the glass, not the page.
 
-### Motion (press, drag, hover)
+### Motion (press, drag, hover, entrance)
 
 What makes glass read as liquid is motion more than optics: a spring that overshoots on release and
 a squash that follows the pointer's velocity. `attachGlassMotion` drives a glass with both from one
@@ -124,6 +124,11 @@ const motion = attachGlassMotion(glass, {
 });
 // drive it yourself if your drag code owns the pointer: motion.press(), motion.release(),
 // motion.impulse(vx, vy) in px/s, motion.hover(on); motion.frame has the current numbers
+
+// an entrance: the glass springs in from 94 % of its size and settles with a little overshoot,
+// alongside the lens easing in
+glass.appear(400);
+motion.enter(); // or { from: { x: 0.96, y: 0.9 }, spring: { duration: 0.6, bounce: 0.35 } }
 ```
 
 The transform (`scale`, `skewX`) is written to the target and removed at rest; while pressed the
@@ -150,17 +155,21 @@ import { attachLiquidGlass, attachGlassLight } from 'liquid-glass-filter';
 const glass = attachLiquidGlass(card);
 const light = attachGlassLight(glass, {
   scene: 'viewport',        // default; or { x, y } in viewport px, a function of the viewport size, or false
-  pointer: { radius: 160 }, // default; the pointer owns the light on the glass and lets go beyond 160 px
-  smoothing: 0.35,          // per-frame easing; 1 snaps; reduced motion snaps
+  pointer: { radius: 160 }, // default; the pointer pulls within 160 px, more the further off-centre it is
+  spring: { duration: 0.7, bounce: 0 }, // default; how the light glides to a new direction
 });
 light.update();             // after moving the glass yourself; scroll and resize are followed
 light.setPointer({ x, y }); // or feed a pointer from your own code; null when it leaves
 ```
 
 Two glasses side by side are lit from the same place, which reads as one light over the page; a
-glass under the cursor gets the highlight on the side facing it. Angles ease in one frame loop
-that sleeps at rest, and the rim is symmetric (a light and its opposite are the same), so the
-easing always takes the short way. On the element: `<liquid-glass-container light="scene pointer">`
+glass under the cursor gets the highlight on the side facing it. The pointer's light sits a little
+above the page (`pointer.elevation`, by default half the glass's shorter side): right over the
+glass's centre it lights every side alike, so the scene light shows through, and the further
+off-centre it is, the more it takes over. The light glides to each new direction on a spring
+without overshoot, the same at any frame rate, in one frame loop that sleeps at rest; the rim is
+symmetric (a light and its opposite are the same), so it always turns the short way. Reduced
+motion snaps it. On the element: `<liquid-glass-container light="scene pointer">`
 (any subset; the bare attribute means both).
 
 With several glasses, or anything moving behind them, add `lightLayer: true`. The shade and the
@@ -222,6 +231,7 @@ All lengths are CSS pixels. Defaults in parentheses.
 | `glassThickness` (31.25) | Thickness of the flat glass; longer path, more displacement. |
 | `displacementScale` (180) | Maximum displacement in px. The optics set the shape, this sets the strength. |
 | `physicalScale` (false) | Ignore `displacementScale` and use the displacement the optics actually produce, so IOR and thickness set the strength. |
+| `magnify` (0) | Zoom, as a magnifying glass does: the backdrop at the lens's edge is drawn from this many px in toward its middle, so a lens `w` wide zooms by `w / (w − magnify)`. 0 leaves the stage out. |
 | `dispersion` (0), `dispersionUnit` (`relative`) | Chromatic dispersion, three displacement passes; 0 disables. `relative`: red and blue at `1 ∓ 0.02·dispersion` times the green scale (the fringe grows with the lens). `px`: `∓ dispersion` px from green (a fringe of fixed width). |
 | `blurKind` (`gauss`), `blur` (0.2) | Gaussian blur, or `noise1`/`noise2` for a textured, organic distortion. |
 | `blurStage` (`after`) | `after` blurs the refracted result; `before` blurs the backdrop first and then displaces it, which keeps the rim and the dispersion fringe crisp. The playground's A/B twin shows both side by side. |
@@ -247,7 +257,7 @@ Values are validated and clamped; `handle.params.notes` lists anything that was 
 | `regionPadding` (0) | Enlarge the filter region around the box so displaced samples can come from just outside it (concave profiles). Output is still clipped to the box. |
 | `maxMapPixels` (320 000) | Pixel budget per map: above it the map is generated at a lower ratio and stretched by the filter (the rim keeps its CSS-px width). `Infinity` disables. |
 | `sizeBucket` (1.02) | Maps are generated for the element size rounded up to a 2 % geometric grid (exact below 64 px) and stretched to the exact box, so dragging a resize handle reuses maps instead of regenerating one per pixel. `1` disables. |
-| `rimPx` (2) | Width of the rim highlight. |
+| `rimPx` (2) | Width of the rim highlight, CSS px: a soft band about that wide, which the edge shade gives way to, drawn with coverage so it stays smooth round the corners. |
 | `lightLayer` (false) | Draw the shade and the rim on a layer over the glass instead of in the lens (glass mode). See "Light that follows the page and the pointer". |
 | `maxLightPixels` (2 000 000) | Pixel budget for the light map with `lightLayer`: it is an image on the layer, not sampled by the lens, so it stays sharp. |
 | `mount`, `dpr`, `encodeImage`, `revokeImage`, `registry`, `document` | Where the `<svg>` goes, device pixel ratio, and seams for tests, workers and shared caches. |

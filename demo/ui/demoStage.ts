@@ -42,11 +42,11 @@ export interface LightSettings {
   /** The pointer takes the light over when it comes within `radius` px. */
   pointer: boolean;
   radius: number;
-  /** Per-frame easing fraction. */
-  smoothing: number;
+  /** Seconds the light takes to glide to a new direction (its spring's duration). */
+  glide: number;
 }
 
-export const DEFAULT_LIGHT: LightSettings = { scene: true, pointer: true, radius: 160, smoothing: 0.35 };
+export const DEFAULT_LIGHT: LightSettings = { scene: true, pointer: true, radius: 160, glide: 0.7 };
 
 /** (Re)attach the page-driven light for an entry and its twin. `null` detaches (the Angle slider rules again). */
 export function setLight(entry: StageEntry, settings: LightSettings | null): void {
@@ -60,7 +60,7 @@ export function setLight(entry: StageEntry, settings: LightSettings | null): voi
       attachGlassLight(g.handle, {
         scene: settings.scene ? 'viewport' : false,
         pointer: settings.pointer ? { radius: settings.radius } : false,
-        smoothing: settings.smoothing,
+        spring: { duration: settings.glide, bounce: 0 },
       }),
     );
   }

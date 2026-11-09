@@ -39,6 +39,13 @@ export interface GlassParams {
    */
   dispersion: number;
   dispersionUnit: DispersionUnit;
+  /**
+   * Magnification, px: the lens also zooms in on what is behind it, as a magnifying glass does
+   * (kube.io's lens). The backdrop at the lens's edge is drawn from this far in toward its middle
+   * (in proportion on the shorter side), so a lens `w` wide zooms by `w / (w − magnify)`. A graph
+   * attribute, so it can move every frame. 0 (default) leaves the stage out.
+   */
+  magnify: number;
   // look
   blurKind: BlurKind;
   /**
@@ -82,6 +89,7 @@ export const DEFAULT_GLASS_PARAMS: Readonly<GlassParams> = Object.freeze({
   physicalScale: false,
   dispersion: 0,
   dispersionUnit: 'relative',
+  magnify: 0,
   blurKind: 'gauss',
   blurStage: 'after',
   blur: 0.2,
@@ -114,6 +122,7 @@ const NUMERIC_KEYS: readonly NumericKey[] = [
   'glassThickness',
   'displacementScale',
   'dispersion',
+  'magnify',
   'blur',
   'specularAngleDeg',
   'specularStrength',
@@ -171,6 +180,7 @@ export function resolveGlassParams(
   clamp('glassThickness', 0, Infinity, 'min 0');
   clamp('displacementScale', 0, Infinity, 'min 0');
   clamp('dispersion', 0, p.dispersionUnit === 'px' ? 64 : 50, p.dispersionUnit === 'px' ? '0..64 px' : '0..50');
+  clamp('magnify', 0, Infinity, 'min 0');
   clamp('blur', 0, Infinity, 'min 0');
   clamp('specularStrength', 0, Infinity, 'min 0');
   clamp('shade', 0, 1, '0..1');

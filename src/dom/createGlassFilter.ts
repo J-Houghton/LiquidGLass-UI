@@ -7,6 +7,7 @@ import {
 } from '../core/params.js';
 import { displacementCurve } from '../core/optics/disp1d.js';
 import { displacementMap, lensMaps, lightMap, maxAbs } from '../core/optics/disp2d.js';
+import { zoomMap } from '../core/optics/zoom.js';
 import { buildFilterSpec, buildLightSpec, type FilterSpec } from '../core/filters/spec.js';
 import { createFilterSvg, applyFilterSpec, SVG_NS, type ElementFactory } from './mountFilter.js';
 import { encodeImageToBlobUrl, revokeBlobUrl, type ImageEncoder, type UrlRevoker } from './encodeImage.js';
@@ -258,6 +259,8 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
   const registry: MapRegistry<LensMapUrls> =
     options.registry ?? (options.encodeImage || options.revokeImage ? new MapRegistry<LensMapUrls>(revokeBoth) : defaultMapRegistry);
   const mapSlot = new UrlSlot<LensMapUrls>(registry);
+  // the zoom map (`magnify`), for the lens's proportions: made the first time it's wanted, kept after
+  let zoom: { key: string; url: string } | null = null;
   let spec: FilterSpec | null = null;
   let destroyed = false;
   const debug: GlassFilterDebug = { mapUrl: null, lightUrl: null, mapDpr: dpr, lightDpr: dpr, mapWidth: 0, mapHeight: 0, physicalMaxDisplacementPx: 0, displacementPx: 0, renders: 0 };
@@ -344,6 +347,19 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
       debug.mapHeight = Math.round(mh * d);
     }
 
+    if (p.magnify > 0) {
+      const key = (mw / mh).toFixed(3);
+      if (zoom?.key !== key) {
+        const url = await encode(zoomMap(mw, mh));
+        if (destroyed) {
+          revoke(url);
+          return;
+        }
+        if (zoom) revoke(zoom.url);
+        zoom = { key, url };
+      }
+    }
+
     const scale = (p.physicalScale ? debug.physicalMaxDisplacementPx : p.displacementScale) * intensity;
     // A fresh id per re-render where the engine will not repaint a changed filter otherwise.
     if (bumpFilterId && spec !== null) currentId = `${id}-r${++idSerial}`;
@@ -354,10 +370,11 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
       shade: p.shade * intensity,
       // a px fringe must shrink with the entrance too; a relative one follows the scale already
       dispersion: p.dispersionUnit === 'px' ? p.dispersion * intensity : p.dispersion,
+      magnify: p.magnify * intensity,
     };
     const next = buildFilterSpec(
       scaled,
-      { id: currentId, mapHref: mapSlot.url!.map, lightHref: mapSlot.url!.light },
+      { id: currentId, mapHref: mapSlot.url!.map, lightHref: mapSlot.url!.light, zoomHref: zoom?.url },
       lens ? { region: { x: lens.x, y: lens.y, width: p.width, height: p.height } } : { padding: regionPadding, lightLayer: layered },
     );
     applyFilterSpec(doc, filter, spec, next);
@@ -447,6 +464,8 @@ export function createGlassFilter(host: Element, options: GlassFilterOptions = {
     destroyed = true;
     unwatchDpr();
     mapSlot.dispose();
+    if (zoom) revoke(zoom.url);
+    zoom = null;
     svg.remove();
     const pending = waiters;
     waiters = [];

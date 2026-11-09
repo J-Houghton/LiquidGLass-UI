@@ -25,6 +25,7 @@ export { displacementCurve } from './optics/disp1d.js';
 export type { DisplacementMapOptions } from './optics/disp2d.js';
 export { displacementMap, lightMap, lensMaps, maxAbs, densityGain, stretchProfile, RIM_NEUTRAL, LIGHT_NEUTRAL } from './optics/disp2d.js';
 export type { LightMapOptions, LensMaps } from './optics/disp2d.js';
+export { zoomMap } from './optics/zoom.js';
 export type { SpecularMapOptions } from './optics/specularLight.js';
 export { specularMap } from './optics/specularLight.js';
 export { lightVector, rimCoefficient, rimThickness } from './optics/rim.js';

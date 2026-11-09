@@ -41,14 +41,14 @@ type PaneParams = GlassParams & {
   lightScene: boolean;
   lightPointer: boolean;
   lightRadius: number;
-  lightSmoothing: number;
+  lightGlide: number;
 };
 
 const lightSettingsOf = (p: PaneParams): LightSettings => ({
   scene: p.lightScene,
   pointer: p.lightPointer,
   radius: p.lightRadius,
-  smoothing: p.lightSmoothing,
+  glide: p.lightGlide,
 });
 
 const motionSettingsOf = (p: PaneParams): MotionSettings => ({
@@ -102,7 +102,7 @@ function syncParamsFromEntry(entry: StageEntry, params: PaneParams, bindings: Pa
   params.lightScene = l.scene;
   params.lightPointer = l.pointer;
   params.lightRadius = l.radius;
-  params.lightSmoothing = l.smoothing;
+  params.lightGlide = l.glide;
   bindings.forEach((binding) => binding.refresh());
 }
 
@@ -133,7 +133,7 @@ function init() {
     lightScene: DEFAULT_LIGHT.scene,
     lightPointer: DEFAULT_LIGHT.pointer,
     lightRadius: DEFAULT_LIGHT.radius,
-    lightSmoothing: DEFAULT_LIGHT.smoothing,
+    lightGlide: DEFAULT_LIGHT.glide,
   };
 
   const host = document.createElement('div');
@@ -266,7 +266,7 @@ function init() {
   const refreshAngleLock = () => {
     angleBinding.disabled = params.lightScene || params.lightPointer; // the light drives the angle
   };
-  const bindLight = (key: 'lightScene' | 'lightPointer' | 'lightRadius' | 'lightSmoothing', config: Record<string, unknown>) => {
+  const bindLight = (key: 'lightScene' | 'lightPointer' | 'lightRadius' | 'lightGlide', config: Record<string, unknown>) => {
     const b = lightFolder.addBinding(params, key, config as never);
     b.on('change', () => {
       if (isSyncing || !activeEntry) return;
@@ -278,7 +278,7 @@ function init() {
   bindLight('lightScene', { label: 'Scene light' });
   bindLight('lightPointer', { label: 'Follow pointer' });
   bindLight('lightRadius', { min: 0, max: 600, step: 10, label: 'Reach px' });
-  bindLight('lightSmoothing', { min: 0.05, max: 1, step: 0.05, label: 'Smoothing' });
+  bindLight('lightGlide', { min: 0.1, max: 2, step: 0.05, label: 'Glide s' });
   window.addEventListener(CONTAINERS_CHANGED_EVENT, refreshAngleLock);
   refreshAngleLock();
 

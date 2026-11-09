@@ -41,6 +41,25 @@ export function mixPoints(a: Point, b: Point, w: number): Point {
   return { x: a.x + (b.x - a.x) * w, y: a.y + (b.y - a.y) * w };
 }
 
+/**
+ * How much of the light's direction the pointer sets, 0..1: its `pointerWeight`, times how far off
+ * the rect's centre it is, seen from a light `elevation` px above the page (r / √(r² + e²)). A light
+ * right above the centre lights every side alike, so it has no direction to give and the scene
+ * light shows through; further out it takes over. Without this, the direction from the centre to
+ * a pointer near it swings half a turn in a few pixels. `elevation` 0 gives the weight alone.
+ */
+export function pointerPull(rect: Rect, pointer: Point, radius: number, elevation: number): number {
+  const w = pointerWeight(distanceToRect(pointer, rect), radius);
+  if (w <= 0 || !(elevation > 0)) return w;
+  const r = Math.hypot(pointer.x - (rect.left + rect.width / 2), pointer.y - (rect.top + rect.height / 2));
+  return (w * r) / Math.hypot(r, elevation);
+}
+
+/** `w` of the way from rim-light angle `a` to `b`, the short way round (lighting repeats every 180°). */
+export function blendLightAngles(a: number, b: number, w: number): number {
+  return a + lightAngleDelta(a, b) * Math.min(1, Math.max(0, w));
+}
+
 /** Shortest signed step from one rim-light angle to another, in (−90, 90] (lighting repeats every 180°). */
 export function lightAngleDelta(fromDeg: number, toDeg: number): number {
   let d = ((toDeg - fromDeg) % 180) + 0; // + 0 turns a −0 remainder into +0

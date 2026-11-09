@@ -82,7 +82,7 @@ describe('lightMap', () => {
         });
       }
 
-      it('B is the stretch profile of the curve, sampled by depth into the band', () => {
+      it('B is the stretch profile of the curve, sampled by depth into the band, held back under the rim', () => {
         const curve = curveFor(c);
         const stretch = stretchProfile(curve);
         const Bpx = Math.max(1, Math.round(c.b * c.dpr));
@@ -90,9 +90,11 @@ describe('lightMap', () => {
         // walk down from the top edge at mid-width: t = y + 0.5, u = t / B, i0 = floor(u (n − 1))
         let checked = 0;
         for (let y = 0; y < Bpx && y < H >> 1; y++) {
-          const u = Math.min(1, (y + 0.5) / Bpx);
+          const t = y + 0.5;
+          const u = Math.min(1, t / Bpx);
           const i0 = Math.min(stretch.length - 1, Math.floor(u * (n - 1)));
-          const expected = Math.round(255 * stretch[i0]);
+          const rim = t > 3 * T ? 0 : Math.exp(-(t * t) / (2 * T * T));
+          const expected = Math.round(255 * stretch[i0] * (1 - rim));
           expect(Math.abs(pixel(img, W >> 1, y)[2] - expected)).toBeLessThanOrEqual(1);
           checked += 1;
         }

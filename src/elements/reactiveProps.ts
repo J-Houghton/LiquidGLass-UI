@@ -33,6 +33,7 @@ export const GLASS_PROP_SCHEMA: readonly PropDef<keyof GlassParams>[] = [
   { key: 'physicalScale', attr: 'physical-scale', type: 'boolean' },
   { key: 'dispersion', attr: 'dispersion', type: 'number' },
   { key: 'dispersionUnit', attr: 'dispersion-unit', type: 'string' },
+  { key: 'magnify', attr: 'magnify', type: 'number' },
   { key: 'blurKind', attr: 'blur-kind', type: 'string' },
   { key: 'blurStage', attr: 'blur-stage', type: 'string' },
   { key: 'blur', attr: 'blur', type: 'number', prop: 'blurAmount', aliases: ['blur-std-dev'] },
