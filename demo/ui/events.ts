@@ -2,6 +2,8 @@
 export const CONTAINERS_CHANGED_EVENT = 'demo-stage:containers-changed';
 export const REMOVE_CONTAINER_EVENT = 'demo-stage:remove-container';
 export const SELECT_CONTAINER_EVENT = 'demo-stage:select-container';
+/** Fired whenever the active glass, or anything about its configuration, changes. */
+export const CONFIG_CHANGED_EVENT = 'demo-stage:config-changed';
 
 export type ContainersChangedDetail = { containers: string[]; activeId?: string };
 export type ContainerIdDetail = { id: string };

@@ -51,7 +51,8 @@ for (const key of variants) {
   el.style.height = `${params.height ?? DEFAULT_GLASS_PARAMS.height}px`;
   const label = document.createElement('div');
   label.className = 'glass__label';
-  label.textContent = `${key}: ${Object.keys(patch).length ? JSON.stringify(patch) : 'base'}`;
+  // name_<key>=Text replaces the JSON caption (used for the README's preset strip)
+  label.textContent = q.get(`name_${key}`) ?? `${key}: ${Object.keys(patch).length ? JSON.stringify(patch) : 'base'}`;
   el.appendChild(label);
   const debugEl = document.createElement('div');
   debugEl.className = 'glass__debug';

@@ -24,6 +24,7 @@ const width = Number(flag('width', 1180));
 const height = Number(flag('height', 560));
 const port = flag('port', '5178');
 const budget = flag('budget', '8000');
+const page = flag('page', 'visual.html'); // --page=index.html shoots the playground itself
 
 const candidates = [
   flag('browser', ''),
@@ -43,7 +44,7 @@ if (!browser) {
   process.exit(2);
 }
 
-const url = `http://localhost:${port}/visual.html${query ? `?${query}` : ''}`;
+const url = `http://localhost:${port}/${page}${query ? `?${query}` : ''}`;
 const outPath = resolve(out);
 mkdirSync(dirname(outPath), { recursive: true });
 const profile = mkdtempSync(join(tmpdir(), 'lg-shot-'));

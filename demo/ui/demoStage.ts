@@ -4,12 +4,13 @@ import {
   attachGlassLight,
   resolveGlassParams,
   DEFAULT_GLASS_PARAMS,
+  GLASS_PARAM_KEYS,
   type GlassParams,
   type GlassLightHandle,
   type GlassMotionHandle,
   type LiquidGlassHandle,
 } from '../../src/index.js';
-import { CONTAINERS_CHANGED_EVENT, REMOVE_CONTAINER_EVENT, SELECT_CONTAINER_EVENT } from './events.js';
+import { CONFIG_CHANGED_EVENT, CONTAINERS_CHANGED_EVENT, REMOVE_CONTAINER_EVENT, SELECT_CONTAINER_EVENT } from './events.js';
 import { PRESETS, BACKGROUNDS, type Preset } from './presets.js';
 
 /** Entrance duration used when a preset is dropped on the stage (replayable from the pane). */
@@ -33,7 +34,24 @@ export type StageEntry = Glass & {
   /** One light handle per glass in the wrapper. */
   light: GlassLightHandle[];
   lightSettings: LightSettings | null;
+  /** Options that are fixed when the glass is attached; changing them re-attaches it. */
+  attach: AttachSettings;
 };
+
+/** Attach-time options the playground exposes. */
+export interface AttachSettings {
+  /** Draw shade and rim on a layer over the glass instead of inside the lens. */
+  lightLayer: boolean;
+  /** 'auto' detects; 'frost' previews the CSS fallback Safari and Firefox get. */
+  path: 'auto' | 'frost';
+}
+
+export const DEFAULT_ATTACH: AttachSettings = { lightLayer: false, path: 'auto' };
+
+/** Tell the code panel (and anyone else) that the active glass's configuration changed. */
+export function notifyConfigChanged(): void {
+  window.dispatchEvent(new CustomEvent(CONFIG_CHANGED_EVENT));
+}
 
 /** The playground's view of the light options. */
 export interface LightSettings {
@@ -53,6 +71,7 @@ export function setLight(entry: StageEntry, settings: LightSettings | null): voi
   for (const l of entry.light) l.destroy();
   entry.light = [];
   entry.lightSettings = settings;
+  notifyConfigChanged();
   if (!settings || !(settings.scene || settings.pointer)) return;
   const glasses = entry.twin ? [entry, entry.twin] : [entry];
   for (const g of glasses) {
@@ -83,6 +102,7 @@ export function setMotion(entry: StageEntry, settings: MotionSettings | null): v
   for (const m of entry.motion) m.destroy();
   entry.motion = [];
   entry.motionSettings = settings;
+  notifyConfigChanged();
   if (!settings || !(settings.press || settings.drag || settings.hover)) return;
   const spring = { duration: settings.duration, bounce: settings.bounce };
   const glasses = entry.twin ? [entry, entry.twin] : [entry];
@@ -106,7 +126,48 @@ export const stage = {
   activeId: undefined as string | undefined,
 };
 
-function createGlass(config: GlassParams, parent: HTMLElement, id: string, caption: string, appear = APPEAR_MS): Glass {
+function attachGlass(el: HTMLDivElement, debugEl: HTMLDivElement, config: GlassParams, id: string, appear: number, attach: AttachSettings): LiquidGlassHandle {
+  const handle = attachLiquidGlass(el, {
+    ...config,
+    id: `${id}-filter`,
+    radius: config.radius,
+    appear,
+    lightLayer: attach.lightLayer,
+    ...(attach.path === 'frost' ? { support: 'frost' as const } : {}),
+    onRender: (h) => {
+      const url = h.debug.mapUrl;
+      debugEl.style.backgroundImage = url ? `url(${url})` : '';
+    },
+  });
+  showRenderMode(handle);
+  return handle;
+}
+
+/** The plain parameters of a handle (without the resolver's `shape` and `notes`). */
+function paramsOf(handle: LiquidGlassHandle): GlassParams {
+  const out = {} as Record<string, unknown>;
+  for (const k of GLASS_PARAM_KEYS) out[k] = handle.params[k];
+  return out as unknown as GlassParams;
+}
+
+/** Change the attach-time options: the glass (and its twin) is destroyed and attached again in place. */
+export function setAttach(entry: StageEntry, attach: AttachSettings): void {
+  const motion = entry.motionSettings;
+  const light = entry.lightSettings;
+  setMotion(entry, null);
+  setLight(entry, null);
+  entry.attach = attach;
+  const glasses: Glass[] = entry.twin ? [entry, entry.twin] : [entry];
+  glasses.forEach((g, i) => {
+    const config = paramsOf(g.handle);
+    g.handle.destroy();
+    g.handle = attachGlass(g.el, g.debugEl, config, i === 0 ? entry.id : `${entry.id}-twin`, 0, attach);
+  });
+  setMotion(entry, motion);
+  setLight(entry, light);
+}
+
+function createGlass(config: GlassParams, parent: HTMLElement, id: string, caption: string, appear = APPEAR_MS, attach: AttachSettings = DEFAULT_ATTACH): Glass {
   const el = document.createElement('div');
   el.className = 'demo-glass';
   el.id = id;
@@ -124,17 +185,7 @@ function createGlass(config: GlassParams, parent: HTMLElement, id: string, capti
   el.appendChild(captionEl);
   parent.appendChild(el);
 
-  const handle = attachLiquidGlass(el, {
-    ...config,
-    id: `${id}-filter`,
-    radius: config.radius,
-    appear,
-    onRender: (h) => {
-      const url = h.debug.mapUrl;
-      debugEl.style.backgroundImage = url ? `url(${url})` : '';
-    },
-  });
-  showRenderMode(handle);
+  const handle = attachGlass(el, debugEl, config, id, appear, attach);
   return { el, debugEl, captionEl, handle };
 }
 
@@ -150,7 +201,7 @@ function updateGlass(glass: Pick<Glass, 'el' | 'handle'>, patch: Partial<GlassPa
 export function updateEntry(entry: StageEntry, patch: Partial<GlassParams>): Promise<void> {
   const tasks = [updateGlass(entry, patch)];
   if (entry.twin) tasks.push(updateGlass(entry.twin, { ...patch, ...entry.twin.override }));
-  return Promise.all(tasks).then(() => undefined);
+  return Promise.all(tasks).then(() => notifyConfigChanged());
 }
 
 export function setGlassDebug(entry: StageEntry, on: boolean): void {
@@ -182,7 +233,7 @@ export function setTwin(entry: StageEntry, override: Partial<GlassParams> | null
 
   const base = entry.handle.params;
   const config = resolveGlassParams({ ...base, ...override }, DEFAULT_GLASS_PARAMS);
-  const twin = createGlass(config, entry.wrapper, `${entry.id}-twin`, captionFor(config, 'B'), 0);
+  const twin = createGlass(config, entry.wrapper, `${entry.id}-twin`, captionFor(config, 'B'), 0, entry.attach);
   twin.debugEl.hidden = !entry.debug;
   entry.twin = { ...twin, override };
   entry.wrapper.classList.add('has-twin');
@@ -191,8 +242,9 @@ export function setTwin(entry: StageEntry, override: Partial<GlassParams> | null
   setLight(entry, entry.lightSettings); // and is lit like it
 }
 
-/** Re-run the entrance on the primary and its twin together, so the two can be compared mid-flight. */
+/** Re-run the entrance (lens easing in, glass springing in) on the primary and its twin together. */
 export function replayAppear(entry: StageEntry, durationMs = APPEAR_MS): Promise<void> {
+  for (const m of entry.motion) m.enter();
   const tasks = [entry.handle.appear(durationMs)];
   if (entry.twin) tasks.push(entry.twin.handle.appear(durationMs));
   return Promise.all(tasks).then(() => undefined);
@@ -202,12 +254,12 @@ export function replayAppear(entry: StageEntry, durationMs = APPEAR_MS): Promise
 function showRenderMode(handle: LiquidGlassHandle): void {
   const badge = document.getElementById('modeBadge');
   if (!badge) return;
-  badge.textContent = handle.mode === 'glass' ? 'SVG lens' : handle.mode === 'content' ? 'SVG lens (content)' : 'CSS frost fallback';
+  badge.textContent = handle.mode === 'glass' ? 'Refraction on' : handle.mode === 'content' ? 'Refraction on (content)' : 'Frost fallback';
   badge.dataset.mode = handle.mode;
   badge.title =
     handle.mode === 'glass'
-      ? 'backdrop-filter: url(#svg) renders in this engine'
-      : `detectGlassSupport() = "${handle.support}": this engine does not render SVG backdrop filters, so you see the CSS fallback`;
+      ? 'This browser renders the SVG lens (backdrop-filter: url)'
+      : 'Showing the CSS frost fallback: this browser, or the Render path setting, does not use the SVG lens. Chrome and Edge show real refraction.';
 }
 
 export class DemoStageController {
@@ -224,16 +276,18 @@ export class DemoStageController {
     window.addEventListener(REMOVE_CONTAINER_EVENT, this.handleRemoveRequest);
     window.addEventListener(SELECT_CONTAINER_EVENT, this.handleSelectionRequest);
     this.setupUI();
-    if (!stage.entries.size) this.addPresetToStage(PRESETS[0]);
+    // ?preset=<id> opens with that preset (used for links and screenshots)
+    const wanted = new URLSearchParams(location.search).get('preset');
+    if (!stage.entries.size) this.addPresetToStage(PRESETS.find((p) => p.id === wanted) ?? PRESETS[0], false);
     this.setBackground(BACKGROUNDS[0]);
   }
 
   // --- External API for UI ---
 
-  public addPresetToStage(preset: Preset) {
+  public addPresetToStage(preset: Preset, scatter = true) {
     const config = resolveGlassParams(preset.config, DEFAULT_GLASS_PARAMS);
     const entry = this.createEntry(config);
-    this.centerInScreen(entry, (Math.random() - 0.5) * 40, (Math.random() - 0.5) * 40);
+    this.centerInScreen(entry, scatter ? (Math.random() - 0.5) * 40 : 0, scatter ? (Math.random() - 0.5) * 40 : 0);
     this.setActiveId(entry.id);
     this.emitChange(entry.id);
   }
@@ -298,6 +352,7 @@ export class DemoStageController {
       PRESETS.forEach((p) => {
         const btn = document.createElement('button');
         btn.className = 'preset-btn';
+        btn.type = 'button';
         btn.innerHTML = `<span class="preset-name">${p.name}</span><span class="preset-desc">${p.description}</span>`;
         btn.onclick = () => this.addPresetToStage(p);
         btn.onmouseenter = () => this.showPreview(p, btn);
@@ -360,17 +415,22 @@ export class DemoStageController {
 
     const glass = createGlass(config, wrapper, id, '');
     this.makeDraggable(wrapper, id);
-    const entry: StageEntry = { id, label, wrapper, ...glass, debug: false, twin: null, motion: [], motionSettings: null, light: [], lightSettings: null };
+    const entry: StageEntry = { id, label, wrapper, ...glass, debug: false, twin: null, motion: [], motionSettings: null, light: [], lightSettings: null, attach: { ...DEFAULT_ATTACH } };
     setMotion(entry, { ...DEFAULT_MOTION });
     setLight(entry, { ...DEFAULT_LIGHT });
+    for (const m of entry.motion) m.enter(); // arrive with a little spring, alongside the lens's appear
     stage.entries.set(id, entry);
     return entry;
   }
 
   private centerInScreen(entry: StageEntry, offsetX = 0, offsetY = 0) {
     const { width, height } = entry.handle.params;
-    const x = (window.innerWidth - width) / 2 + offsetX;
-    const y = (window.innerHeight - height) / 2 + offsetY;
+    // start over the colour swatches, where the refraction is easiest to see
+    const anchor = document.querySelector('.swatches')?.getBoundingClientRect();
+    const cx = anchor && anchor.width > 0 ? anchor.left + anchor.width / 2 : window.innerWidth / 2;
+    const cy = anchor && anchor.width > 0 ? anchor.top + anchor.height / 2 : window.innerHeight / 2;
+    const x = cx - width / 2 + offsetX;
+    const y = cy - height / 2 + offsetY;
     entry.wrapper.style.left = `${x}px`;
     entry.wrapper.style.top = `${y}px`;
   }
@@ -451,6 +511,7 @@ export class DemoStageController {
     window.dispatchEvent(
       new CustomEvent(CONTAINERS_CHANGED_EVENT, { detail: { containers: Array.from(stage.entries.keys()), activeId } }),
     );
+    notifyConfigChanged();
   }
 }
 
