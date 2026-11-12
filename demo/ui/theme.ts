@@ -17,7 +17,10 @@ export function initThemeToggle(): void {
     setIcon(!isDark);
   });
 
-  if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+  // ?theme=light|dark wins over the system setting (links, screenshots)
+  const forced = new URLSearchParams(location.search).get('theme');
+  if (forced === 'light') return;
+  if (forced === 'dark' || window.matchMedia('(prefers-color-scheme: dark)').matches) {
     root.dataset.theme = 'dark';
     setIcon(true);
   }

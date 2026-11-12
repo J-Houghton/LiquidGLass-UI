@@ -16,14 +16,23 @@ import {
   setTwin,
   setMotion,
   setLight,
+  setAttach,
   replayAppear,
   APPEAR_MS,
+  DEFAULT_ATTACH,
   DEFAULT_MOTION,
   DEFAULT_LIGHT,
+  type AttachSettings,
   type LightSettings,
   type MotionSettings,
   type StageEntry,
 } from './demoStage.js';
+
+/**
+ * The inspector: Tweakpane docked on the right, one tab per chapter of the usage guide
+ * (Glass = parameters, Light = rim + attachGlassLight, Motion = appear + attachGlassMotion,
+ * More = fallback preview, map view, A/B twin).
+ */
 
 type PaneParams = GlassParams & {
   target: string;
@@ -42,6 +51,8 @@ type PaneParams = GlassParams & {
   lightPointer: boolean;
   lightRadius: number;
   lightGlide: number;
+  lightLayer: boolean;
+  path: AttachSettings['path'];
 };
 
 const lightSettingsOf = (p: PaneParams): LightSettings => ({
@@ -59,20 +70,22 @@ const motionSettingsOf = (p: PaneParams): MotionSettings => ({
   bounce: p.motionBounce,
 });
 
+const attachSettingsOf = (p: PaneParams): AttachSettings => ({ lightLayer: p.lightLayer, path: p.path });
+
 const twinOverride = (p: PaneParams): Partial<GlassParams> => ({
   blurStage: p.twinBlurStage,
   ...(p.twinShadeOn ? { shade: p.twinShade } : {}),
 });
 
 const BLUR_STAGE_OPTIONS: { text: string; value: BlurStage }[] = [
-  { text: 'After displacement', value: 'after' },
-  { text: 'Before displacement', value: 'before' },
+  { text: 'After refraction', value: 'after' },
+  { text: 'Before refraction', value: 'before' },
 ];
 
 const BLUR_OPTIONS: { text: string; value: BlurKind }[] = [
-  { text: 'Gauss', value: 'gauss' },
-  { text: 'Noise 1', value: 'noise1' },
-  { text: 'Noise 2', value: 'noise2' },
+  { text: 'Smooth (Gaussian)', value: 'gauss' },
+  { text: 'Coarse texture', value: 'noise1' },
+  { text: 'Fine texture', value: 'noise2' },
 ];
 
 type BindingTarget = Pick<FolderApi, 'addBinding'>;
@@ -103,6 +116,8 @@ function syncParamsFromEntry(entry: StageEntry, params: PaneParams, bindings: Pa
   params.lightPointer = l.pointer;
   params.lightRadius = l.radius;
   params.lightGlide = l.glide;
+  params.lightLayer = entry.attach.lightLayer;
+  params.path = entry.attach.path;
   bindings.forEach((binding) => binding.refresh());
 }
 
@@ -134,19 +149,13 @@ function init() {
     lightPointer: DEFAULT_LIGHT.pointer,
     lightRadius: DEFAULT_LIGHT.radius,
     lightGlide: DEFAULT_LIGHT.glide,
+    lightLayer: DEFAULT_ATTACH.lightLayer,
+    path: DEFAULT_ATTACH.path,
   };
 
-  const host = document.createElement('div');
-  host.className = 'config-pane-host';
-  const handle = document.createElement('div');
-  handle.className = 'config-pane-handle';
-  host.append(handle);
-  const wrapper = document.createElement('div');
-  wrapper.className = 'config-pane-wrapper';
-  host.append(wrapper);
-  document.body.append(host);
-
-  const pane = new Pane({ title: 'Liquid Glass Controls', container: wrapper });
+  const container = document.getElementById('inspector');
+  if (!container) return;
+  const pane = new Pane({ container });
   const bindings: PaneBindings = [];
   let activeEntry: StageEntry | undefined = stage.entries.get(params.target) ?? stage.entries.values().next().value;
   let isSyncing = false;
@@ -161,17 +170,21 @@ function init() {
     bindings.push(binding);
     return binding;
   };
+  /** Bind a pane-only key; `apply` runs on user changes. */
+  const bindOwn = <K extends keyof PaneParams>(target: BindingTarget, key: K, config: Record<string, unknown>, apply: (entry: StageEntry) => void) => {
+    const binding = target.addBinding(params, key, config as never);
+    binding.on('change', () => {
+      if (isSyncing || !activeEntry) return;
+      apply(activeEntry);
+    });
+    bindings.push(binding);
+    return binding;
+  };
 
-  // --- Container selection ---
+  // --- Which glass ---
 
   let selectedId = params.target;
-  const selectBlade = pane.addBlade({
-    view: 'list',
-    label: 'Container',
-    options,
-    value: selectedId,
-  }) as ListBladeApi<string>;
-
+  const selectBlade = pane.addBlade({ view: 'list', label: 'Editing', options, value: selectedId }) as ListBladeApi<string>;
   selectBlade.on('change', (event: TpChangeEvent<string>) => {
     selectedId = event.value;
     params.target = event.value;
@@ -179,16 +192,10 @@ function init() {
     if (event.value) window.dispatchEvent(new CustomEvent(SELECT_CONTAINER_EVENT, { detail: { id: event.value } }));
   });
 
-  const deleteButton = pane.addButton({ title: 'Delete container' });
-  deleteButton.on('click', () => {
-    if (selectedId) window.dispatchEvent(new CustomEvent(REMOVE_CONTAINER_EVENT, { detail: { id: selectedId } }));
-  });
-
   const refreshContainerList = (requestedTarget?: string) => {
     options = containerOptions();
     deleteButton.disabled = !options.length;
     selectBlade.disabled = !options.length;
-
     if (!options.length) {
       selectedId = '';
       params.target = '';
@@ -198,7 +205,6 @@ function init() {
       bindings.forEach((binding) => binding.refresh());
       return;
     }
-
     selectBlade.options = options;
     const preferred =
       requestedTarget && stage.entries.has(requestedTarget)
@@ -212,130 +218,126 @@ function init() {
     updateActiveEntry(preferred);
   };
 
-  deleteButton.disabled = !stage.entries.size;
-  selectBlade.disabled = !stage.entries.size;
-  window.addEventListener(CONTAINERS_CHANGED_EVENT, (event: ContainersChangedEvent) => {
-    refreshContainerList(event.detail?.activeId);
-  });
+  const tabs = pane.addTab({ pages: [{ title: 'Glass' }, { title: 'Light' }, { title: 'Motion' }, { title: 'More' }] });
+  const [glassTab, lightTab, motionTab, moreTab] = tabs.pages;
 
-  // --- Bindings (2.0 parameter names) ---
+  // --- Glass: the parameters (usage guide, "Parameters") ---
 
-  const geometry = pane.addFolder({ title: 'Geometry' });
-  bindParam(geometry, 'width', { min: 50, max: 900, step: 1 });
-  bindParam(geometry, 'height', { min: 50, max: 600, step: 1 });
-  bindParam(geometry, 'radius', { min: 0, max: 240, step: 1 });
-  bindParam(geometry, 'bezelWidth', { min: 1, max: 220, step: 1, label: 'Bezel' });
-  bindParam(geometry, 'surface', {
-    label: 'Surface',
+  const shape = glassTab.addFolder({ title: 'Shape' });
+  bindParam(shape, 'width', { min: 50, max: 900, step: 1, label: 'Width' });
+  bindParam(shape, 'height', { min: 50, max: 600, step: 1, label: 'Height' });
+  bindParam(shape, 'radius', { min: 0, max: 240, step: 1, label: 'Corner radius' });
+  bindParam(shape, 'bezelWidth', { min: 1, max: 220, step: 1, label: 'Rim width' });
+  bindParam(shape, 'surface', {
+    label: 'Rim profile',
     options: SURFACE_KINDS.map((kind) => ({ text: SURFACE_FNS[kind].title, value: kind })),
   });
 
-  const optics = pane.addFolder({ title: 'Optics' });
-  bindParam(optics, 'refractiveIndex', { min: 1, max: 2.2, step: 0.01, label: 'IOR' });
-  bindParam(optics, 'glassThickness', { min: 0, max: 200, step: 1, label: 'Glass thickness (px)' });
-  bindParam(optics, 'displacementScale', { min: 0, max: 400, step: 1, label: 'Displacement px' });
-  bindParam(optics, 'physicalScale', { label: 'Physical scale' });
-  bindParam(optics, 'blurKind', { label: 'Blur kind', options: BLUR_OPTIONS });
-  bindParam(optics, 'blurStage', { label: 'Blur stage', options: BLUR_STAGE_OPTIONS });
-  bindParam(optics, 'blur', { min: 0, max: 3, step: 0.01, label: 'Blur' });
-  const debugBinding = optics.addBinding(params, 'debug', { label: 'Show Map (Debug)' });
-  debugBinding.on('change', () => {
-    if (isSyncing || !activeEntry) return;
-    setGlassDebug(activeEntry, params.debug);
-  });
-  bindings.push(debugBinding);
+  const optics = glassTab.addFolder({ title: 'Refraction' });
+  bindParam(optics, 'displacementScale', { min: 0, max: 400, step: 1, label: 'Strength px' });
+  bindParam(optics, 'refractiveIndex', { min: 1, max: 2.2, step: 0.01, label: 'Index (IOR)' });
+  bindParam(optics, 'glassThickness', { min: 0, max: 200, step: 1, label: 'Thickness px' });
+  bindParam(optics, 'physicalScale', { label: 'Physical strength' });
+  bindParam(optics, 'magnify', { min: 0, max: 150, step: 1, label: 'Magnify px' });
 
-  const chromatic = pane.addFolder({ title: 'Chromatic' });
-  bindParam(chromatic, 'dispersion', { min: 0, max: 10, step: 0.1, label: 'Dispersion' });
-  bindParam(chromatic, 'dispersionUnit', {
-    label: 'Unit',
+  const look = glassTab.addFolder({ title: 'Look' });
+  bindParam(look, 'tint', { min: 0, max: 1, step: 0.01, label: 'Tint' });
+  bindParam(look, 'saturation', { min: 0, max: 3, step: 0.05, label: 'Saturation' });
+  bindParam(look, 'blurKind', { label: 'Blur', options: BLUR_OPTIONS });
+  bindParam(look, 'blur', { min: 0, max: 3, step: 0.01, label: 'Blur amount' });
+  bindParam(look, 'blurStage', { label: 'Blur order', options: BLUR_STAGE_OPTIONS });
+  bindParam(look, 'dispersion', { min: 0, max: 10, step: 0.1, label: 'Colour fringe' });
+  bindParam(look, 'dispersionUnit', {
+    label: 'Fringe unit',
     options: [
-      { text: 'Relative (2 % of scale per unit)', value: 'relative' },
+      { text: 'Relative to strength', value: 'relative' },
       { text: 'Pixels', value: 'px' },
     ],
   });
 
-  const specular = pane.addFolder({ title: 'Specular' });
-  bindParam(specular, 'specular', { label: 'Enable' });
-  const angleBinding = bindParam(specular, 'specularAngleDeg', { min: 0, max: 180, step: 1, label: 'Angle° (manual)' });
-  bindParam(specular, 'specularStrength', { min: 0, max: 2, step: 0.01, label: 'Strength' });
-  bindParam(specular, 'shade', { min: 0, max: 1, step: 0.01, label: 'Shade (edge darkening)' });
+  // --- Light: the rim, and attachGlassLight (usage guide, "Light from the page and the pointer") ---
 
-  // --- Light: the rim aimed from the page (scene light above the viewport) and the pointer ---
-  const lightFolder = pane.addFolder({ title: 'Light (scene, pointer)' });
+  const rim = lightTab.addFolder({ title: 'Rim highlight' });
+  bindParam(rim, 'specular', { label: 'Highlight' });
+  bindParam(rim, 'specularStrength', { min: 0, max: 2, step: 0.01, label: 'Brightness' });
+  bindParam(rim, 'shade', { min: 0, max: 1, step: 0.01, label: 'Edge shade' });
+  const angleBinding = bindParam(rim, 'specularAngleDeg', { min: 0, max: 180, step: 1, label: 'Angle° (manual)' });
+
+  const pageLight = lightTab.addFolder({ title: 'Light follows the page' });
   const refreshAngleLock = () => {
     angleBinding.disabled = params.lightScene || params.lightPointer; // the light drives the angle
   };
-  const bindLight = (key: 'lightScene' | 'lightPointer' | 'lightRadius' | 'lightGlide', config: Record<string, unknown>) => {
-    const b = lightFolder.addBinding(params, key, config as never);
-    b.on('change', () => {
-      if (isSyncing || !activeEntry) return;
-      setLight(activeEntry, lightSettingsOf(params));
-      refreshAngleLock();
-    });
-    bindings.push(b);
+  const applyLight = (entry: StageEntry) => {
+    setLight(entry, lightSettingsOf(params));
+    refreshAngleLock();
   };
-  bindLight('lightScene', { label: 'Scene light' });
-  bindLight('lightPointer', { label: 'Follow pointer' });
-  bindLight('lightRadius', { min: 0, max: 600, step: 10, label: 'Reach px' });
-  bindLight('lightGlide', { min: 0.1, max: 2, step: 0.05, label: 'Glide s' });
+  bindOwn(pageLight, 'lightScene', { label: 'Scene light' }, applyLight);
+  bindOwn(pageLight, 'lightPointer', { label: 'Follow pointer' }, applyLight);
+  bindOwn(pageLight, 'lightRadius', { min: 0, max: 600, step: 10, label: 'Pointer reach px' }, applyLight);
+  bindOwn(pageLight, 'lightGlide', { min: 0.1, max: 2, step: 0.05, label: 'Glide s' }, applyLight);
+  bindOwn(pageLight, 'lightLayer', { label: 'Own layer (faster)' }, (entry) => setAttach(entry, attachSettingsOf(params)));
   window.addEventListener(CONTAINERS_CHANGED_EVENT, refreshAngleLock);
-  refreshAngleLock();
 
-  const look = pane.addFolder({ title: 'Tint & Saturation' });
-  bindParam(look, 'tint', { min: 0, max: 1, step: 0.01 });
-  bindParam(look, 'saturation', { min: 0, max: 3, step: 0.05 });
+  // --- Motion: appear, and attachGlassMotion (usage guide, "Motion") ---
 
-  // --- Entrance animation: tune the duration, replay on the active glass (and its twin) ---
-  const appearFolder = pane.addFolder({ title: 'Appear' });
-  bindings.push(appearFolder.addBinding(params, 'appearMs', { min: 0, max: 2000, step: 50, label: 'Duration ms' }));
-  appearFolder.addButton({ title: 'Replay appear' }).on('click', () => {
+  const entrance = motionTab.addFolder({ title: 'Entrance' });
+  bindings.push(entrance.addBinding(params, 'appearMs', { min: 0, max: 2000, step: 50, label: 'Duration ms' }));
+  entrance.addButton({ title: 'Replay entrance' }).on('click', () => {
     if (activeEntry) void replayAppear(activeEntry, params.appearMs);
   });
 
-  // --- Motion: spring on press/hover, velocity squash while dragging ---
-  const motionFolder = pane.addFolder({ title: 'Motion' });
-  const bindMotion = (key: 'motionPress' | 'motionDrag' | 'motionHover' | 'motionDuration' | 'motionBounce', config: Record<string, unknown>) => {
-    const b = motionFolder.addBinding(params, key, config as never);
-    b.on('change', () => {
-      if (isSyncing || !activeEntry) return;
-      setMotion(activeEntry, motionSettingsOf(params));
-    });
-    bindings.push(b);
-  };
-  bindMotion('motionPress', { label: 'Press' });
-  bindMotion('motionDrag', { label: 'Drag squash' });
-  bindMotion('motionHover', { label: 'Hover lift' });
-  bindMotion('motionDuration', { min: 0.1, max: 1.5, step: 0.05, label: 'Spring s' });
-  bindMotion('motionBounce', { min: -0.5, max: 0.9, step: 0.05, label: 'Bounce' });
-  motionFolder.addButton({ title: 'Press and release' }).on('click', () => {
+  const interaction = motionTab.addFolder({ title: 'Press, drag, hover' });
+  const applyMotion = (entry: StageEntry) => setMotion(entry, motionSettingsOf(params));
+  bindOwn(interaction, 'motionPress', { label: 'Press' }, applyMotion);
+  bindOwn(interaction, 'motionDrag', { label: 'Drag squash' }, applyMotion);
+  bindOwn(interaction, 'motionHover', { label: 'Hover lift' }, applyMotion);
+  bindOwn(interaction, 'motionDuration', { min: 0.1, max: 1.5, step: 0.05, label: 'Spring s' }, applyMotion);
+  bindOwn(interaction, 'motionBounce', { min: -0.5, max: 0.9, step: 0.05, label: 'Bounce' }, applyMotion);
+  interaction.addButton({ title: 'Press and release' }).on('click', () => {
     for (const m of activeEntry?.motion ?? []) {
       m.press();
       setTimeout(() => m.release(), 250);
     }
   });
 
-  // --- A/B twin: a second glass that mirrors every control above except the override ---
-  const compare = pane.addFolder({ title: 'Compare (A/B twin)' });
-  const compareBinding = compare.addBinding(params, 'compare', { label: 'Show twin' });
-  compareBinding.on('change', () => {
-    if (isSyncing || !activeEntry) return;
-    setTwin(activeEntry, params.compare ? twinOverride(params) : null);
-  });
-  bindings.push(compareBinding);
-  const retwin = () => {
-    if (isSyncing || !activeEntry || !params.compare) return;
-    setTwin(activeEntry, twinOverride(params));
+  // --- More: fallback preview, the map, A/B twin, delete ---
+
+  const browser = moreTab.addFolder({ title: 'Browser fallback' });
+  bindOwn(
+    browser,
+    'path',
+    {
+      label: 'Render path',
+      options: [
+        { text: 'Auto-detect', value: 'auto' },
+        { text: 'Frost (Safari, Firefox)', value: 'frost' },
+      ],
+    },
+    (entry) => setAttach(entry, attachSettingsOf(params)),
+  );
+
+  const inspect = moreTab.addFolder({ title: 'Inspect' });
+  bindOwn(inspect, 'debug', { label: 'Show displacement map' }, (entry) => setGlassDebug(entry, params.debug));
+
+  const compare = moreTab.addFolder({ title: 'Compare (A/B twin)' });
+  bindOwn(compare, 'compare', { label: 'Show twin' }, (entry) => setTwin(entry, params.compare ? twinOverride(params) : null));
+  const retwin = (entry: StageEntry) => {
+    if (params.compare) setTwin(entry, twinOverride(params));
   };
-  for (const [key, config] of [
-    ['twinBlurStage', { label: 'Twin blur stage', options: BLUR_STAGE_OPTIONS }],
-    ['twinShadeOn', { label: 'Twin overrides shade' }],
-    ['twinShade', { min: 0, max: 1, step: 0.05, label: 'Twin shade' }],
-  ] as const) {
-    const b = compare.addBinding(params, key, config as never);
-    b.on('change', retwin);
-    bindings.push(b);
-  }
+  bindOwn(compare, 'twinBlurStage', { label: 'Twin blur order', options: BLUR_STAGE_OPTIONS }, retwin);
+  bindOwn(compare, 'twinShadeOn', { label: 'Twin overrides shade' }, retwin);
+  bindOwn(compare, 'twinShade', { min: 0, max: 1, step: 0.05, label: 'Twin shade' }, retwin);
+
+  const deleteButton = moreTab.addButton({ title: 'Remove this glass' });
+  deleteButton.on('click', () => {
+    if (selectedId) window.dispatchEvent(new CustomEvent(REMOVE_CONTAINER_EVENT, { detail: { id: selectedId } }));
+  });
+
+  deleteButton.disabled = !stage.entries.size;
+  selectBlade.disabled = !stage.entries.size;
+  window.addEventListener(CONTAINERS_CHANGED_EVENT, (event: ContainersChangedEvent) => {
+    refreshContainerList(event.detail?.activeId);
+  });
 
   function updateActiveEntry(newTarget: string) {
     if (!newTarget) {
@@ -349,59 +351,14 @@ function init() {
     isSyncing = true;
     syncParamsFromEntry(next, params, bindings);
     isSyncing = false;
+    refreshAngleLock();
   }
 
-  if (activeEntry) {
-    isSyncing = true;
-    syncParamsFromEntry(activeEntry, params, bindings);
-    isSyncing = false;
-  } else {
-    bindings.forEach((binding) => binding.refresh());
-  }
-
-  // --- Drag handling for the pane itself ---
-  let pointerId: number | null = null;
-  let startX = 0;
-  let startY = 0;
-  let startLeft = 0;
-  let startTop = 0;
-
-  handle.addEventListener('pointerdown', (event: PointerEvent) => {
-    if (pointerId !== null || event.button !== 0) return;
-    pointerId = event.pointerId;
-    const rect = host.getBoundingClientRect();
-    startX = event.clientX;
-    startY = event.clientY;
-    startLeft = rect.left;
-    startTop = rect.top;
-    host.style.left = `${rect.left}px`;
-    host.style.top = `${rect.top}px`;
-    host.style.right = 'auto';
-    host.style.bottom = 'auto';
-    host.style.transform = 'none';
-    handle.setPointerCapture(pointerId);
-    host.classList.add('is-dragging');
-    event.preventDefault();
-  });
-  handle.addEventListener('pointermove', (event: PointerEvent) => {
-    if (pointerId !== event.pointerId) return;
-    const margin = 12;
-    const maxLeft = Math.max(margin, window.innerWidth - host.offsetWidth - margin);
-    const maxTop = Math.max(margin, window.innerHeight - host.offsetHeight - margin);
-    host.style.left = `${Math.min(Math.max(startLeft + event.clientX - startX, margin), maxLeft)}px`;
-    host.style.top = `${Math.min(Math.max(startTop + event.clientY - startY, margin), maxTop)}px`;
-  });
-  const endDrag = (event: PointerEvent) => {
-    if (pointerId !== event.pointerId) return;
-    handle.releasePointerCapture(pointerId);
-    pointerId = null;
-    host.classList.remove('is-dragging');
-  };
-  handle.addEventListener('pointerup', endDrag);
-  handle.addEventListener('pointercancel', endDrag);
+  if (activeEntry) updateActiveEntry(activeEntry.id);
+  else bindings.forEach((binding) => binding.refresh());
 }
 
-/** Mount the control pane once the DOM is ready. Called from demo/main.ts. */
+/** Mount the inspector once the DOM is ready. Called from demo/main.ts. */
 export function initConfigPane(): void {
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init, { once: true });

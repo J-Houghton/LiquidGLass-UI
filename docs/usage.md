@@ -22,10 +22,24 @@ Contents
 14. [Recipes](#14-recipes)
 15. [Troubleshooting](#15-troubleshooting)
 16. [Type index](#16-type-index)
+17. [Migrating from 1.x](#17-migrating-from-1x)
+18. [Working on the library](#18-working-on-the-library)
 
 ## 1. Install and entry points
 
-The package is not on npm yet. Consume it from a local checkout:
+The package is not on npm yet. Install it from GitHub:
+
+```bash
+npm install github:J-Houghton/LiquidGLass-UI
+# a branch, tag or commit: npm install github:J-Houghton/LiquidGLass-UI#v2.2.0
+```
+
+npm clones the repository and runs its `prepare` script, which builds `dist/`, so the first
+install takes a little longer than a registry package. You import it under its package name,
+`liquid-glass-filter`, exactly as the examples below do. To pick up newer commits, run
+`npm update liquid-glass-filter` (or reinstall with the ref you want).
+
+From a local checkout instead:
 
 ```bash
 # in this repository
@@ -43,7 +57,7 @@ example in Vite:
 resolve: { alias: { 'liquid-glass-filter': '/absolute/path/LiquidGLass-UI/src/index.ts' } }
 ```
 
-Once it is published, `npm install liquid-glass-filter` replaces the first step.
+Once it is published to npm, `npm install liquid-glass-filter` will replace the GitHub install.
 
 | Entry | Import | What it holds | DOM at import? |
 |---|---|---|---|
@@ -684,8 +698,10 @@ Guidance:
 
 ## 14. Recipes
 
-Starting points, in `attachLiquidGlass` option form. The playground (`npm run dev`) has six
-presets and an A/B twin to compare two settings side by side.
+Starting points, in `attachLiquidGlass` option form. The
+[playground](https://j-houghton.github.io/LiquidGLass-UI/) (`npm run dev` locally) has eight
+presets, a control for every parameter, an A/B twin to compare two settings side by side, and a
+"Get the code" panel that writes the snippet for whatever is on screen.
 
 ```ts
 // the playground's "Standard Glass": balanced refraction with a visible edge
@@ -769,3 +785,57 @@ Motion: `SpringPhysics`, `SpringPerceptual`, `SpringConfig`, `SpringState`, `Res
 
 Elements: `LiquidGlassElement`, `LiquidGlassFilterElement`, `DefineLiquidGlassElementsOptions`,
 `PropDef`, `PropType`; the `HTMLElementTagNameMap` augmentation types `document.createElement('liquid-glass-container')`.
+
+## 17. Migrating from 1.x
+
+1.x shipped Lit web components; 2.x is headless with optional hand-rolled elements. The elements
+keep the 1.x tag and attribute names, so HTML usage keeps working. The parameter names changed:
+
+| 1.x | 2.x |
+|---|---|
+| `scalePx` | `displacementScale` |
+| `blurStdDev` | `blur` (`blurAmount` as an element property) |
+| `showSpecular` | `specular` |
+| `frost` | `tint` |
+| `chromaticBezelFactor` | removed; dispersion is now three displacement passes and needs no mask |
+| `specularStrength` (applied twice) | `specularStrength` applied once; a 1.x value `s` is `s · min(1, s)` (0.9 → 0.81) |
+| `glassThickness` (passed through a smoothstep curve) | `glassThickness` (literal px; 1.x `50` is `31.25`) |
+
+`fromLegacyParams()` performs this mapping. Other changes worth knowing: ESM only, no elements
+registered on import (call `defineLiquidGlassElements()`), validation clamps instead of
+rejecting, the `displacement-updated` event is replaced by `onRender` / `liquid-glass:render`,
+and the band is sampled at pixel centers so the map is an exact mirror image across both axes.
+
+## 18. Working on the library
+
+```bash
+npm ci
+npm run dev          # playground at demo/ (deployed to GitHub Pages from main)
+npm test             # vitest, once
+npm run typecheck    # whole repo + a no-DOM check of src/core and src/motion
+npm run build        # dist/: index, core, elements, motion (ESM + .d.ts)
+BENCH=1 npx vitest run tests/bench   # banding benchmark vs. the original algorithm
+
+# visual checks: deterministic harness + headless Chrome/Edge screenshots, no extra dependencies
+npm run dev -- --port 5178
+node scripts/visual-shot.mjs out/ab.png 'a={"shade":0}&b={"shade":0.35}&base={"dispersion":2}'
+node scripts/png-diff.mjs out/before.png out/after.png out/diff.png
+
+# the README's screenshots (the playground itself; ?preset=, ?theme= and ?code set the scene)
+node scripts/visual-shot.mjs docs/images/playground.png 'theme=light' --page=index.html --width=1440 --height=860
+node scripts/visual-shot.mjs docs/images/playground-code.png 'theme=dark&preset=prism&code' --page=index.html --width=1440 --height=860
+```
+
+Layout: `src/core` (pure engine), `src/motion` (pure motion and light model), `src/dom` (browser
+glue), `src/elements` (custom elements), `demo/` (playground), `tests/` (fixtures pin the maps;
+regenerate only on purpose with `UPDATE_FIXTURES=1`). Import direction is one-way: `core` and
+`motion` are pure and import nothing outside themselves, `dom` builds on them, `elements` on
+`dom`, `demo` on everything. Any change to the optics or the filter graph lands with a fixture
+or snapshot and, for anything visible, a before/after screenshot diff from the harness.
+
+The engines' behaviour this library relies on, with sources: Chromium renders
+`backdrop-filter: url()` with `feImage` + `feDisplacementMap` (Blink `fe_displacement_map.cc`);
+WebKit through Safari 27.2 drops the whole `backdrop-filter` list when it contains an SVG
+reference (WebCore `RenderLayerBacking.cpp`, WebKit bug 245510); Gecko through Firefox 159 renders
+nothing for this graph (Mozilla bug 1961378); plain `filter: url()` with the same graph renders
+in all three (Mozilla bug 1883933).

@@ -3,20 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Liquid Glass Workbench</title>
+  <title>Liquid Glass playground</title>
+  <meta name="description" content="Live playground for liquid-glass-filter: physically based glass refraction for the web." />
   <link rel="stylesheet" href="./ui/demoPage.css" />
 </head>
-<body class="show-grid"> <!-- Default to grid -->
-  <!-- Toolbar -->
+<body class="show-grid">
   <nav class="demo-toolbar">
     <div class="toolbar-brand">
       <span class="brand-name">Liquid Glass</span>
-      <span class="brand-badge">Workbench</span>
+      <span class="brand-badge">Playground</span>
       <span class="brand-badge brand-badge--mode" id="modeBadge" title="Render path for this browser">detecting…</span>
     </div>
 
     <div class="toolbar-controls">
-      <button type="button" id="btnTheme" class="btn-icon" aria-label="Toggle Theme">
+      <button type="button" id="btnCode" class="btn-pill" aria-expanded="false" aria-controls="codePanel">&lt;/&gt; Get the code</button>
+      <a href="https://github.com/J-Houghton/LiquidGLass-UI/blob/main/docs/usage.md" target="_blank" rel="noopener" class="btn-text">Docs</a>
+      <div class="vr"></div>
+      <button type="button" id="btnTheme" class="btn-icon" aria-label="Toggle theme">
         <svg class="icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
         </svg>
@@ -32,54 +35,72 @@
           <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
         </svg>
       </button>
-      <div class="vr"></div>
-      <a href="https://github.com/J-Houghton" target="_blank" class="btn-icon" title="View on GitHub">
+      <a href="https://github.com/J-Houghton/LiquidGLass-UI" target="_blank" rel="noopener" class="btn-icon" title="View on GitHub" aria-label="View on GitHub">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
       </a>
     </div>
   </nav>
 
-  <!-- App Layout -->
   <div class="app-container">
-
-    <!-- Sidebar: Library -->
+    <!-- Left: what to put on the stage -->
     <aside class="app-sidebar">
       <div class="sidebar-section">
-        <h3>Glass Presets</h3>
-        <div id="presetList" class="preset-grid">
-          <!-- Populated by demoStage.ts -->
-        </div>
+        <h3>Presets</h3>
+        <p class="sidebar-hint">Click to add a glass. Drag it anywhere.</p>
+        <div id="presetList" class="preset-grid"></div>
       </div>
 
       <div class="sidebar-section">
         <h3>Backgrounds</h3>
-        <div id="bgList" class="bg-grid">
-          <!-- Populated by demoStage.ts -->
-        </div>
+        <div id="bgList" class="bg-grid"></div>
       </div>
     </aside>
 
-    <!-- Main Workspace -->
+    <!-- Centre: a page for the glass to sit over. It scrolls under the glass. -->
     <main class="demo-layout">
       <section class="demo-workspace" data-demo-workspace>
         <div class="paper-sheet">
           <div class="workbench-patterns">
-            <div class="section">
-              <h3>Readable, mixed-weight text</h3>
+            <div class="section section--hero">
+              <h1>Glass that bends what is behind it</h1>
               <p>
-                Real-time refraction and frost. Configurable surfaces. Drag anywhere.
-                <a href="#" onclick="return false;">Sample link</a> and <strong>bold text</strong> to test contrast.
-                Use this row to pass beneath your glass and verify displacement along edges and glyph stems.
+                The panel floating over this page is an ordinary element. Drag it around, press it,
+                move your pointer near its edge and scroll this page under it. Everything you see
+                through the rim is refracted live, the way a real lens would bend it.
+              </p>
+              <p class="hint-row">
+                <span class="chip">Drag</span>
+                <span class="chip">Press</span>
+                <span class="chip">Move the pointer close</span>
+                <span class="chip">Scroll</span>
               </p>
             </div>
 
             <div class="section">
-              <h3>Luma Ramp (Banding Check)</h3>
+              <h3>Colour</h3>
+              <div class="test-block swatches">
+                <span style="background:#ef4444"></span><span style="background:#f59e0b"></span><span style="background:#10b981"></span>
+                <span style="background:#3b82f6"></span><span style="background:#8b5cf6"></span><span style="background:#ec4899"></span>
+              </div>
+            </div>
+
+            <div class="section">
+              <h3>Text</h3>
+              <p>
+                Real-time refraction and frost, configurable surfaces, light that follows the page.
+                <a href="#" onclick="return false;">A sample link</a> and <strong>bold text</strong> to judge contrast.
+                Pass this paragraph beneath the glass and watch the letters bend along the rim while
+                the middle stays readable.
+              </p>
+            </div>
+
+            <div class="section">
+              <h3>Gradient (banding check)</h3>
               <div class="test-block gradient-ramp"></div>
             </div>
 
             <div class="section">
-              <h3>High Frequency Edges (Aliasing Check)</h3>
+              <h3>Fine lines (aliasing check)</h3>
               <div class="test-block diagonal-stripes"></div>
             </div>
           </div>
@@ -87,7 +108,27 @@
         <div class="demo-stage-layer" data-demo-stage></div>
       </section>
     </main>
+
+    <!-- Right: the controls (Tweakpane mounts here) -->
+    <aside class="app-inspector" aria-label="Controls">
+      <div id="inspector"></div>
+    </aside>
   </div>
+
+  <!-- The code for the selected glass -->
+  <section class="code-panel" id="codePanel" hidden aria-label="Code for this glass">
+    <header class="code-panel__bar">
+      <div class="code-panel__tabs" role="tablist">
+        <button type="button" role="tab" data-flavour="js" aria-selected="true">JavaScript</button>
+        <button type="button" role="tab" data-flavour="html" aria-selected="false">HTML element</button>
+      </div>
+      <div class="code-panel__actions">
+        <button type="button" id="btnCopy" class="btn-pill btn-pill--small">Copy</button>
+        <button type="button" class="btn-icon" data-close aria-label="Close code panel">✕</button>
+      </div>
+    </header>
+    <pre class="code-panel__body"><code id="codeOutput"></code></pre>
+  </section>
 
   <script type="module" src="./main.ts"></script>
 </body>
